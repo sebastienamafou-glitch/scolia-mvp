@@ -2,8 +2,12 @@
 
 import axios from 'axios';
 
-// L'URL de notre Backend NestJS
-const API_URL = 'http://localhost:3000';
+// UTILISER LA VARIABLE D'ENVIRONNEMENT
+// Si on est en local, on utilise localhost.
+// Si on est en prod, Vite injectera l'URL de production.
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
+console.log("API URL active :", API_URL); // Pour le débogage
 
 const api = axios.create({
   baseURL: API_URL,
@@ -12,11 +16,10 @@ const api = axios.create({
   },
 });
 
-// Intercepteur pour insérer le token JWT dans toutes les requêtes (sauf login)
+// Intercepteur pour insérer le token JWT
 api.interceptors.request.use(config => {
   const token = localStorage.getItem('access_token');
   if (token) {
-    // Le jeton est inséré au format 'Bearer <token>'
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
