@@ -19,7 +19,7 @@ const AdminDashboard: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // État du formulaire
+  // État pour le formulaire
   const [newUser, setNewUser] = useState({
     email: '',
     password: '',
@@ -27,7 +27,7 @@ const AdminDashboard: React.FC = () => {
     nom: '',
     prenom: '',
     classe: '',
-    parentId: '' // Nouveau champ pour stocker l'ID du parent sélectionné
+    parentId: '' // Important pour le lien
   });
 
   useEffect(() => {
@@ -45,7 +45,7 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  // On filtre la liste pour ne garder que les parents (pour le menu déroulant)
+  // 1. FILTRER LES PARENTS DISPONIBLES
   const availableParents = users.filter(user => user.role === 'Parent');
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -62,7 +62,7 @@ const AdminDashboard: React.FC = () => {
           if (payload.parentId) {
               payload.parentId = Number(payload.parentId);
           } else {
-              delete payload.parentId; // Pas de parent sélectionné
+              delete payload.parentId;
           }
       }
 
@@ -70,19 +70,17 @@ const AdminDashboard: React.FC = () => {
       
       alert('Utilisateur créé avec succès !');
       fetchUsers(); 
-      // Reset (on garde le rôle pour enchainer des créations similaires)
       setNewUser({ ...newUser, email: '', password: '', nom: '', prenom: '', classe: '', parentId: '' });
 
     } catch (error) {
       console.error(error);
-      alert("Erreur lors de la création. Vérifiez que l'email n'existe pas déjà.");
+      alert("Erreur lors de la création.");
     }
   };
 
   return (
     <div style={{ backgroundColor: 'white', minHeight: '100vh', padding: '20px', color: '#333' }}>
       
-      {/* HEADER */}
       <header style={{ padding: '10px 0', borderBottom: '2px solid #F77F00', marginBottom: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <Logo width={40} height={40} showText={false} />
@@ -95,12 +93,11 @@ const AdminDashboard: React.FC = () => {
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '40px' }}>
         
-        {/* FORMULAIRE D'AJOUT */}
+        {/* FORMULAIRE */}
         <div style={{ backgroundColor: '#F4F6F8', padding: '20px', borderRadius: '12px', height: 'fit-content' }}>
             <h2 style={{ color: '#0A2240', marginTop: 0 }}>➕ Ajouter un utilisateur</h2>
             <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                 
-                {/* Choix du Rôle */}
                 <label style={{fontWeight: 'bold', fontSize: '0.9rem'}}>Rôle</label>
                 <select 
                     value={newUser.role}
@@ -113,13 +110,13 @@ const AdminDashboard: React.FC = () => {
                     <option value="Admin">Administrateur</option>
                 </select>
 
-                {/* Champs Communs */}
                 <input type="text" placeholder="Nom" required value={newUser.nom} onChange={e => setNewUser({...newUser, nom: e.target.value})} style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }} />
                 <input type="text" placeholder="Prénom" required value={newUser.prenom} onChange={e => setNewUser({...newUser, prenom: e.target.value})} style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }} />
                 
-                {/* Champs Spécifiques ÉLÈVE */}
+                {/* 2. ZONE BLEUE : CLASSE ET PARENT (Uniquement pour les élèves) */}
                 {newUser.role === 'Élève' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '10px', backgroundColor: '#E3F2FD', borderRadius: '8px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '15px', backgroundColor: '#E3F2FD', borderRadius: '8px', border: '1px solid #90CAF9' }}>
+                        <label style={{fontSize: '0.8rem', fontWeight: 'bold', color: '#0D47A1'}}>Informations Scolaires</label>
                         <input 
                             type="text" 
                             placeholder="Classe (ex: 6ème A)" 
@@ -152,10 +149,9 @@ const AdminDashboard: React.FC = () => {
             </form>
         </div>
 
-        {/* LISTE DES UTILISATEURS */}
+        {/* LISTE */}
         <div>
             <h2 style={{ color: '#0A2240', marginTop: 0 }}>📋 Liste des utilisateurs ({users.length})</h2>
-            
             {loading ? <p>Chargement...</p> : (
                 <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
@@ -181,11 +177,7 @@ const AdminDashboard: React.FC = () => {
                                     </td>
                                     <td style={{ padding: '10px', fontWeight: 'bold' }}>{user.nom} {user.prenom}</td>
                                     <td style={{ padding: '10px', color: '#666' }}>{user.email}</td>
-                                    <td style={{ padding: '10px' }}>
-                                        {user.classe && <span style={{ marginRight: '5px' }}>🏫 {user.classe}</span>}
-                                        {/* On ne peut pas afficher le nom du parent ici facilement sans faire une jointure complexe, 
-                                            mais l'ID est en base */}
-                                    </td>
+                                    <td style={{ padding: '10px' }}>{user.classe}</td>
                                 </tr>
                             ))}
                         </tbody>
