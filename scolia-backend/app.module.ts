@@ -20,8 +20,6 @@ import { StudentsModule } from './students/students.module';
 import { ClassesModule } from './classes/classes.module';
 import { GradesModule } from './grades/grades.module';
 import { HomeworksModule } from './homeworks/homeworks.module';
-import { HomeworksModule } from './homeworks/homeworks.module';
-import { GradesModule } from './grades/grades.module';
 // ... autres modules existants (NotesModule, AttendanceModule, etc.)
 
 @Module({
