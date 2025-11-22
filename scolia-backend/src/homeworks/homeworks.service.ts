@@ -11,16 +11,20 @@ export class HomeworksService {
   ) {}
 
   async create(data: any): Promise<Homework> {
-    // data contient: title, description, matiere, dueDate, classId
-    const homework = this.homeworksRepository.create(data);
-    return this.homeworksRepository.save(homework);
+    const newHomework = this.homeworksRepository.create({
+      ...data,
+      class: { id: data.classId } 
+    });
+    
+    const saved = await this.homeworksRepository.save(newHomework);
+    // SOLUTION ULTIME : On utilise 'as any' pour forcer le passage
+    return saved as any;
   }
 
-  // Trouver les devoirs d'une classe spécifique
   async findByClass(classId: number): Promise<Homework[]> {
     return this.homeworksRepository.find({
       where: { class: { id: classId } },
-      order: { dueDate: 'ASC' }, // Les plus urgents en premier
+      order: { dueDate: 'ASC' },
     });
   }
 }

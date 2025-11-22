@@ -9,13 +9,13 @@ import { Roles } from '../auth/roles.decorator';
 export class ClassesController {
   constructor(private readonly classesService: ClassesService) {}
 
-  @Roles('Admin') // Seul l'Admin crée les classes
+  @Roles('Admin')
   @Post()
   create(@Body() body: { name: string; level: string }) {
     return this.classesService.create(body.name, body.level);
   }
 
-  @Roles('Admin', 'Enseignant') // Profs et Admins ont besoin de la liste
+  @Roles('Admin', 'Enseignant')
   @Get()
   findAll() {
     return this.classesService.findAll();

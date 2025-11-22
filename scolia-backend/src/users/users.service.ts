@@ -5,7 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import * as bcrypt from 'bcrypt';
-import { CreateUserDto } from './dto/create-user.dto'; // Assurez-vous que ce fichier existe
+import { CreateUserDto } from './dto/create-user.dto';
 
 @Injectable()
 export class UsersService implements OnModuleInit {
@@ -33,25 +33,26 @@ export class UsersService implements OnModuleInit {
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash('password', saltRounds);
 
-    // 1. Création des adultes (Admin, Prof, Parent)
+    // 1. Création des adultes
+    // CORRECTION : On utilise 'passwordHash' et non 'password'
     const usersToCreate = [
       {
-        email: 'admin@scolia.ci', // LE COMPTE MAGIQUE POUR TESTER
-        password: hashedPassword,
+        email: 'admin@scolia.ci',
+        passwordHash: hashedPassword, // <--- Corrigé ici
         role: 'Admin',
         nom: 'Admin',
         prenom: 'Système',
       },
       {
         email: 'parent@scolia.ci',
-        password: hashedPassword,
+        passwordHash: hashedPassword, // <--- Corrigé ici
         role: 'Parent',
         nom: 'Kouame',
         prenom: 'Parent',
       },
       {
         email: 'prof@scolia.ci',
-        password: hashedPassword,
+        passwordHash: hashedPassword, // <--- Corrigé ici
         role: 'Enseignant',
         nom: 'Traoré',
         prenom: 'Professeur',
@@ -66,7 +67,7 @@ export class UsersService implements OnModuleInit {
         const studentsToCreate = [
             {
                 email: 'eleve1@scolia.ci',
-                password: hashedPassword,
+                passwordHash: hashedPassword, // <--- Corrigé ici
                 role: 'Élève',
                 nom: 'Kouame',
                 prenom: 'Jean',
@@ -75,7 +76,7 @@ export class UsersService implements OnModuleInit {
             },
             {
                 email: 'eleve2@scolia.ci',
-                password: hashedPassword,
+                passwordHash: hashedPassword, // <--- Corrigé ici
                 role: 'Élève',
                 nom: 'Kouame',
                 prenom: 'Marie',
@@ -89,16 +90,21 @@ export class UsersService implements OnModuleInit {
     this.logger.log('✅ Seeding terminé avec succès !');
   }
 
-  // --- MÉTHODES ADMIN (Celles qui manquaient) ---
+  // --- MÉTHODES ADMIN ---
 
   // Créer un nouvel utilisateur
   async create(createUserDto: CreateUserDto): Promise<User> {
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(createUserDto.password, saltRounds);
 
+    // CORRECTION IMPORTANTE :
+    // On extrait le mot de passe en clair (password) pour ne pas l'envoyer à l'entité
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password, ...userData } = createUserDto;
+
     const newUser = this.usersRepository.create({
-      ...createUserDto,
-      password: hashedPassword,
+      ...userData, // On passe tout le reste (nom, prenom, email...)
+      passwordHash: hashedPassword, // On assigne le hash à la bonne colonne
     });
 
     return this.usersRepository.save(newUser);
@@ -107,12 +113,11 @@ export class UsersService implements OnModuleInit {
   // Lister tous les utilisateurs
   async findAll(): Promise<User[]> {
     return this.usersRepository.find({
-      // On sélectionne tout SAUF le mot de passe pour la sécurité
       select: ['id', 'nom', 'prenom', 'email', 'role', 'classe', 'parentId'],
     });
   }
 
-  // --- MÉTHODES EXISTANTES (Login / Dashboard) ---
+  // --- MÉTHODES LOGIN / DASHBOARD ---
 
   async findOneByEmail(email: string): Promise<User | null> {
     return this.usersRepository.findOne({ where: { email } });

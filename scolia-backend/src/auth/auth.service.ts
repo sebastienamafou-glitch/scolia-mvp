@@ -15,9 +15,11 @@ export class AuthService {
   async validateUser(email: string, pass: string): Promise<any> {
     const user = await this.usersService.findOneByEmail(email);
     
-    // RÉACTIVATION DE LA SÉCURITÉ : On vérifie le hash
-    if (user && (await bcrypt.compare(pass, user.password))) {
-      const { password, ...result } = user;
+    // CORRECTION : On compare avec user.passwordHash
+    if (user && (await bcrypt.compare(pass, user.passwordHash))) {
+      // CORRECTION : On retire passwordHash du résultat renvoyé (et non "password")
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { passwordHash, ...result } = user;
       return result;
     }
     return null;

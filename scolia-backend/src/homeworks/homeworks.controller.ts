@@ -9,14 +9,13 @@ import { Roles } from '../auth/roles.decorator';
 export class HomeworksController {
   constructor(private readonly homeworksService: HomeworksService) {}
 
-  @Roles('Enseignant')
+  @Roles('Enseignant', 'Admin')
   @Post()
   create(@Body() body: any) {
-    // body attendu : { title, description, matiere, dueDate, classId }
     return this.homeworksService.create(body);
   }
 
-  @Roles('Parent', 'Élève', 'Enseignant')
+  @Roles('Parent', 'Élève', 'Enseignant', 'Admin')
   @Get('class/:classId')
   findByClass(@Param('classId') classId: string) {
     return this.homeworksService.findByClass(Number(classId));

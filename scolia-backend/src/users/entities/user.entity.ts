@@ -1,8 +1,7 @@
-// scolia-backend/src/users/entities/user.entity.ts
+import { Entity, Column, PrimaryGeneratedColumn, OneToMany } from 'typeorm'; // <--- OneToMany ajouté ici
+import { Student } from '../../students/entities/student.entity';
 
-import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
-
-@Entity() // Ceci dit à TypeORM : "Crée une table 'user' dans Postgres"
+@Entity()
 export class User {
   @PrimaryGeneratedColumn()
   id: number;
@@ -11,12 +10,12 @@ export class User {
   email: string;
 
   @Column()
-  password: string;
+  passwordHash: string;
 
-  @Column() // 'Parent', 'Enseignant', 'Admin', 'Élève'
+  @Column()
   role: string;
 
-  // Champs optionnels (pour les élèves/profs)
+  // Champs optionnels
   @Column({ nullable: true })
   nom: string;
 
@@ -24,8 +23,12 @@ export class User {
   prenom: string;
 
   @Column({ nullable: true })
-  classe: string; // ex: "6ème A"
+  classe: string;
 
   @Column({ nullable: true })
-  parentId: number; // Pour lier un élève à son parent
+  parentId: number;
+
+  // Relation : Un parent a plusieurs enfants (Students)
+  @OneToMany(() => Student, (student) => student.parent)
+  children: Student[];
 }
