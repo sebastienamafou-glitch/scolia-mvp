@@ -12,9 +12,8 @@ export class GradesController {
   @Roles('Enseignant', 'Admin')
   @Post()
   create(@Body() body: any) {
-    // Si c'est un tableau (bulk), on utilise saveBulk
+    // Gestion simple ou en masse
     if (Array.isArray(body.notes)) {
-        // Transformation du format frontend vers le format entité
         const notesToSave = body.notes.map((n: any) => ({
             studentId: n.studentId,
             value: n.noteValue,
