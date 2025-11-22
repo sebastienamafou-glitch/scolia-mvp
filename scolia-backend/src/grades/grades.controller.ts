@@ -12,7 +12,6 @@ export class GradesController {
   @Roles('Enseignant', 'Admin')
   @Post()
   create(@Body() body: any) {
-    // Gestion simple ou en masse
     if (Array.isArray(body.notes)) {
         const notesToSave = body.notes.map((n: any) => ({
             studentId: n.studentId,

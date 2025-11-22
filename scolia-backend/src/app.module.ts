@@ -20,6 +20,7 @@ import { StudentsModule } from './students/students.module';
 import { ClassesModule } from './classes/classes.module';
 import { GradesModule } from './grades/grades.module';
 import { HomeworksModule } from './homeworks/homeworks.module';
+// ... autres modules existants (NotesModule, AttendanceModule, etc.)
 
 @Module({
   imports: [
@@ -33,9 +34,10 @@ import { HomeworksModule } from './homeworks/homeworks.module';
         username: configService.get<string>('DB_USER'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
-        ssl: true, // Important pour la prod (Neon/Supabase)
+        ssl: true,
+        // ON CHARGE TOUTES LES NOUVELLES ENTITÉS ICI
         entities: [User, Student, Class, Grade, Homework], 
-        synchronize: true, // À passer à false en vraie production stricte, mais ok pour le MVP
+        synchronize: true, // Créera les tables automatiquement
       }),
       inject: [ConfigService],
     }),
@@ -43,8 +45,8 @@ import { HomeworksModule } from './homeworks/homeworks.module';
     UsersModule,
     StudentsModule,
     ClassesModule,
-    GradesModule, // Une seule fois !
-    HomeworksModule, // Une seule fois !
+    GradesModule,
+    HomeworksModule,
   ],
   controllers: [AppController],
   providers: [AppService],
