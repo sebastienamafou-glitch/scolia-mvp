@@ -1,3 +1,5 @@
+// scolia-backend/src/schools/entities/school.entity.ts
+
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany, CreateDateColumn } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Class } from '../../classes/entities/class.entity';
@@ -8,7 +10,7 @@ export class School {
   id: number;
 
   @Column()
-  name: string; // Ex: "Collège Victor Hugo"
+  name: string;
 
   @Column({ nullable: true })
   address: string;
@@ -16,16 +18,12 @@ export class School {
   @CreateDateColumn()
   createdAt: Date;
 
-  // --- NOUVEAU CHAMP AJOUTÉ ---
-  @Column({ default: true }) // Par défaut, une école est active
+  @Column({ default: true })
   isActive: boolean;
-  // ----------------------------
 
-  // Une école a plusieurs utilisateurs (Profs, Admins, Elèves)
   @OneToMany(() => User, (user) => user.school)
   users: User[];
 
-  // Une école a plusieurs classes
   @OneToMany(() => Class, (classe) => classe.school)
   classes: Class[];
 }

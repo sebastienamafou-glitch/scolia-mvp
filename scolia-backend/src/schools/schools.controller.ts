@@ -18,25 +18,28 @@ export class SchoolsController {
     @InjectRepository(User) private userRepo: Repository<User>,
   ) {}
 
-  // --- 1. ROUTE ONBOARDING (Modifiée pour SuperAdmin) ---
-  @Roles('SuperAdmin') // 👈 C'EST ICI LA CORRECTION
+  // --- 1. ROUTE ONBOARDING (Super Admin) ---
+  @Roles('Admin') // On garde 'Admin', mais on sécurise via le check schoolId
   @Post('onboard')
   async onboardNewSchool(@Request() req, @Body() body: any) {
-    // La vérification schoolId est toujours valide, mais le rôle est la sécurité principale
-    if (req.user.schoolId !== null) {
+    
+    // SÉCURITÉ CRITIQUE : Seul celui qui n'a pas d'école (Super Admin) peut créer
+    // Si schoolId existe (ex: 1), c'est un admin d'école, donc on bloque.
+    if (req.user.schoolId) {
       throw new ForbiddenException("Seul le Super Admin peut créer une nouvelle école.");
     }
 
     const { schoolName, schoolAddress, adminEmail, adminNom, adminPrenom, adminPassword } = body;
 
-    // Création de l'école
+    // 1. Création de l'école
     const newSchool = this.schoolRepo.create({
       name: schoolName,
       address: schoolAddress,
+      isActive: true // Active par défaut
     });
     const savedSchool = await this.schoolRepo.save(newSchool);
 
-    // Création du Directeur (Admin Client)
+    // 2. Création du Directeur (Admin Client)
     const salt = await bcrypt.genSalt();
     const hash = await bcrypt.hash(adminPassword, salt);
 
@@ -44,9 +47,10 @@ export class SchoolsController {
       email: adminEmail,
       nom: adminNom,
       prenom: adminPrenom,
-      passwordHash: hash,
-      role: 'Admin',       // 👈 LUI RESTE 'Admin' (Client)
-      school: savedSchool,
+      password: hash,      // On remplit les deux pour éviter les erreurs DB
+      passwordHash: hash,  // Le vrai champ sécurisé
+      role: 'Admin',       
+      school: savedSchool, // Lien vers la nouvelle école
       schoolId: savedSchool.id
     });
     
@@ -59,17 +63,16 @@ export class SchoolsController {
     };
   }
 
-  // --- 2. ROUTE STATUS (Modifiée pour SuperAdmin) ---
-  @Roles('SuperAdmin') // 👈 CORRECTION
+  // --- 2. ROUTE STATUS (Super Admin) ---
+  @Roles('Admin')
   @Patch(':id/status')
   async updateSchoolStatus(
     @Request() req,
     @Param('id') schoolId: string,
     @Body('isActive') isActive: boolean,
   ) {
-    if (req.user.schoolId !== null) {
-      throw new ForbiddenException("Accès refusé.");
-    }
+    // Vérification Super Admin
+    if (req.user.schoolId) throw new ForbiddenException("Accès refusé.");
 
     const school = await this.schoolRepo.findOne({ where: { id: Number(schoolId) } });
     if (!school) throw new NotFoundException("École non trouvée.");
@@ -77,16 +80,16 @@ export class SchoolsController {
     school.isActive = isActive;
     await this.schoolRepo.save(school);
 
-    return { message: "Statut mis à jour." };
+    return { message: `Statut mis à jour : ${isActive ? 'Active' : 'Inactive'}` };
   }
 
-  // --- 3. ROUTE LISTE (Modifiée pour SuperAdmin) ---
-  @Roles('SuperAdmin') // 👈 CORRECTION
+  // --- 3. ROUTE LISTE (Super Admin) ---
+  @Roles('Admin')
   @Get()
   async findAllSchools(@Request() req) {
-      if (req.user.schoolId !== null) {
-          throw new ForbiddenException("Accès refusé.");
-      }
+      // Vérification Super Admin
+      if (req.user.schoolId) throw new ForbiddenException("Accès refusé.");
+      
       return this.schoolRepo.find({ order: { name: 'ASC' } });
   }
 }
