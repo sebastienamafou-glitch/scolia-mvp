@@ -15,9 +15,9 @@ export class AuthService {
   async validateUser(email: string, pass: string): Promise<any> {
     const user = await this.usersService.findOneByEmail(email);
     
-    // CORRECTION : On compare avec user.passwordHash
+    // On conserve la comparaison sécurisée (Bcrypt) compatible avec votre User Entity
     if (user && (await bcrypt.compare(pass, user.passwordHash))) {
-      // CORRECTION : On retire passwordHash du résultat renvoyé (et non "password")
+      // On retire le hash du résultat renvoyé
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { passwordHash, ...result } = user;
       return result;
@@ -26,10 +26,12 @@ export class AuthService {
   }
 
   async login(user: any) {
+    // C'EST ICI QUE TOUT SE JOUE :
     const payload = { 
         email: user.email, 
         sub: user.id, 
-        role: user.role 
+        role: user.role,
+        schoolId: user.schoolId // <--- ON AJOUTE L'ID ECOLE
     };
     
     return {

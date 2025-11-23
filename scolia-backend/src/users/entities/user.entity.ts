@@ -1,5 +1,6 @@
-import { Entity, Column, PrimaryGeneratedColumn, OneToMany } from 'typeorm'; // <--- OneToMany ajouté ici
+import { Entity, Column, PrimaryGeneratedColumn, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
 import { Student } from '../../students/entities/student.entity';
+import { School } from '../../schools/entities/school.entity'; // <--- IMPORT AJOUTÉ
 
 @Entity()
 export class User {
@@ -35,4 +36,12 @@ export class User {
   // Relation : Un parent a plusieurs enfants (Students)
   @OneToMany(() => Student, (student) => student.parent)
   children: Student[];
+
+  // --- AJOUT MULTI-TENANT ---
+  @ManyToOne(() => School, (school) => school.users, { nullable: true }) // nullable au début pour la migration
+  @JoinColumn({ name: 'schoolId' })
+  school: School;
+
+  @Column({ nullable: true })
+  schoolId: number;
 }

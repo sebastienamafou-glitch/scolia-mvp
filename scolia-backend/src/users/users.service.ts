@@ -34,25 +34,24 @@ export class UsersService implements OnModuleInit {
     const hashedPassword = await bcrypt.hash('password', saltRounds);
 
     // 1. Création des adultes
-    // CORRECTION : On utilise 'passwordHash' et non 'password'
     const usersToCreate = [
       {
         email: 'admin@scolia.ci',
-        passwordHash: hashedPassword, // <--- Corrigé ici
+        passwordHash: hashedPassword,
         role: 'Admin',
         nom: 'Admin',
         prenom: 'Système',
       },
       {
         email: 'parent@scolia.ci',
-        passwordHash: hashedPassword, // <--- Corrigé ici
+        passwordHash: hashedPassword,
         role: 'Parent',
         nom: 'Kouame',
         prenom: 'Parent',
       },
       {
         email: 'prof@scolia.ci',
-        passwordHash: hashedPassword, // <--- Corrigé ici
+        passwordHash: hashedPassword,
         role: 'Enseignant',
         nom: 'Traoré',
         prenom: 'Professeur',
@@ -67,7 +66,7 @@ export class UsersService implements OnModuleInit {
         const studentsToCreate = [
             {
                 email: 'eleve1@scolia.ci',
-                passwordHash: hashedPassword, // <--- Corrigé ici
+                passwordHash: hashedPassword,
                 role: 'Élève',
                 nom: 'Kouame',
                 prenom: 'Jean',
@@ -76,7 +75,7 @@ export class UsersService implements OnModuleInit {
             },
             {
                 email: 'eleve2@scolia.ci',
-                passwordHash: hashedPassword, // <--- Corrigé ici
+                passwordHash: hashedPassword,
                 role: 'Élève',
                 nom: 'Kouame',
                 prenom: 'Marie',
@@ -97,30 +96,41 @@ export class UsersService implements OnModuleInit {
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(createUserDto.password, saltRounds);
 
-    // CORRECTION IMPORTANTE :
-    // On extrait le mot de passe en clair (password) pour ne pas l'envoyer à l'entité
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...userData } = createUserDto;
 
     const newUser = this.usersRepository.create({
-      ...userData, // On passe tout le reste (nom, prenom, email...)
-      passwordHash: hashedPassword, // On assigne le hash à la bonne colonne
+      ...userData, 
+      passwordHash: hashedPassword, 
     });
 
     return this.usersRepository.save(newUser);
   }
 
-  // Lister tous les utilisateurs
+  // Lister tous les utilisateurs (Super Admin global)
   async findAll(): Promise<User[]> {
     return this.usersRepository.find({
-      select: ['id', 'nom', 'prenom', 'email', 'role', 'classe', 'parentId'],
+      select: ['id', 'nom', 'prenom', 'email', 'role', 'classe', 'parentId', 'photo', 'schoolId'],
+    });
+  }
+
+  // --- AJOUT : Lister les utilisateurs par École (Multi-Tenant) ---
+  async findAllBySchool(schoolId: number): Promise<User[]> {
+    return this.usersRepository.find({
+        where: { school: { id: schoolId } }, // Le filtre magique
+        order: { nom: 'ASC' },
+        // Ajout de sécurité : on sélectionne les champs pour exclure le passwordHash
+        select: ['id', 'nom', 'prenom', 'email', 'role', 'classe', 'parentId', 'photo', 'schoolId']
     });
   }
 
   // --- MÉTHODES LOGIN / DASHBOARD ---
 
   async findOneByEmail(email: string): Promise<User | null> {
-    return this.usersRepository.findOne({ where: { email } });
+    return this.usersRepository.findOne({ 
+        where: { email },
+        relations: ['school'] // Utile pour récupérer l'ID école au login
+    });
   }
   
   async findStudentsByParentId(parentId: number): Promise<User[]> {

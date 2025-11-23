@@ -1,28 +1,35 @@
-// scolia-backend/src/users/users.controller.ts
-
-import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, Request } from '@nestjs/common'; // Ajout de Request
 import { UsersService } from './users.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 
-@UseGuards(JwtAuthGuard, RolesGuard) // Tout le contrôleur est sécurisé
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  // Route : POST /users (Créer un utilisateur)
-  @Roles('Admin') // Seul l'Admin peut créer des comptes
-  @Post()
-  create(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.create(createUserDto);
+  // Récupérer UNIQUEMENT les gens de mon école
+  @Get()
+  findAll(@Request() req) {
+    const mySchoolId = req.user.schoolId; // Récupéré automatiquement du Token
+    
+    // Si c'est un SuperAdmin (sans école), il voit tout, sinon on filtre
+    if (!mySchoolId) return this.usersService.findAll(); 
+
+    return this.usersService.findAllBySchool(mySchoolId);
   }
 
-  // Route : GET /users (Voir tout le monde)
-  @Roles('Admin') // Seul l'Admin peut voir la liste complète
-  @Get()
-  findAll() {
-    return this.usersService.findAll();
+  // Créer un utilisateur dans MON école
+  @Roles('Admin')
+  @Post()
+  create(@Request() req, @Body() createUserDto: any) {
+    const mySchoolId = req.user.schoolId;
+    
+    // On force l'ID de l'école de l'admin créateur
+    return this.usersService.create({
+        ...createUserDto,
+        schoolId: mySchoolId 
+    });
   }
 }
