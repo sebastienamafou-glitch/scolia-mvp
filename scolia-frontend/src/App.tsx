@@ -7,8 +7,8 @@ import LoginPage from './pages/LoginPage';
 import ParentDashboard from './pages/ParentDashboard';
 import TeacherDashboard from './pages/TeacherDashboard';
 import AdminDashboard from './pages/AdminDashboard';
-// Assurez-vous que ce composant existe (sinon je peux vous donner le code)
 import PrivateRoute from './components/PrivateRoute'; 
+import PlatformDashboard from './pages/PlatformDashboard'; // 👈 NOUVEL IMPORT
 
 // Placeholder pour les élèves (à faire plus tard)
 const StudentDashboard = () => <h1 style={{textAlign:'center', marginTop:'50px'}}>🎒 Espace Élève (Bientôt disponible)</h1>;
@@ -46,7 +46,7 @@ const App: React.FC = () => {
             !userRole ? <Navigate to="/login" /> :
             userRole === 'Admin' ? <Navigate to="/admin-dashboard" /> :
             userRole === 'Enseignant' ? <Navigate to="/teacher-dashboard" /> :
-            userRole === 'Parent' ? <Navigate to="/parent-dashboard" /> : // <--- 2. REDIRECTION PARENT
+            userRole === 'Parent' ? <Navigate to="/parent-dashboard" /> : 
             <Navigate to="/student-dashboard" />
           } />
 
@@ -64,10 +64,16 @@ const App: React.FC = () => {
             </PrivateRoute>
           } />
 
-          {/* 3. NOUVELLE ROUTE PARENT */}
           <Route path="/parent-dashboard" element={
             <PrivateRoute roles={['Parent']}>
               <ParentDashboard />
+            </PrivateRoute>
+          } />
+          
+          {/* 4. NOUVELLE ROUTE PLATEFORM SUPER ADMIN */}
+          <Route path="/platform" element={
+            <PrivateRoute roles={['Admin']}>
+              <PlatformDashboard />
             </PrivateRoute>
           } />
 
