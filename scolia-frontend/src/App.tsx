@@ -9,9 +9,9 @@ import TeacherDashboard from './pages/TeacherDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import PrivateRoute from './components/PrivateRoute'; 
 import PlatformDashboard from './pages/PlatformDashboard'; // Dashboard Super Admin
+import NotesPage from './pages/NotesPage';
 
 // Placeholder pour les élèves
-const StudentDashboard = () => <h1 style={{textAlign:'center', marginTop:'50px'}}>🎒 Espace Élève (Bientôt disponible)</h1>;
 
 const App: React.FC = () => {
   const { userRole, isLoading, logout } = useAuth();
@@ -98,7 +98,7 @@ const App: React.FC = () => {
           
           <Route path="/student-dashboard" element={
             <PrivateRoute roles={['Élève']}>
-              <StudentDashboard />
+              <NotesPage /> 
             </PrivateRoute>
           } />
 
