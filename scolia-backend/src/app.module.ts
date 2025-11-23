@@ -14,7 +14,7 @@ import { Grade } from './grades/entities/grade.entity';
 import { Homework } from './homeworks/entities/homework.entity';
 import { Bulletin } from './grades/entities/bulletin.entity'; 
 import { News } from './news/entities/news.entity';
-import { School } from './schools/entities/school.entity'; // <--- IMPORT AJOUTÉ
+import { School } from './schools/entities/school.entity';
 
 // --- 2. IMPORT DES MODULES ---
 import { AuthModule } from './auth/auth.module';
@@ -24,8 +24,8 @@ import { ClassesModule } from './classes/classes.module';
 import { GradesModule } from './grades/grades.module';
 import { HomeworksModule } from './homeworks/homeworks.module';
 import { NewsModule } from './news/news.module';
-// Note: Pensez à importer SchoolsModule ici si vous avez créé le module (ex: nest g module schools)
-// import { SchoolsModule } from './schools/schools.module'; 
+// ON DÉCOMMENTE L'IMPORT DU MODULE :
+import { SchoolsModule } from './schools/schools.module'; 
 
 @Module({
   imports: [
@@ -39,8 +39,7 @@ import { NewsModule } from './news/news.module';
         username: configService.get<string>('DB_USER'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
-        ssl: true, // Requis pour Render/Neon en prod
-        // AJOUT DE School DANS LA LISTE :
+        ssl: true, 
         entities: [User, Student, Class, Grade, Homework, Bulletin, News, School], 
         synchronize: true, 
       }),
@@ -53,7 +52,7 @@ import { NewsModule } from './news/news.module';
     GradesModule,
     HomeworksModule,
     NewsModule,
-    // SchoolsModule, // <--- Ajouter ici si le module existe
+    SchoolsModule, // <--- ON AJOUTE LE MODULE ICI
   ],
   controllers: [AppController],
   providers: [AppService],
