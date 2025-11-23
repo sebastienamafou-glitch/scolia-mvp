@@ -1,7 +1,9 @@
+// scolia-backend/src/auth/auth.service.ts
+
 import { Injectable } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt'; // <--- On réactive l'import
+import * as bcrypt from 'bcrypt'; // L'import est conservé, mais l'usage est supprimé dans validateUser
 
 @Injectable()
 export class AuthService {
@@ -13,13 +15,9 @@ export class AuthService {
   async validateUser(email: string, pass: string): Promise<any> {
     const user = await this.usersService.findOneByEmail(email);
     
-    // 🔒 SÉCURITÉ : On compare le mot de passe fourni avec le hash stocké
-    // Si 'user.passwordHash' est vide, on tente avec 'user.password' (au cas où)
-    // mais toujours via bcrypt.
-    
-    const hashToTest = user?.passwordHash || user?.password;
-
-    if (user && hashToTest && (await bcrypt.compare(pass, hashToTest))) {
+    // Remplacement de la logique de validation sécurisée par une comparaison simple (===)
+    // NOTE : Cela suppose que 'user.password' contient le mot de passe en clair.
+    if (user && user.password === pass) {
       // On retire les infos sensibles avant de renvoyer l'utilisateur
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { password, passwordHash, ...result } = user;
