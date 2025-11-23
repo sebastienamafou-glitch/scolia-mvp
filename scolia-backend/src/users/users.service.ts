@@ -126,11 +126,15 @@ export class UsersService implements OnModuleInit {
 
   // --- MÉTHODES LOGIN / DASHBOARD ---
 
+  // MÉTHODE CLÉ CORRIGÉE POUR RÉCUPÉRER LE MOT DE PASSE POUR L'AUTH
   async findOneByEmail(email: string): Promise<User | null> {
-    return this.usersRepository.findOne({ 
-        where: { email },
-        relations: ['school'] // Utile pour récupérer l'ID école au login
-    });
+    return this.usersRepository.createQueryBuilder("user")
+        .where("user.email = :email", { email })
+        // CRUCIAL : On force l'ajout des champs de mot de passe qui sont masqués par défaut !
+        .addSelect("user.password") 
+        .addSelect("user.passwordHash")
+        .leftJoinAndSelect("user.school", "school") // Charger l'école pour schoolId (pour le multi-tenant check)
+        .getOne();
   }
   
   async findStudentsByParentId(parentId: number): Promise<User[]> {
