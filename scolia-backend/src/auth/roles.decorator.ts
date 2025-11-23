@@ -9,4 +9,5 @@ export type Role = 'Admin' | 'Enseignant' | 'Parent' | 'Élève';
 export const ROLES_KEY = 'roles';
 
 // Décorateur qui permet de définir les rôles autorisés sur une route
-export const Roles = (...roles: Role[]) => SetMetadata(ROLES_KEY, roles);
+export const Roles = (...roles: string[]) => SetMetadata(ROLES_KEY, roles);
+

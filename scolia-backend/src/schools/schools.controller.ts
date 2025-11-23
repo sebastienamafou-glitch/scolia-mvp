@@ -1,3 +1,5 @@
+// scolia-backend/src/schools/schools.controller.ts
+
 import { Controller, Post, Body, UseGuards, Request, ForbiddenException, Patch, Get, Param, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -16,26 +18,25 @@ export class SchoolsController {
     @InjectRepository(User) private userRepo: Repository<User>,
   ) {}
 
-  // --- ROUTE SUPER ADMIN : CRÉER UN NOUVEAU CLIENT ---
-  @Roles('Admin')
+  // --- 1. ROUTE ONBOARDING (Modifiée pour SuperAdmin) ---
+  @Roles('SuperAdmin') // 👈 C'EST ICI LA CORRECTION
   @Post('onboard')
   async onboardNewSchool(@Request() req, @Body() body: any) {
-    // 1. SÉCURITÉ : Vérifier que c'est bien le Super Admin (Vous)
-    // Votre schoolId est NULL, contrairement aux autres admins.
+    // La vérification schoolId est toujours valide, mais le rôle est la sécurité principale
     if (req.user.schoolId !== null) {
-      throw new ForbiddenException("Seul le Super Admin (Développeur) peut créer une nouvelle école.");
+      throw new ForbiddenException("Seul le Super Admin peut créer une nouvelle école.");
     }
 
     const { schoolName, schoolAddress, adminEmail, adminNom, adminPrenom, adminPassword } = body;
 
-    // 2. Créer l'école
+    // Création de l'école
     const newSchool = this.schoolRepo.create({
       name: schoolName,
       address: schoolAddress,
     });
     const savedSchool = await this.schoolRepo.save(newSchool);
 
-    // 3. Créer le Directeur lié à cette école
+    // Création du Directeur (Admin Client)
     const salt = await bcrypt.genSalt();
     const hash = await bcrypt.hash(adminPassword, salt);
 
@@ -43,10 +44,9 @@ export class SchoolsController {
       email: adminEmail,
       nom: adminNom,
       prenom: adminPrenom,
-      password: hash,      // Hashé pour la sécurité
-      passwordHash: hash,  // Hashé
-      role: 'Admin',
-      school: savedSchool, // <--- C'est ici qu'on fait le lien !
+      passwordHash: hash,
+      role: 'Admin',       // 👈 LUI RESTE 'Admin' (Client)
+      school: savedSchool,
       schoolId: savedSchool.id
     });
     
@@ -59,40 +59,33 @@ export class SchoolsController {
     };
   }
 
-  // --- NOUVELLE ROUTE : ACTIVER/DÉSACTIVER UNE ÉCOLE ---
-  @Roles('Admin')
+  // --- 2. ROUTE STATUS (Modifiée pour SuperAdmin) ---
+  @Roles('SuperAdmin') // 👈 CORRECTION
   @Patch(':id/status')
   async updateSchoolStatus(
     @Request() req,
     @Param('id') schoolId: string,
     @Body('isActive') isActive: boolean,
   ) {
-    // 1. SECURITÉ : Seul le Super Admin (schoolId === null) peut modifier l'état des écoles
     if (req.user.schoolId !== null) {
-      throw new ForbiddenException("Accès refusé. Seul le Super Admin peut modifier le statut d'une école.");
+      throw new ForbiddenException("Accès refusé.");
     }
 
     const school = await this.schoolRepo.findOne({ where: { id: Number(schoolId) } });
-    
-    if (!school) {
-        throw new NotFoundException("École non trouvée.");
-    }
+    if (!school) throw new NotFoundException("École non trouvée.");
 
     school.isActive = isActive;
     await this.schoolRepo.save(school);
 
-    return {
-        message: `Statut de l'école ${school.name} mis à jour. Nouvelle valeur: ${isActive ? 'Actif' : 'Inactif'}`
-    };
+    return { message: "Statut mis à jour." };
   }
 
-  // --- NOUVELLE ROUTE : Récupérer toutes les écoles (pour la liste du Super Admin) ---
-  @Roles('Admin')
+  // --- 3. ROUTE LISTE (Modifiée pour SuperAdmin) ---
+  @Roles('SuperAdmin') // 👈 CORRECTION
   @Get()
   async findAllSchools(@Request() req) {
-      // 1. SECURITÉ : Seul le Super Admin voit cette liste complète
       if (req.user.schoolId !== null) {
-          throw new ForbiddenException("Accès refusé. Seul le Super Admin peut voir la liste de toutes les écoles.");
+          throw new ForbiddenException("Accès refusé.");
       }
       return this.schoolRepo.find({ order: { name: 'ASC' } });
   }
