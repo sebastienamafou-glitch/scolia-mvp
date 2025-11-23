@@ -11,16 +11,13 @@ export interface User {
   nom: string;
   prenom: string;
   role: Role;
-  
-  // ✅ CORRECTION CRITIQUE : AJOUT DE schoolId
-  // Il est de type number | null car le Super Admin n'est lié à aucune école (null)
-  schoolId: number | null; 
+  schoolId: number | null; // On garde ça, c'est toujours utile
 }
 
 // 2. On ajoute 'user' dans le type du Contexte
 interface AuthContextType {
   isAuthenticated: boolean;
-  user: User | null;    // <-- AJOUT : L'objet complet (pour afficher nom/prénom)
+  user: User | null;
   userRole: Role | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
@@ -31,7 +28,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<User | null>(null); // <-- AJOUT État
+  const [user, setUser] = useState<User | null>(null);
   const [userRole, setUserRole] = useState<Role | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -52,11 +49,11 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
       // 2. On appelle /auth/me pour vérifier le token et récupérer les données
       const response = await api.get('/auth/me'); 
       
-      // 3. On stocke TOUT l'utilisateur, pas juste le rôle
-      const userData: User = response.data; // <--- Assurez-vous que userData est casté comme User
+      // 3. On stocke TOUT l'utilisateur
+      const userData: User = response.data;
       
-      setUser(userData);           // <-- On sauvegarde nom, prénom, id...
-      setUserRole(userData.role);  // On garde userRole pour faciliter les vérifs rapides
+      setUser(userData);           
+      setUserRole(userData.role);  
       setIsAuthenticated(true);
     } catch (error) {
       console.error('Token verification failed:', error);
@@ -80,12 +77,11 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
   const logout = () => {
     localStorage.removeItem('access_token');
     setIsAuthenticated(false);
-    setUser(null);      // <-- Reset user
-    setUserRole(null);  // Reset role
+    setUser(null);      
+    setUserRole(null);  
   };
 
   return (
-    // 4. On expose 'user' dans les valeurs du contexte
     <AuthContext.Provider value={{ isAuthenticated, user, userRole, login, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
