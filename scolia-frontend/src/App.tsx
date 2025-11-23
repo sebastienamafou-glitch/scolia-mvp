@@ -10,7 +10,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import PrivateRoute from './components/PrivateRoute'; 
 import PlatformDashboard from './pages/PlatformDashboard'; // Dashboard Super Admin
 
-// Placeholder pour les élèves
+// Placeholder pour les élève
 const StudentDashboard = () => <h1 style={{textAlign:'center', marginTop:'50px'}}>🎒 Espace Élève (Bientôt disponible)</h1>;
 
 const App: React.FC = () => {
