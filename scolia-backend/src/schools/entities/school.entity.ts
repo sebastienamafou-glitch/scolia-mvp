@@ -16,6 +16,11 @@ export class School {
   @CreateDateColumn()
   createdAt: Date;
 
+  // --- NOUVEAU CHAMP AJOUTÉ ---
+  @Column({ default: true }) // Par défaut, une école est active
+  isActive: boolean;
+  // ----------------------------
+
   // Une école a plusieurs utilisateurs (Profs, Admins, Elèves)
   @OneToMany(() => User, (user) => user.school)
   users: User[];

@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Request, ForbiddenException } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request, ForbiddenException, Patch, Get, Param, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { School } from './entities/school.entity';
@@ -57,5 +57,43 @@ export class SchoolsController {
       school: savedSchool,
       admin: { email: newAdmin.email }
     };
+  }
+
+  // --- NOUVELLE ROUTE : ACTIVER/DÉSACTIVER UNE ÉCOLE ---
+  @Roles('Admin')
+  @Patch(':id/status')
+  async updateSchoolStatus(
+    @Request() req,
+    @Param('id') schoolId: string,
+    @Body('isActive') isActive: boolean,
+  ) {
+    // 1. SECURITÉ : Seul le Super Admin (schoolId === null) peut modifier l'état des écoles
+    if (req.user.schoolId !== null) {
+      throw new ForbiddenException("Accès refusé. Seul le Super Admin peut modifier le statut d'une école.");
+    }
+
+    const school = await this.schoolRepo.findOne({ where: { id: Number(schoolId) } });
+    
+    if (!school) {
+        throw new NotFoundException("École non trouvée.");
+    }
+
+    school.isActive = isActive;
+    await this.schoolRepo.save(school);
+
+    return {
+        message: `Statut de l'école ${school.name} mis à jour. Nouvelle valeur: ${isActive ? 'Actif' : 'Inactif'}`
+    };
+  }
+
+  // --- NOUVELLE ROUTE : Récupérer toutes les écoles (pour la liste du Super Admin) ---
+  @Roles('Admin')
+  @Get()
+  async findAllSchools(@Request() req) {
+      // 1. SECURITÉ : Seul le Super Admin voit cette liste complète
+      if (req.user.schoolId !== null) {
+          throw new ForbiddenException("Accès refusé. Seul le Super Admin peut voir la liste de toutes les écoles.");
+      }
+      return this.schoolRepo.find({ order: { name: 'ASC' } });
   }
 }
