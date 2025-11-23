@@ -3,7 +3,7 @@
 import { Injectable } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt'; // L'import est conservé, mais l'usage est supprimé dans validateUser
+import * as bcrypt from 'bcrypt'; 
 
 @Injectable()
 export class AuthService {
@@ -15,12 +15,10 @@ export class AuthService {
   async validateUser(email: string, pass: string): Promise<any> {
     const user = await this.usersService.findOneByEmail(email);
     
-    // Remplacement de la logique de validation sécurisée par une comparaison simple (===)
-    // NOTE : Cela suppose que 'user.password' contient le mot de passe en clair.
-    if (user && user.password === pass) {
-      // On retire les infos sensibles avant de renvoyer l'utilisateur
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { password, passwordHash, ...result } = user;
+    // CORRECTION CRITIQUE : Restauration de la vérification BCrypt
+    if (user && user.passwordHash && (await bcrypt.compare(pass, user.passwordHash))) {
+      // On retire le hash avant de renvoyer l'utilisateur
+      const { passwordHash, ...result } = user; 
       return result;
     }
     

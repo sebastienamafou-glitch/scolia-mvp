@@ -11,6 +11,10 @@ export interface User {
   nom: string;
   prenom: string;
   role: Role;
+  
+  // ✅ CORRECTION CRITIQUE : AJOUT DE schoolId
+  // Il est de type number | null car le Super Admin n'est lié à aucune école (null)
+  schoolId: number | null; 
 }
 
 // 2. On ajoute 'user' dans le type du Contexte
@@ -42,10 +46,14 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
 
   const verifyToken = async (_token: string) => { 
     try {
+      // 1. On configure le token dans les headers de l'API
+      api.defaults.headers.common['Authorization'] = `Bearer ${_token}`;
+      
+      // 2. On appelle /auth/me pour vérifier le token et récupérer les données
       const response = await api.get('/auth/me'); 
       
       // 3. On stocke TOUT l'utilisateur, pas juste le rôle
-      const userData = response.data; 
+      const userData: User = response.data; // <--- Assurez-vous que userData est casté comme User
       
       setUser(userData);           // <-- On sauvegarde nom, prénom, id...
       setUserRole(userData.role);  // On garde userRole pour faciliter les vérifs rapides
@@ -87,7 +95,7 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth doit être utilisé dans un AuthProvider');
+    throw new Error('useAuth doit être utilisé à l\'intérieur d\'un AuthProvider');
   }
   return context;
 };

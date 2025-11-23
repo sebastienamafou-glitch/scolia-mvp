@@ -7,30 +7,31 @@ import LoginPage from './pages/LoginPage';
 import ParentDashboard from './pages/ParentDashboard';
 import TeacherDashboard from './pages/TeacherDashboard';
 import AdminDashboard from './pages/AdminDashboard';
-// Assurez-vous que ce composant existe (sinon je peux vous donner le code)
 import PrivateRoute from './components/PrivateRoute'; 
+import PlatformDashboard from './pages/PlatformDashboard'; // Dashboard Super Admin
 
-// Placeholder pour les élèves (à faire plus tard)
+// Placeholder pour les élèves
 const StudentDashboard = () => <h1 style={{textAlign:'center', marginTop:'50px'}}>🎒 Espace Élève (Bientôt disponible)</h1>;
 
 const App: React.FC = () => {
-  const { userRole, isLoading, logout } = useAuth();
+  // AJOUT DE 'user' pour la logique Multi-Tenant/Super Admin
+  const { user, userRole, isLoading, logout } = useAuth();
 
   if (isLoading) {
     return <div style={{ textAlign: 'center', paddingTop: '100px' }}>Chargement...</div>;
   }
 
-  // 1. MODIF : On ajoute 'Parent' ici car il a son propre Header intégré
+  // Les rôles Admin, Enseignant, et Parent ont leur propre header intégré au dashboard.
   const rolesWithCustomHeader = ['Enseignant', 'Admin', 'Parent']; 
   const showGlobalHeader = userRole && !rolesWithCustomHeader.includes(userRole);
 
   return (
     <div>
-      {/* En-tête global (affiché seulement pour les rôles simples comme Élève pour l'instant) */}
+      {/* En-tête global (affiché pour les rôles sans header intégré, comme Élève) */}
       {showGlobalHeader && (
         <header style={{ padding: '10px 20px', backgroundColor: '#0A2240', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>Scolia</span>
-          <button onClick={logout} style={{ background: '#F77F00', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '5px', cursor: 'pointer' }}>
+          <span style={{ fontWeight: 'bold' }}>Scolia - {userRole}</span>
+          <button onClick={logout} style={{ backgroundColor: '#F77F00', border: 'none', padding: '8px 15px', cursor: 'pointer', color: 'white', borderRadius: '4px', fontWeight: 'bold' }}>
             Déconnexion
           </button>
         </header>
@@ -41,17 +42,32 @@ const App: React.FC = () => {
           {/* Route Publique */}
           <Route path="/login" element={<LoginPage />} />
 
-          {/* Redirection intelligente à la racine */}
+          {/* REDIRECTION INTELLIGENTE À LA RACINE (LOGIQUE MULTI-TENANT) */}
           <Route path="/" element={
             !userRole ? <Navigate to="/login" /> :
-            userRole === 'Admin' ? <Navigate to="/admin-dashboard" /> :
+            
+            // 1. LOGIQUE ADMIN : Différenciation Super Admin vs Admin Client
+            userRole === 'Admin' ? (
+                user?.schoolId === null 
+                    ? <Navigate to="/platform" /> // -> Super Admin (Gestion de toutes les écoles)
+                    : <Navigate to="/admin-dashboard" /> // -> Admin Client (Directeur d'une seule école)
+            ) :
+            
+            // 2. AUTRES RÔLES
             userRole === 'Enseignant' ? <Navigate to="/teacher-dashboard" /> :
-            userRole === 'Parent' ? <Navigate to="/parent-dashboard" /> : // <--- 2. REDIRECTION PARENT
+            userRole === 'Parent' ? <Navigate to="/parent-dashboard" /> : 
             <Navigate to="/student-dashboard" />
           } />
 
           {/* --- ROUTES PROTÉGÉES --- */}
 
+          {/* Route Plateforme Super Admin (schoolId === null) */}
+          <Route path="/platform" element={
+            <PrivateRoute roles={['Admin']}>
+              <PlatformDashboard />
+            </PrivateRoute>
+          } />
+          
           <Route path="/admin-dashboard" element={
             <PrivateRoute roles={['Admin']}>
               <AdminDashboard />
@@ -64,18 +80,20 @@ const App: React.FC = () => {
             </PrivateRoute>
           } />
 
-          {/* 3. NOUVELLE ROUTE PARENT */}
           <Route path="/parent-dashboard" element={
             <PrivateRoute roles={['Parent']}>
               <ParentDashboard />
             </PrivateRoute>
           } />
-
+          
           <Route path="/student-dashboard" element={
             <PrivateRoute roles={['Élève']}>
               <StudentDashboard />
             </PrivateRoute>
           } />
+
+          {/* Redirection par défaut (catch-all) */}
+          <Route path="*" element={<Navigate to="/login" replace />} />
 
         </Routes>
       </main>
