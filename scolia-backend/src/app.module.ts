@@ -15,6 +15,8 @@ import { Homework } from './homeworks/entities/homework.entity';
 import { Bulletin } from './grades/entities/bulletin.entity'; 
 import { News } from './news/entities/news.entity';
 import { School } from './schools/entities/school.entity';
+import { Fee } from './payments/entities/fee.entity'; // 👈 NOUVEL IMPORT
+import { Transaction } from './payments/entities/transaction.entity'; // 👈 NOUVEL IMPORT
 
 // --- 2. IMPORT DES MODULES ---
 import { AuthModule } from './auth/auth.module';
@@ -24,8 +26,8 @@ import { ClassesModule } from './classes/classes.module';
 import { GradesModule } from './grades/grades.module';
 import { HomeworksModule } from './homeworks/homeworks.module';
 import { NewsModule } from './news/news.module';
-// ON DÉCOMMENTE L'IMPORT DU MODULE :
 import { SchoolsModule } from './schools/schools.module'; 
+import { PaymentsModule } from './payments/payments.module'; // 👈 NOUVEL IMPORT
 
 @Module({
   imports: [
@@ -39,9 +41,10 @@ import { SchoolsModule } from './schools/schools.module';
         username: configService.get<string>('DB_USER'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
-        ssl: true, 
-        entities: [User, Student, Class, Grade, Homework, Bulletin, News, School], 
-        synchronize: true, 
+        ssl: true, // Requis pour Render/Neon en prod
+        // AJOUT DES NOUVELLES ENTITÉS :
+        entities: [User, Student, Class, Grade, Homework, Bulletin, News, School, Fee, Transaction], // 👈 MISE À JOUR IMPORTANTE
+        synchronize: true, // Créera les tables Fee et Transaction
       }),
       inject: [ConfigService],
     }),
@@ -52,7 +55,8 @@ import { SchoolsModule } from './schools/schools.module';
     GradesModule,
     HomeworksModule,
     NewsModule,
-    SchoolsModule, // <--- ON AJOUTE LE MODULE ICI
+    SchoolsModule,
+    PaymentsModule, // 👈 INTÉGRATION DU MODULE
   ],
   controllers: [AppController],
   providers: [AppService],

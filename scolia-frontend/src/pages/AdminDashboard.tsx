@@ -7,7 +7,8 @@ import { Logo } from '../components/Logo';
 import { ClassManager } from '../components/ClassManager';
 import { BulletinEditor } from '../components/BulletinEditor';
 import { StudentCard } from '../components/StudentCard';
-import { SchoolNews } from '../components/SchoolNews'; // <--- 1. IMPORT AJOUTÉ
+import { SchoolNews } from '../components/SchoolNews';
+import { TransactionValidator } from '../components/TransactionValidator'; // 👈 NOUVEL IMPORT
 
 interface User {
   id: number;
@@ -45,6 +46,8 @@ const AdminDashboard: React.FC = () => {
 
   const fetchUsers = async () => {
     try {
+      // NOTE: Dans une vraie appli multi-tenant, cette route devrait être filtrée par schoolId, 
+      // ou réservée uniquement au Super Admin si elle renvoie TOUS les utilisateurs.
       const response = await api.get('/users');
       setUsers(response.data);
     } catch (error) {
@@ -104,6 +107,11 @@ const AdminDashboard: React.FC = () => {
       {/* 2. INSERTION DU MODULE ACTUALITÉS */}
       <div style={{ marginBottom: '40px' }}>
         <SchoolNews />
+      </div>
+
+      {/* AJOUT DU VALIDATEUR DE TRANSACTIONS */}
+      <div style={{ marginBottom: '40px' }}>
+        <TransactionValidator />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '40px' }}>

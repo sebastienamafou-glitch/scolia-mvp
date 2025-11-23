@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import { Logo } from '../components/Logo';
-import { SchoolNews } from '../components/SchoolNews'; // Module d'actualités
+import { SchoolNews } from '../components/SchoolNews';
+import { PaymentSubmissionForm } from '../components/PaymentSubmissionForm'; // 👈 NOUVEL IMPORT
 
 // --- Types ---
 interface Student {
@@ -35,11 +36,12 @@ const ParentDashboard: React.FC = () => {
   const [selectedChildId, setSelectedChildId] = useState<number | null>(null);
   const [bulletin, setBulletin] = useState<BulletinData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0); // 👈 NOUVEAU STATE
 
-  // 1. Charger la liste des enfants au démarrage
+  // 1. Charger la liste des enfants au démarrage (dépend maintenant de refreshKey)
   useEffect(() => {
     fetchChildren();
-  }, []);
+  }, [refreshKey]); // 👈 CHANGEMENT DE DÉPENDANCE
 
   // 2. Charger le bulletin quand on change d'enfant
   useEffect(() => {
@@ -53,7 +55,7 @@ const ParentDashboard: React.FC = () => {
       const res = await api.get('/students/my-children');
       setChildren(res.data);
       // Sélectionner automatiquement le premier enfant
-      if (res.data.length > 0) {
+      if (res.data.length > 0 && selectedChildId === null) {
         setSelectedChildId(res.data[0].id);
       }
     } catch (error) {
@@ -72,6 +74,11 @@ const ParentDashboard: React.FC = () => {
     } catch (error) {
       console.error("Erreur chargement bulletin", error);
     }
+  };
+  
+  // 👈 NOUVELLE FONCTION DE RAFRAÎCHISSEMENT
+  const handlePaymentSubmitted = () => {
+    setRefreshKey(prev => prev + 1);
   };
 
   // Helper pour l'enfant sélectionné
@@ -201,14 +208,15 @@ const ParentDashboard: React.FC = () => {
                                             )}
                                         </div>
 
-                                        {/* BOUTON D'ACTION (Faux paiement pour l'exemple) */}
+                                        {/* REMPLACEMENT DU BLOC DE SCOLARITÉ SIMULÉ */}
                                         <div style={{ marginTop: '30px', padding: '20px', backgroundColor: '#F4F6F8', borderRadius: '12px' }}>
-                                            <h4 style={{ margin: '0 0 10px 0', color: '#555' }}>État de la scolarité</h4>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#008F39', fontWeight: 'bold' }}>✅ À jour</span>
-                                                <button style={{ border: '1px solid #ccc', background: 'white', padding: '5px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: '0.8rem' }}>Historique</button>
-                                            </div>
+                                            <h4 style={{ margin: '0 0 10px 0', color: '#555' }}>💰 Gestion Scolarité</h4>
+                                            <PaymentSubmissionForm 
+                                                studentId={currentChild.id}
+                                                onTransactionSubmitted={handlePaymentSubmitted}
+                                            />
                                         </div>
+
                                     </div>
 
                                 </div>
