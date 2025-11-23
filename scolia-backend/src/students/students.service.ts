@@ -1,3 +1,5 @@
+// scolia-backend/src/students/students.service.ts
+
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -10,17 +12,20 @@ export class StudentsService {
     private studentsRepository: Repository<Student>,
   ) {}
 
-  // C'est cette méthode qui manquait !
-  findOne(id: number): Promise<Student | null> {
-    return this.studentsRepository.findOne({ 
-      where: { id },
-      relations: ['class', 'parent', 'grades'] // On charge aussi les infos liées
+  // --- MÉTHODE AJOUTÉE ---
+  // Récupère tous les élèves d'une classe spécifique, triés par nom
+  async findByClass(classId: number): Promise<Student[]> {
+    return this.studentsRepository.find({
+      where: { class: { id: classId } },
+      order: { nom: 'ASC' },
     });
   }
 
-  // Méthodes génériques (pour éviter d'autres erreurs si le contrôleur les appelle)
-  create(createStudentDto: any) { return 'This action adds a new student'; }
-  findAll() { return this.studentsRepository.find(); }
-  update(id: number, updateStudentDto: any) { return `This action updates a #${id} student`; }
-  remove(id: number) { return `This action removes a #${id} student`; }
+  // (Vos autres méthodes existantes...)
+  findOne(id: number): Promise<Student | null> {
+     return this.studentsRepository.findOne({ 
+         where: { id }, 
+         relations: ['class', 'parent', 'grades'] 
+     });
+  }
 }
