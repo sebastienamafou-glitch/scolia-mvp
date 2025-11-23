@@ -6,7 +6,8 @@ import { Logo } from '../components/Logo';
 
 // Imports des modules
 import { NoteEntry, AttendanceEntry } from '../components/TeacherEntries';
-import { BulletinEditor } from '../components/BulletinEditor'; // Import Ajouté
+import { BulletinEditor } from '../components/BulletinEditor';
+import { SchoolNews } from '../components/SchoolNews'; // <--- 1. IMPORT AJOUTÉ
 
 const TeacherDashboard: React.FC = () => {
     const { user, logout } = useAuth();
@@ -32,6 +33,11 @@ const TeacherDashboard: React.FC = () => {
             </header>
 
             <div style={{ maxWidth: '1000px', margin: '30px auto', padding: '0 20px' }}>
+                
+                {/* 2. MODULE ACTUALITÉS */}
+                <div style={{ marginBottom: '30px' }}>
+                    <SchoolNews />
+                </div>
                 
                 {/* BARRE DE NAVIGATION (ONGLETS) */}
                 <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>

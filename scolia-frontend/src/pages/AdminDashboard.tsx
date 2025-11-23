@@ -6,7 +6,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { Logo } from '../components/Logo';
 import { ClassManager } from '../components/ClassManager';
 import { BulletinEditor } from '../components/BulletinEditor';
-import { StudentCard } from '../components/StudentCard'; // <--- IMPORT AJOUTÉ
+import { StudentCard } from '../components/StudentCard';
+import { SchoolNews } from '../components/SchoolNews'; // <--- 1. IMPORT AJOUTÉ
 
 interface User {
   id: number;
@@ -83,9 +84,6 @@ const AdminDashboard: React.FC = () => {
   // <--- GESTION DU CLIC SUR UN UTILISATEUR --->
   const handleUserClick = async (user: User) => {
     if (user.role === 'Élève') {
-       // Note : Dans une implémentation réelle, on pourrait faire un appel API ici 
-       // pour récupérer les détails complets de l'élève (santé, notes, etc.)
-       // Ex: const fullStudent = await api.get(`/students/${user.id}`);
        setSelectedStudent(user); 
     }
   };
@@ -102,6 +100,11 @@ const AdminDashboard: React.FC = () => {
             Déconnexion
         </button>
       </header>
+
+      {/* 2. INSERTION DU MODULE ACTUALITÉS */}
+      <div style={{ marginBottom: '40px' }}>
+        <SchoolNews />
+      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '40px' }}>
         {/* FORMULAIRE */}
@@ -191,12 +194,11 @@ const AdminDashboard: React.FC = () => {
                                     key={user.id} 
                                     style={{ 
                                         borderBottom: '1px solid #eee',
-                                        // MODIF: Curseur et background si sélectionné
                                         cursor: user.role === 'Élève' ? 'pointer' : 'default',
                                         backgroundColor: selectedStudent?.id === user.id ? '#F0F8FF' : 'transparent',
                                         transition: 'background-color 0.2s'
                                     }}
-                                    onClick={() => handleUserClick(user)} // MODIF: Déclencheur
+                                    onClick={() => handleUserClick(user)}
                                 >
                                     <td style={{ padding: '10px' }}>
                                         {user.photo ? (
@@ -222,7 +224,6 @@ const AdminDashboard: React.FC = () => {
                                     </td>
                                     <td style={{ padding: '10px', fontWeight: 'bold' }}>
                                         {user.nom} {user.prenom}
-                                        {/* MODIF: Indicateur visuel pour cliquer */}
                                         {user.role === 'Élève' && <span style={{fontSize:'0.7rem', color:'#F77F00', marginLeft:'5px'}}> (Voir fiche)</span>}
                                     </td>
                                     <td style={{ padding: '10px', color: '#666' }}>{user.email}</td>
