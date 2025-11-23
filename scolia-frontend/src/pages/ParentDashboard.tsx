@@ -1,187 +1,228 @@
 // scolia-frontend/src/pages/ParentDashboard.tsx
 
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
-import { useAuth } from '../contexts/AuthContext'; 
+import { Logo } from '../components/Logo';
+import { SchoolNews } from '../components/SchoolNews'; // Module d'actualités
 
-// --- Définitions de types ---
+// --- Types ---
 interface Student {
   id: number;
-  nom: string;
   prenom: string;
-  classe: string;
-  photoUrl?: string; // Nouveau champ optionnel
+  nom: string;
+  class?: { name: string };
+  photo?: string;
 }
 
-interface Note {
-  matiere: string;
-  note: number;
-  sur: number;
-  evaluation: string;
+interface BulletinData {
+  subjects: {
+    matiere: string;
+    moyenne: number;
+    coefTotal: number;
+  }[];
+  globalAverage: number;
+  bulletinData: {
+    appreciation: string;
+  };
 }
-
-interface Payment {
-  trimestre: number;
-  statut: 'Payé' | 'En attente' | 'Partiel';
-}
-
-interface StudentData {
-  notes: Note[];
-  payments: Payment;
-  studentId: number; 
-}
-
-type StudentDataMap = Record<number, StudentData>;
 
 const ParentDashboard: React.FC = () => {
-  const { userRole } = useAuth();
+  const { user, logout } = useAuth();
+  
+  // États
   const [children, setChildren] = useState<Student[]>([]);
-  const [data, setData] = useState<StudentDataMap>({}); 
+  const [selectedChildId, setSelectedChildId] = useState<number | null>(null);
+  const [bulletin, setBulletin] = useState<BulletinData | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // 1. Charger la liste des enfants au démarrage
   useEffect(() => {
-    fetchData();
+    fetchChildren();
   }, []);
 
-  const fetchData = async () => {
+  // 2. Charger le bulletin quand on change d'enfant
+  useEffect(() => {
+    if (selectedChildId) {
+      fetchBulletin(selectedChildId);
+    }
+  }, [selectedChildId]);
+
+  const fetchChildren = async () => {
     try {
-      const childrenResponse = await api.get('/students/my-children');
-      const studentList = childrenResponse.data as Student[];
-      setChildren(studentList); 
-
-      const dataPromises = studentList.map(async (student) => {
-        const notes = [ 
-            { matiere: 'Maths', note: 15, sur: 20, evaluation: 'DS' }, 
-            { matiere: 'Français', note: 13, sur: 20, evaluation: 'Oral' } 
-        ];
-        const payments = student.id % 2 === 1 ? 
-            { trimestre: 2, statut: 'Payé' } : 
-            { trimestre: 2, statut: 'En attente' }; 
-        
-        return { studentId: student.id, notes, payments } as StudentData; 
-      });
-
-      const results = await Promise.all(dataPromises);
-      
-      const studentDataMap = results.reduce(
-          (acc: StudentDataMap, current: StudentData) => {
-              acc[current.studentId] = current;
-              return acc;
-          }, 
-          {} as StudentDataMap
-      );
-      setData(studentDataMap);
-
+      const res = await api.get('/students/my-children');
+      setChildren(res.data);
+      // Sélectionner automatiquement le premier enfant
+      if (res.data.length > 0) {
+        setSelectedChildId(res.data[0].id);
+      }
     } catch (error) {
-      console.error('Erreur chargement:', error);
+      console.error("Erreur chargement enfants", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const getPaymentStyle = (statut: Payment['statut']) => {
-    switch (statut) {
-      case 'Payé': return { color: '#008F39', fontWeight: 'bold' }; 
-      case 'En attente': return { color: '#F77F00', fontWeight: 'bold' }; 
-      default: return { color: 'red', fontWeight: 'bold' };
+  const fetchBulletin = async (studentId: number) => {
+    setBulletin(null); // Reset affichage en attendant le chargement
+    try {
+      // On récupère le bulletin du Trimestre 1 (T1) par défaut
+      const res = await api.get(`/bulletins?studentId=${studentId}&period=T1`);
+      setBulletin(res.data);
+    } catch (error) {
+      console.error("Erreur chargement bulletin", error);
     }
   };
 
-  if (loading) {
-    return <div style={{ textAlign: 'center', padding: '50px' }}>Chargement des données...</div>;
-  }
-  
+  // Helper pour l'enfant sélectionné
+  const currentChild = children.find(c => c.id === selectedChildId);
+
   return (
-    <div style={{ padding: '20px', backgroundColor: '#F4F6F8', minHeight: '100vh' }}>
-      <h1 style={{ color: '#0A2240', marginBottom: '30px' }}>Tableau de Bord {userRole}</h1>
+    <div style={{ backgroundColor: '#F4F6F8', minHeight: '100vh' }}>
       
-      {children.length === 0 && <p style={{ color: '#0A2240' }}>Aucun enfant trouvé pour ce compte.</p>}
-
-      {children.map(student => (
-        <div key={student.id} style={{ 
-            backgroundColor: 'white', 
-            borderRadius: '16px', 
-            boxShadow: '0 4px 15px rgba(0,0,0,0.05)', 
-            marginBottom: '25px',
-            padding: '20px',
-            border: '1px solid #eee'
-        }}>
-            {/* --- EN-TÊTE ENFANT AVEC PHOTO --- */}
-            <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '15px', 
-                borderBottom: '2px solid #F0F0F0', 
-                paddingBottom: '15px',
-                marginBottom: '20px'
-            }}>
-                {/* LA PHOTO (Ou Avatar généré) */}
-                <img 
-                    src={student.photoUrl || `https://ui-avatars.com/api/?name=${student.prenom}+${student.nom}&background=0A2240&color=fff&size=128&bold=true`} 
-                    alt={`${student.prenom} ${student.nom}`}
-                    style={{ 
-                        width: '60px', 
-                        height: '60px', 
-                        borderRadius: '50%', 
-                        objectFit: 'cover',
-                        border: '2px solid #F77F00', // Petit contour orange stylé
-                        padding: '2px' 
-                    }}
-                />
-                
-                <div>
-                    <h2 style={{ color: '#0A2240', margin: 0, fontSize: '1.2rem' }}>
-                        {student.prenom} {student.nom}
-                    </h2>
-                    <span style={{ backgroundColor: '#E3F2FD', color: '#0A2240', padding: '2px 8px', borderRadius: '10px', fontSize: '0.8rem', fontWeight: 'bold' }}>
-                        Classe : {student.classe}
-                    </span>
-                </div>
+      {/* HEADER */}
+      <header style={{ backgroundColor: 'white', padding: '15px 30px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <Logo width={40} height={40} showText={false} />
+            <div>
+                <h1 style={{ color: '#0A2240', margin: 0, fontSize: '1.2rem' }}>Espace Parents</h1>
+                <span style={{ fontSize: '0.9rem', color: '#666' }}>Famille {user?.nom}</span>
             </div>
+        </div>
+        <button onClick={logout} style={{ backgroundColor: '#F77F00', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
+            Déconnexion
+        </button>
+      </header>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-                
-                {/* CARTE NOTES */}
-                <div style={{ backgroundColor: '#FAFAFA', padding: '15px', borderRadius: '8px' }}>
-                    <h3 style={{ color: '#0A2240', marginTop: 0, borderBottom: '1px solid #ddd', paddingBottom: '5px' }}>📝 Dernières Notes</h3>
-                    {data[student.id] && data[student.id].notes.map((note: Note, index: number) => (
-                        <div key={index} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.9rem' }}>
-                            <span style={{ fontWeight: '500' }}>{note.matiere} <span style={{color:'#999', fontSize:'0.8em'}}>({note.evaluation})</span></span>
-                            <span style={{ fontWeight: 'bold', color: note.note >= 10 ? '#008F39' : '#D32F2F' }}>
-                                {note.note}/{note.sur}
+      <div style={{ maxWidth: '1000px', margin: '30px auto', padding: '0 20px' }}>
+        
+        {/* 📢 MODULE ACTUALITÉS */}
+        <SchoolNews />
+
+        <h2 style={{ color: '#0A2240', marginTop: '40px' }}>👶 Mes Enfants</h2>
+        
+        {loading ? <p>Chargement des dossiers...</p> : children.length === 0 ? (
+            <div style={{ padding: '30px', backgroundColor: 'white', borderRadius: '12px', textAlign: 'center', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
+                <p style={{ fontSize: '1.1rem', color: '#555' }}>Aucun enfant n'est encore lié à votre compte.</p>
+                <small style={{ color: '#999' }}>Veuillez contacter l'administration de l'école.</small>
+            </div>
+        ) : (
+            <div>
+                {/* ONGLETS DE SÉLECTION ENFANT */}
+                <div style={{ display: 'flex', gap: '15px', marginBottom: '25px', overflowX: 'auto', paddingBottom: '5px' }}>
+                    {children.map(child => (
+                        <button
+                            key={child.id}
+                            onClick={() => setSelectedChildId(child.id)}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: '10px',
+                                padding: '10px 20px',
+                                borderRadius: '50px',
+                                border: selectedChildId === child.id ? '2px solid #0A2240' : '1px solid #ddd',
+                                cursor: 'pointer',
+                                backgroundColor: selectedChildId === child.id ? 'white' : '#F9F9F9',
+                                boxShadow: selectedChildId === child.id ? '0 4px 10px rgba(0,0,0,0.1)' : 'none',
+                                transition: 'all 0.2s'
+                            }}
+                        >
+                            {/* Avatar / Photo */}
+                            <img 
+                                src={child.photo || `https://ui-avatars.com/api/?name=${child.prenom}+${child.nom}&background=random&color=fff&size=64`} 
+                                alt={child.prenom}
+                                style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover' }}
+                            />
+                            <span style={{ fontWeight: 'bold', color: selectedChildId === child.id ? '#0A2240' : '#666' }}>
+                                {child.prenom}
                             </span>
-                        </div>
+                        </button>
                     ))}
                 </div>
 
-                {/* CARTE ABSENCES */}
-                <div style={{ backgroundColor: '#FFF4E5', padding: '15px', borderRadius: '8px' }}>
-                    <h3 style={{ color: '#F77F00', marginTop: 0, borderBottom: '1px solid #FFCC80', paddingBottom: '5px' }}>🔔 Vie Scolaire</h3>
-                    <p style={{ color: '#D32F2F', fontWeight: 'bold', margin: '10px 0' }}>🔴 2 Absences non justifiées</p>
-                    <p style={{ fontSize: '0.9rem', color: '#555' }}>Dernière : 15 Nov (Maths)</p>
-                </div>
-
-                {/* CARTE FINANCE */}
-                <div style={{ backgroundColor: '#F4F6F8', padding: '15px', borderRadius: '8px' }}>
-                    <h3 style={{ color: '#555', marginTop: 0, borderBottom: '1px solid #ddd', paddingBottom: '5px' }}>💰 Scolarité</h3>
-                    {data[student.id] && (
-                        <>
-                            <p style={{ marginBottom: '10px' }}>2ème Trimestre : <span style={getPaymentStyle(data[student.id].payments.statut)}>
-                                {data[student.id].payments.statut}
-                            </span></p>
-
-                            {data[student.id].payments.statut === 'En attente' && (
-                                <button style={{ width: '100%', backgroundColor: '#0A2240', color: 'white', border: 'none', padding: '10px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
-                                    Payer maintenant
-                                </button>
+                {/* FICHE DE L'ENFANT SÉLECTIONNÉ */}
+                {currentChild && (
+                    <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+                        
+                        {/* BANDEAU IDENTITÉ */}
+                        <div style={{ backgroundColor: '#0A2240', padding: '20px', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                                <h2 style={{ margin: 0, fontSize: '1.4rem' }}>{currentChild.prenom} {currentChild.nom}</h2>
+                                <span style={{ opacity: 0.8, fontSize: '0.9rem' }}>Classe : {currentChild.class?.name || 'Non assigné'}</span>
+                            </div>
+                            {bulletin && (
+                                <div style={{ textAlign: 'right' }}>
+                                    <div style={{ fontSize: '0.8rem', opacity: 0.8 }}>Moyenne Générale</div>
+                                    <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#F77F00' }}>
+                                        {bulletin.globalAverage} <span style={{fontSize:'1rem', color:'white'}}>/ 20</span>
+                                    </div>
+                                </div>
                             )}
-                        </>
-                    )}
-                </div>
+                        </div>
 
+                        {/* CONTENU DU BULLETIN */}
+                        <div style={{ padding: '25px' }}>
+                            {bulletin ? (
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '40px' }}>
+                                    
+                                    {/* TABLEAU DES NOTES */}
+                                    <div>
+                                        <h3 style={{ marginTop: 0, color: '#0A2240', borderBottom: '2px solid #F0F0F0', paddingBottom: '10px' }}>📊 Résultats par matière</h3>
+                                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                            <tbody>
+                                                {bulletin.subjects.map((sub, index) => (
+                                                    <tr key={index} style={{ borderBottom: '1px solid #f9f9f9' }}>
+                                                        <td style={{ padding: '12px 0', color: '#444', fontWeight: '500' }}>{sub.matiere}</td>
+                                                        <td style={{ padding: '12px 0', textAlign: 'right' }}>
+                                                            <span style={{ 
+                                                                fontWeight: 'bold', 
+                                                                color: sub.moyenne >= 10 ? '#008F39' : '#D32F2F',
+                                                                backgroundColor: sub.moyenne >= 10 ? '#E8F5E9' : '#FFEBEE',
+                                                                padding: '4px 8px',
+                                                                borderRadius: '6px'
+                                                            }}>
+                                                                {sub.moyenne}/20
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    {/* APPRÉCIATION */}
+                                    <div>
+                                        <h3 style={{ marginTop: 0, color: '#0A2240', borderBottom: '2px solid #F0F0F0', paddingBottom: '10px' }}>👨‍🏫 Avis du Conseil de classe</h3>
+                                        <div style={{ backgroundColor: '#FFF8E1', padding: '20px', borderRadius: '12px', borderLeft: '5px solid #FFC107' }}>
+                                            {bulletin.bulletinData?.appreciation ? (
+                                                <p style={{ margin: 0, color: '#5D4037', fontStyle: 'italic', lineHeight: '1.6' }}>
+                                                    "{bulletin.bulletinData.appreciation}"
+                                                </p>
+                                            ) : (
+                                                <p style={{ color: '#999', margin: 0 }}>Aucune appréciation saisie pour ce trimestre.</p>
+                                            )}
+                                        </div>
+
+                                        {/* BOUTON D'ACTION (Faux paiement pour l'exemple) */}
+                                        <div style={{ marginTop: '30px', padding: '20px', backgroundColor: '#F4F6F8', borderRadius: '12px' }}>
+                                            <h4 style={{ margin: '0 0 10px 0', color: '#555' }}>État de la scolarité</h4>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: '#008F39', fontWeight: 'bold' }}>✅ À jour</span>
+                                                <button style={{ border: '1px solid #ccc', background: 'white', padding: '5px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: '0.8rem' }}>Historique</button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            ) : (
+                                <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                                    Chargement des résultats scolaires...
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
-        </div>
-      ))}
+        )}
+      </div>
     </div>
   );
 };

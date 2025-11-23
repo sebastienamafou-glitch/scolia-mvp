@@ -12,7 +12,6 @@ export class StudentsService {
     private studentsRepository: Repository<Student>,
   ) {}
 
-  // --- MÉTHODE AJOUTÉE ---
   // Récupère tous les élèves d'une classe spécifique, triés par nom
   async findByClass(classId: number): Promise<Student[]> {
     return this.studentsRepository.find({
@@ -21,11 +20,21 @@ export class StudentsService {
     });
   }
 
-  // (Vos autres méthodes existantes...)
   findOne(id: number): Promise<Student | null> {
      return this.studentsRepository.findOne({ 
          where: { id }, 
          relations: ['class', 'parent', 'grades'] 
      });
+  }
+
+  // --- MÉTHODE AJOUTÉE CORRECTEMENT DANS LA CLASSE ---
+  
+  // Trouver les enfants d'un parent
+  async findByParent(parentId: number): Promise<Student[]> {
+    return this.studentsRepository.find({
+      where: { parent: { id: parentId } },
+      relations: ['class'], // On veut aussi savoir leur classe
+      order: { prenom: 'ASC' },
+    });
   }
 }

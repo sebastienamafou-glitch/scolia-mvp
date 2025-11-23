@@ -1,4 +1,6 @@
-import { Controller, Get, Param, NotFoundException, UseGuards } from '@nestjs/common';
+// scolia-backend/src/students/students.controller.ts
+
+import { Controller, Get, Param, NotFoundException, UseGuards, Request } from '@nestjs/common'; // <--- Request ajouté ici
 import { StudentsService } from './students.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -13,8 +15,17 @@ export class StudentsController {
   // 1. D'ABORD LES ROUTES SPÉCIFIQUES (AVEC DES MOTS CLÉS)
   // ===============================================================
   
+  // --- ROUTE AJOUTÉE : RÉCUPÉRER MES ENFANTS (Pour le Parent) ---
+  @Roles('Parent')
+  @Get('my-children') // <--- Cette route statique doit être AVANT :id
+  async getMyChildren(@Request() req) {
+    // L'ID du parent est stocké dans le token JWT (req.user.sub)
+    const parentId = req.user.sub; 
+    return this.studentsService.findByParent(parentId);
+  }
+
   @Roles('Enseignant', 'Admin')
-  @Get('class/:classId') // <--- CELLE-CI DOIT ÊTRE EN PREMIER !
+  @Get('class/:classId') 
   async getStudentsByClass(@Param('classId') classId: string) {
     return this.studentsService.findByClass(Number(classId));
   }
@@ -23,7 +34,7 @@ export class StudentsController {
   // 2. ENSUITE LA ROUTE GÉNÉRIQUE (QUI ATTRAPE TOUT LE RESTE)
   // ===============================================================
 
-  @Get(':id') // <--- CELLE-CI DOIT ÊTRE EN DERNIER
+  @Get(':id') // <--- CELLE-CI DOIT TOUJOURS ÊTRE EN DERNIER
   async findOne(@Param('id') id: string) {
     // Petite sécurité supplémentaire :
     if (isNaN(+id)) {
