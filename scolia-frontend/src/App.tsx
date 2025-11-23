@@ -7,8 +7,8 @@ import LoginPage from './pages/LoginPage';
 import ParentDashboard from './pages/ParentDashboard';
 import TeacherDashboard from './pages/TeacherDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+// Assurez-vous que ce composant existe (sinon je peux vous donner le code)
 import PrivateRoute from './components/PrivateRoute'; 
-import PlatformDashboard from './pages/PlatformDashboard'; // 👈 NOUVEL IMPORT
 
 // Placeholder pour les élèves (à faire plus tard)
 const StudentDashboard = () => <h1 style={{textAlign:'center', marginTop:'50px'}}>🎒 Espace Élève (Bientôt disponible)</h1>;
@@ -29,8 +29,8 @@ const App: React.FC = () => {
       {/* En-tête global (affiché seulement pour les rôles simples comme Élève pour l'instant) */}
       {showGlobalHeader && (
         <header style={{ padding: '10px 20px', backgroundColor: '#0A2240', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontWeight: 'bold' }}>Scolia - {userRole}</span>
-          <button onClick={logout} style={{ backgroundColor: '#F77F00', border: 'none', padding: '8px 15px', cursor: 'pointer', color: 'white', borderRadius: '4px', fontWeight: 'bold' }}>
+          <span>Scolia</span>
+          <button onClick={logout} style={{ background: '#F77F00', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '5px', cursor: 'pointer' }}>
             Déconnexion
           </button>
         </header>
@@ -46,7 +46,7 @@ const App: React.FC = () => {
             !userRole ? <Navigate to="/login" /> :
             userRole === 'Admin' ? <Navigate to="/admin-dashboard" /> :
             userRole === 'Enseignant' ? <Navigate to="/teacher-dashboard" /> :
-            userRole === 'Parent' ? <Navigate to="/parent-dashboard" /> : 
+            userRole === 'Parent' ? <Navigate to="/parent-dashboard" /> : // <--- 2. REDIRECTION PARENT
             <Navigate to="/student-dashboard" />
           } />
 
@@ -64,16 +64,10 @@ const App: React.FC = () => {
             </PrivateRoute>
           } />
 
+          {/* 3. NOUVELLE ROUTE PARENT */}
           <Route path="/parent-dashboard" element={
             <PrivateRoute roles={['Parent']}>
               <ParentDashboard />
-            </PrivateRoute>
-          } />
-          
-          {/* 4. NOUVELLE ROUTE PLATEFORM SUPER ADMIN */}
-          <Route path="/platform" element={
-            <PrivateRoute roles={['Admin']}>
-              <PlatformDashboard />
             </PrivateRoute>
           } />
 
