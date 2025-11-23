@@ -1,6 +1,5 @@
-import { Entity, Column, PrimaryGeneratedColumn, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
-import { Student } from '../../students/entities/student.entity';
-import { School } from '../../schools/entities/school.entity'; // <--- IMPORT AJOUTÉ
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { School } from '../../schools/entities/school.entity';
 
 @Entity()
 export class User {
@@ -10,38 +9,38 @@ export class User {
   @Column({ unique: true })
   email: string;
 
+  // --- AJOUTEZ CES DEUX COLONNES ---
+  @Column({ nullable: true }) 
+  password: string; // Pour l'ancien mot de passe en clair (migration)
+
+  @Column({ nullable: true }) 
+  passwordHash: string; // Pour le nouveau mot de passe crypté (sécurité)
+  // --------------------------------
+
   @Column()
-  passwordHash: string;
+  nom: string;
+
+  @Column()
+  prenom: string;
 
   @Column()
   role: string;
 
-  // --- AJOUT DE LA PHOTO ---
-  @Column({ nullable: true }) // nullable: true car la photo n'est pas obligatoire
+  @Column({ nullable: true })
   photo: string;
 
-  // Champs optionnels
-  @Column({ nullable: true })
-  nom: string;
-
-  @Column({ nullable: true })
-  prenom: string;
-
-  @Column({ nullable: true })
-  classe: string;
-
-  @Column({ nullable: true })
-  parentId: number;
-
-  // Relation : Un parent a plusieurs enfants (Students)
-  @OneToMany(() => Student, (student) => student.parent)
-  children: Student[];
-
-  // --- AJOUT MULTI-TENANT ---
-  @ManyToOne(() => School, (school) => school.users, { nullable: true }) // nullable au début pour la migration
+  @ManyToOne(() => School, (school) => school.users, { nullable: true })
   @JoinColumn({ name: 'schoolId' })
   school: School;
 
   @Column({ nullable: true })
   schoolId: number;
+
+  // ... (supprimez 'classe' et 'parentId' s'ils sont encore là, 
+  // car nous gérons cela via Student maintenant, ou gardez-les si vous les utilisez encore pour l'affichage)
+  @Column({ nullable: true })
+  classe: string;
+
+  @Column({ nullable: true })
+  parentId: number;
 }
