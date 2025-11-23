@@ -1,13 +1,20 @@
+// scolia-backend/src/students/students.module.ts
+
 import { Module } from '@nestjs/common';
-import { StudentsController } from './students.controller';
-import { StudentsService } from './students.service'; // <-- Import it
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { StudentsController } from './students.controller';
+import { StudentsService } from './students.service';
 import { Student } from './entities/student.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Student])], // If service uses Student Repo
+  imports: [
+    // 1. On charge l'entité Student pour que le Service puisse faire des requêtes
+    TypeOrmModule.forFeature([Student]) 
+  ],
   controllers: [StudentsController],
-  providers: [StudentsService], // <-- ADD THIS LINE
-  exports: [StudentsService],
+  // 2. CRITIQUE : On doit fournir le Service au module
+  providers: [StudentsService], 
+  // 3. On l'exporte si d'autres modules en ont besoin
+  exports: [StudentsService], 
 })
 export class StudentsModule {}
