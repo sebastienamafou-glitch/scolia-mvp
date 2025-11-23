@@ -17,6 +17,8 @@ export class UsersService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
+    // IMPORTANT : En production avec Neon, assurez-vous de n'exécuter seedUsers()
+    // qu'au premier démarrage ou utilisez des migrations.
     await this.seedUsers();
   }
 
@@ -28,65 +30,25 @@ export class UsersService implements OnModuleInit {
       return;
     }
 
-    this.logger.log('🚀 Création des utilisateurs initiaux (Admin, Prof, Parent)...');
+    this.logger.log('🚀 Création de l\'utilisateur Super Admin...');
 
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash('password', saltRounds);
 
-    // 1. Création des adultes
+    // 1. Création du Super Admin (Utilisateur développeur)
     const usersToCreate = [
       {
-        email: 'admin@scolia.ci',
+        email: 'superadmin@scolia.ci',
         passwordHash: hashedPassword,
-        role: 'Admin',
-        nom: 'Admin',
-        prenom: 'Système',
-      },
-      {
-        email: 'parent@scolia.ci',
-        passwordHash: hashedPassword,
-        role: 'Parent',
-        nom: 'Kouame',
-        prenom: 'Parent',
-      },
-      {
-        email: 'prof@scolia.ci',
-        passwordHash: hashedPassword,
-        role: 'Enseignant',
-        nom: 'Traoré',
-        prenom: 'Professeur',
+        role: 'Admin', // Le rôle est 'Admin'
+        nom: 'Super',
+        prenom: 'Admin',
+        schoolId: null, // 🔑 CLÉ : schoolId est NULL pour le Super Admin
       },
     ];
 
-    const savedUsers = await this.usersRepository.save(usersToCreate);
-    const parentUser = savedUsers.find(u => u.role === 'Parent');
-
-    // 2. Création des élèves liés au parent
-    if (parentUser) {
-        const studentsToCreate = [
-            {
-                email: 'eleve1@scolia.ci',
-                passwordHash: hashedPassword,
-                role: 'Élève',
-                nom: 'Kouame',
-                prenom: 'Jean',
-                classe: '6ème A',
-                parentId: parentUser.id,
-            },
-            {
-                email: 'eleve2@scolia.ci',
-                passwordHash: hashedPassword,
-                role: 'Élève',
-                nom: 'Kouame',
-                prenom: 'Marie',
-                classe: '3ème C',
-                parentId: parentUser.id,
-            },
-        ];
-        await this.usersRepository.save(studentsToCreate);
-    }
-
-    this.logger.log('✅ Seeding terminé avec succès !');
+    await this.usersRepository.save(usersToCreate);
+    this.logger.log('✅ Seeding Super Admin terminé avec succès !');
   }
 
   // --- MÉTHODES ADMIN ---
@@ -117,23 +79,21 @@ export class UsersService implements OnModuleInit {
   // --- AJOUT : Lister les utilisateurs par École (Multi-Tenant) ---
   async findAllBySchool(schoolId: number): Promise<User[]> {
     return this.usersRepository.find({
-        where: { school: { id: schoolId } }, // Le filtre magique
+        where: { school: { id: schoolId } }, // Le filtre Multi-Tenant
         order: { nom: 'ASC' },
-        // Ajout de sécurité : on sélectionne les champs pour exclure le passwordHash
         select: ['id', 'nom', 'prenom', 'email', 'role', 'classe', 'parentId', 'photo', 'schoolId']
     });
   }
 
   // --- MÉTHODES LOGIN / DASHBOARD ---
 
-  // MÉTHODE CLÉ CORRIGÉE POUR RÉCUPÉRER LE MOT DE PASSE POUR L'AUTH
+  // MÉTHODE CLÉ : Récupère les données d'utilisateur pour l'authentification
   async findOneByEmail(email: string): Promise<User | null> {
     return this.usersRepository.createQueryBuilder("user")
         .where("user.email = :email", { email })
-        // CRUCIAL : On force l'ajout des champs de mot de passe qui sont masqués par défaut !
-        .addSelect("user.password") 
+        // CRUCIAL : On force l'ajout du hash pour la vérification BCrypt
         .addSelect("user.passwordHash")
-        .leftJoinAndSelect("user.school", "school") // Charger l'école pour schoolId (pour le multi-tenant check)
+        .leftJoinAndSelect("user.school", "school") // Charge l'école pour schoolId
         .getOne();
   }
   

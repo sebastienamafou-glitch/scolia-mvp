@@ -34,7 +34,7 @@ export class User {
   school: School;
 
   @Column({ nullable: true })
-  schoolId: number;
+  schoolId: number | null; // 💡 CORRECTION : Ajouter | null ici
 
   // ... (supprimez 'classe' et 'parentId' s'ils sont encore là, 
   // car nous gérons cela via Student maintenant, ou gardez-les si vous les utilisez encore pour l'affichage)
