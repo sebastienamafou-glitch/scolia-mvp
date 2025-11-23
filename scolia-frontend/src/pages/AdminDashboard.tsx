@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Logo } from '../components/Logo';
+import { ClassManager } from '../components/ClassManager';
 
 interface User {
   id: number;
@@ -187,6 +188,10 @@ const AdminDashboard: React.FC = () => {
         </div>
 
       </div>
+
+      {/* AJOUT DU MODULE DE GESTION DES CLASSES */}
+      <ClassManager />
+
     </div>
   );
 };
