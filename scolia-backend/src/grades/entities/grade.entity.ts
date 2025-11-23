@@ -7,24 +7,27 @@ export class Grade {
   id: number;
 
   @Column()
-  matiere: string; // ex: "Mathématiques"
+  matiere: string; 
 
   @Column('float')
-  value: number; // La note (ex: 15.5)
+  value: number; 
 
   @Column()
-  sur: number; // ex: 20
+  sur: number; 
 
   @Column()
-  type: string; // ex: "Devoir", "Interro", "Orale"
+  type: string; 
 
-  @Column({ nullable: true })
-  coef: number;
+  // AJOUT : Trimestre (par défaut 'T1' pour ne pas casser les données existantes)
+  @Column({ default: 'T1' }) 
+  period: string; 
+
+  @Column({ type: 'float', nullable: true, default: 1 })
+  coef: number; // J'ai mis un défaut à 1 pour faciliter les calculs
 
   @Column()
   date: Date;
 
-  // Lien vers l'élève
   @ManyToOne(() => Student, (student) => student.grades)
   student: Student;
 

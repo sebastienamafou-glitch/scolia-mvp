@@ -1,6 +1,6 @@
 import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, OneToMany } from 'typeorm';
-import { User } from '../../users/entities/user.entity';
-import { Class } from '../../classes/entities/class.entity';
+import { User } from '../../users/entities/user.entity'; // Assurez-vous du chemin vers User
+import { Class } from '../../classes/entities/class.entity'; // Assurez-vous du chemin
 import { Grade } from '../../grades/entities/grade.entity';
 
 @Entity()
@@ -14,27 +14,37 @@ export class Student {
   @Column()
   prenom: string;
 
-  @Column({ nullable: true })
-  dateDeNaissance: string;
+  // --- NOUVEAUX CHAMPS D'INFORMATION ---
+  
+  @Column({ type: 'date', nullable: true })
+  dateNaissance: Date;
 
   @Column({ nullable: true })
-  photoUrl: string; // <-- Pour la PHOTO
+  adresse: string;
 
-  // Lien vers le Parent (User)
-  @ManyToOne(() => User, (user) => user.children)
-  parent: User;
+  @Column({ nullable: true })
+  telephoneEleve: string;
 
-  @Column()
-  parentId: number;
+  // Infos Urgence
+  @Column({ nullable: true })
+  contactUrgenceNom: string; // Ex: "Grand-mère" ou "Voisin"
 
-  // Lien vers la Classe
-  @ManyToOne(() => Class, (classe) => classe.students)
+  @Column({ nullable: true })
+  contactUrgenceTel: string;
+
+  // Infos Santé
+  @Column({ type: 'text', nullable: true })
+  infosMedicales: string; // Ex: "Allergique aux arachides, Asthmatique"
+
+  // --------------------------------------
+
+  @ManyToOne(() => Class, (classe) => classe.students, { eager: true }) // Eager charge la classe auto
   class: Class;
 
-  @Column({ nullable: true })
-  classId: number;
+  // Lien avec le compte Parent (User)
+  @ManyToOne(() => User, { nullable: true, eager: true }) // Eager charge le parent auto
+  parent: User;
 
-  // Lien vers les Notes
   @OneToMany(() => Grade, (grade) => grade.student)
   grades: Grade[];
 }

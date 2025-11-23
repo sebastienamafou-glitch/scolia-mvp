@@ -2,139 +2,82 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { Logo } from '../components/Logo';
+
+// Imports des modules
 import { NoteEntry, AttendanceEntry } from '../components/TeacherEntries';
-import { Logo } from '../components/Logo'; // Import du composant Logo
+import { BulletinEditor } from '../components/BulletinEditor'; // Import Ajouté
 
 const TeacherDashboard: React.FC = () => {
-    const { userRole, logout } = useAuth();
-    // État initialisé à 'menu' pour afficher les boutons par défaut
-    const [view, setView] = useState<'menu' | 'notes' | 'attendance'>('menu'); 
-
-    // Contenu des boutons du menu principal
-    const menuContent = (
-        <div style={{ padding: '40px', textAlign: 'center' }}>
-            <h2 style={{ color: '#0A2240', marginBottom: '40px' }}>
-                Que souhaitez-vous faire aujourd'hui ?
-            </h2>
-            
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '30px', flexWrap: 'wrap' }}>
-                {/* BOUTON SAISIR NOTES */}
-                <button 
-                    onClick={() => setView('notes')}
-                    style={{ 
-                        padding: '30px', 
-                        fontSize: '1.2rem', 
-                        backgroundColor: '#0A2240', 
-                        color: 'white', 
-                        border: 'none', 
-                        borderRadius: '12px', 
-                        cursor: 'pointer', 
-                        width: '250px',
-                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                        transition: 'transform 0.1s'
-                    }}
-                >
-                    <span style={{ display: 'block', fontSize: '2rem', marginBottom: '10px' }}>📝</span>
-                    Saisir Notes
-                </button>
-
-                {/* BOUTON FAIRE L'APPEL */}
-                <button 
-                    onClick={() => setView('attendance')}
-                    style={{ 
-                        padding: '30px', 
-                        fontSize: '1.2rem', 
-                        backgroundColor: '#F77F00', 
-                        color: 'white', 
-                        border: 'none', 
-                        borderRadius: '12px', 
-                        cursor: 'pointer', 
-                        width: '250px',
-                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                        transition: 'transform 0.1s'
-                    }}
-                >
-                    <span style={{ display: 'block', fontSize: '2rem', marginBottom: '10px' }}>🔔</span>
-                    Faire l'Appel
-                </button>
-            </div>
-        </div>
-    );
-
-    // Fonction de sélection de la vue
-    const renderView = () => {
-        if (view === 'notes') {
-            return <NoteEntry />;
-        }
-        if (view === 'attendance') {
-            return <AttendanceEntry />;
-        }
-        return menuContent; 
-    };
+    const { user, logout } = useAuth();
+    
+    // On remplace 'view' par 'activeTab' pour la logique d'onglets
+    const [activeTab, setActiveTab] = useState<'appel' | 'notes' | 'bulletins'>('appel');
 
     return (
-        // FIX : Fond blanc explicite pour garantir la lisibilité
-        <div style={{ backgroundColor: '#FFFFFF', minHeight: '100vh', padding: '20px', color: '#333' }}>
+        <div style={{ backgroundColor: '#F4F6F8', minHeight: '100vh' }}>
             
-            {/* HEADER AVEC LOGO */}
-            <header style={{ 
-                padding: '10px 0', 
-                borderBottom: '2px solid #F77F00', 
-                marginBottom: '30px', 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center' 
-            }}>
-                {/* Logo + Titre */}
+            {/* HEADER */}
+            <header style={{ backgroundColor: 'white', padding: '15px 30px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    {/* Le Logo graphique */}
                     <Logo width={40} height={40} showText={false} />
-                    
-                    <h1 style={{ color: '#0A2240', margin: 0, fontSize: '1.5rem' }}>
-                        Espace {userRole}
-                    </h1>
+                    <div>
+                        <h1 style={{ color: '#0A2240', margin: 0, fontSize: '1.2rem' }}>Espace Enseignant</h1>
+                        <span style={{ fontSize: '0.9rem', color: '#666' }}>Bonjour, {user?.prenom} {user?.nom}</span>
+                    </div>
                 </div>
-
-                <button 
-                    onClick={logout} 
-                    style={{ 
-                        backgroundColor: '#F77F00', 
-                        color: 'white', 
-                        border: 'none', 
-                        padding: '8px 15px', 
-                        borderRadius: '5px', 
-                        cursor: 'pointer',
-                        fontWeight: 'bold'
-                    }}
-                >
+                <button onClick={logout} style={{ backgroundColor: '#F77F00', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
                     Déconnexion
                 </button>
             </header>
 
-            {/* BOUTON RETOUR AU MENU (Visible seulement si on n'est pas au menu) */}
-            {view !== 'menu' && (
-                <button 
-                    onClick={() => setView('menu')} 
-                    style={{ 
-                        marginBottom: '20px', 
-                        backgroundColor: '#E0E0E0', 
-                        color: '#333',
-                        border: 'none', 
-                        padding: '10px 15px', 
-                        borderRadius: '5px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '5px'
-                    }}
-                >
-                    <span>←</span> Retour au Menu
-                </button>
-            )}
+            <div style={{ maxWidth: '1000px', margin: '30px auto', padding: '0 20px' }}>
+                
+                {/* BARRE DE NAVIGATION (ONGLETS) */}
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                    <button 
+                        onClick={() => setActiveTab('appel')}
+                        style={{
+                            padding: '12px 25px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold',
+                            backgroundColor: activeTab === 'appel' ? '#0A2240' : 'white',
+                            color: activeTab === 'appel' ? 'white' : '#666',
+                            boxShadow: '0 2px 5px rgba(0,0,0,0.05)'
+                        }}
+                    >
+                        🔔 Faire l'Appel
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('notes')}
+                        style={{
+                            padding: '12px 25px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold',
+                            backgroundColor: activeTab === 'notes' ? '#0A2240' : 'white',
+                            color: activeTab === 'notes' ? 'white' : '#666',
+                            boxShadow: '0 2px 5px rgba(0,0,0,0.05)'
+                        }}
+                    >
+                        📝 Saisir des Notes
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('bulletins')}
+                        style={{
+                            padding: '12px 25px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold',
+                            backgroundColor: activeTab === 'bulletins' ? '#0A2240' : 'white',
+                            color: activeTab === 'bulletins' ? 'white' : '#666',
+                            boxShadow: '0 2px 5px rgba(0,0,0,0.05)'
+                        }}
+                    >
+                        🎓 Conseils de Classe
+                    </button>
+                </div>
 
-            {/* Rendu du contenu dynamique */}
-            {renderView()}
-            
+                {/* CONTENU DYNAMIQUE */}
+                <div>
+                    {activeTab === 'appel' && <AttendanceEntry />}
+                    {activeTab === 'notes' && <NoteEntry />}
+                    {activeTab === 'bulletins' && <BulletinEditor />}
+                </div>
+
+            </div>
         </div>
     );
 };

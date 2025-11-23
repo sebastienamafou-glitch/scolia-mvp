@@ -5,6 +5,8 @@ import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Logo } from '../components/Logo';
 import { ClassManager } from '../components/ClassManager';
+import { BulletinEditor } from '../components/BulletinEditor';
+import { StudentCard } from '../components/StudentCard'; // <--- IMPORT AJOUTÉ
 
 interface User {
   id: number;
@@ -13,6 +15,7 @@ interface User {
   email: string;
   role: string;
   classe?: string;
+  photo?: string;
 }
 
 const AdminDashboard: React.FC = () => {
@@ -20,6 +23,9 @@ const AdminDashboard: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   
+  // NOUVEAU STATE POUR LA FICHE ÉLÈVE
+  const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
+
   // État pour le formulaire
   const [newUser, setNewUser] = useState({
     email: '',
@@ -28,7 +34,8 @@ const AdminDashboard: React.FC = () => {
     nom: '',
     prenom: '',
     classe: '',
-    parentId: '' // Important pour le lien
+    parentId: '',
+    photo: ''
   });
 
   useEffect(() => {
@@ -46,36 +53,40 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  // 1. FILTRER LES PARENTS DISPONIBLES
   const availableParents = users.filter(user => user.role === 'Parent');
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const payload: any = { ...newUser };
-      
-      // Nettoyage des données selon le rôle
       if (payload.role !== 'Élève') {
           delete payload.classe;
           delete payload.parentId;
       } else {
-          // Si c'est un élève, on convertit l'ID parent en nombre
           if (payload.parentId) {
               payload.parentId = Number(payload.parentId);
           } else {
               delete payload.parentId;
           }
       }
-
-      await api.post('/users', payload);
       
+      await api.post('/users', payload);
       alert('Utilisateur créé avec succès !');
       fetchUsers(); 
-      setNewUser({ ...newUser, email: '', password: '', nom: '', prenom: '', classe: '', parentId: '' });
-
+      setNewUser({ ...newUser, email: '', password: '', nom: '', prenom: '', classe: '', parentId: '', photo: '' });
     } catch (error) {
       console.error(error);
       alert("Erreur lors de la création.");
+    }
+  };
+
+  // <--- GESTION DU CLIC SUR UN UTILISATEUR --->
+  const handleUserClick = async (user: User) => {
+    if (user.role === 'Élève') {
+       // Note : Dans une implémentation réelle, on pourrait faire un appel API ici 
+       // pour récupérer les détails complets de l'élève (santé, notes, etc.)
+       // Ex: const fullStudent = await api.get(`/students/${user.id}`);
+       setSelectedStudent(user); 
     }
   };
 
@@ -93,12 +104,10 @@ const AdminDashboard: React.FC = () => {
       </header>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '40px' }}>
-        
         {/* FORMULAIRE */}
         <div style={{ backgroundColor: '#F4F6F8', padding: '20px', borderRadius: '12px', height: 'fit-content' }}>
             <h2 style={{ color: '#0A2240', marginTop: 0 }}>➕ Ajouter un utilisateur</h2>
             <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                
                 <label style={{fontWeight: 'bold', fontSize: '0.9rem'}}>Rôle</label>
                 <select 
                     value={newUser.role}
@@ -114,7 +123,20 @@ const AdminDashboard: React.FC = () => {
                 <input type="text" placeholder="Nom" required value={newUser.nom} onChange={e => setNewUser({...newUser, nom: e.target.value})} style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }} />
                 <input type="text" placeholder="Prénom" required value={newUser.prenom} onChange={e => setNewUser({...newUser, prenom: e.target.value})} style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }} />
                 
-                {/* 2. ZONE BLEUE : CLASSE ET PARENT (Uniquement pour les élèves) */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>URL Photo (Optionnel)</label>
+                    <input 
+                        type="text" 
+                        placeholder="https://..." 
+                        value={newUser.photo} 
+                        onChange={e => setNewUser({...newUser, photo: e.target.value})} 
+                        style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }} 
+                    />
+                    {newUser.photo && (
+                        <img src={newUser.photo} alt="Prévisualisation" style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover', marginTop: '5px', border: '2px solid white', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }} />
+                    )}
+                </div>
+
                 {newUser.role === 'Élève' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '15px', backgroundColor: '#E3F2FD', borderRadius: '8px', border: '1px solid #90CAF9' }}>
                         <label style={{fontSize: '0.8rem', fontWeight: 'bold', color: '#0D47A1'}}>Informations Scolaires</label>
@@ -125,7 +147,6 @@ const AdminDashboard: React.FC = () => {
                             onChange={e => setNewUser({...newUser, classe: e.target.value})} 
                             style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }} 
                         />
-                        
                         <select
                             value={newUser.parentId}
                             onChange={e => setNewUser({...newUser, parentId: e.target.value})}
@@ -140,7 +161,6 @@ const AdminDashboard: React.FC = () => {
                         </select>
                     </div>
                 )}
-
                 <input type="email" placeholder="Email" required value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }} />
                 <input type="password" placeholder="Mot de passe" required value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }} />
 
@@ -158,7 +178,8 @@ const AdminDashboard: React.FC = () => {
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
                         <thead>
                             <tr style={{ backgroundColor: '#0A2240', color: 'white', textAlign: 'left' }}>
-                                <th style={{ padding: '10px', borderRadius: '8px 0 0 8px' }}>Rôle</th>
+                                <th style={{ padding: '10px', borderRadius: '8px 0 0 8px' }}>Photo</th>
+                                <th style={{ padding: '10px' }}>Rôle</th>
                                 <th style={{ padding: '10px' }}>Identité</th>
                                 <th style={{ padding: '10px' }}>Email</th>
                                 <th style={{ padding: '10px', borderRadius: '0 8px 8px 0' }}>Détails</th>
@@ -166,7 +187,30 @@ const AdminDashboard: React.FC = () => {
                         </thead>
                         <tbody>
                             {users.map((user) => (
-                                <tr key={user.id} style={{ borderBottom: '1px solid #eee' }}>
+                                <tr 
+                                    key={user.id} 
+                                    style={{ 
+                                        borderBottom: '1px solid #eee',
+                                        // MODIF: Curseur et background si sélectionné
+                                        cursor: user.role === 'Élève' ? 'pointer' : 'default',
+                                        backgroundColor: selectedStudent?.id === user.id ? '#F0F8FF' : 'transparent',
+                                        transition: 'background-color 0.2s'
+                                    }}
+                                    onClick={() => handleUserClick(user)} // MODIF: Déclencheur
+                                >
+                                    <td style={{ padding: '10px' }}>
+                                        {user.photo ? (
+                                            <img 
+                                                src={user.photo} 
+                                                alt={user.prenom} 
+                                                style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} 
+                                            />
+                                        ) : (
+                                            <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#E0E0E0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#666' }}>
+                                                {user.prenom ? user.prenom[0] : ''}{user.nom ? user.nom[0] : ''}
+                                            </div>
+                                        )}
+                                    </td>
                                     <td style={{ padding: '10px' }}>
                                         <span style={{ 
                                             backgroundColor: user.role === 'Admin' ? '#000' : user.role === 'Enseignant' ? '#F77F00' : '#eee',
@@ -176,7 +220,11 @@ const AdminDashboard: React.FC = () => {
                                             {user.role}
                                         </span>
                                     </td>
-                                    <td style={{ padding: '10px', fontWeight: 'bold' }}>{user.nom} {user.prenom}</td>
+                                    <td style={{ padding: '10px', fontWeight: 'bold' }}>
+                                        {user.nom} {user.prenom}
+                                        {/* MODIF: Indicateur visuel pour cliquer */}
+                                        {user.role === 'Élève' && <span style={{fontSize:'0.7rem', color:'#F77F00', marginLeft:'5px'}}> (Voir fiche)</span>}
+                                    </td>
                                     <td style={{ padding: '10px', color: '#666' }}>{user.email}</td>
                                     <td style={{ padding: '10px' }}>{user.classe}</td>
                                 </tr>
@@ -186,11 +234,29 @@ const AdminDashboard: React.FC = () => {
                 </div>
             )}
         </div>
-
       </div>
 
-      {/* AJOUT DU MODULE DE GESTION DES CLASSES */}
+      {/* MODULE CLASSE */}
       <ClassManager />
+
+      <hr style={{ margin: '40px 0', border: 'none', borderTop: '2px dashed #ccc' }} />
+
+      {/* MODULE BULLETIN */}
+      <div style={{ marginTop: '40px' }}>
+          <h2 style={{ color: '#0A2240' }}>📑 Supervision des Bulletins</h2>
+          <p style={{ color: '#666', marginBottom: '20px' }}>
+             En tant qu'administrateur, vous pouvez consulter et modifier les bulletins de toutes les classes.
+          </p>
+          <BulletinEditor />
+      </div>
+
+      {/* MODIF: AFFICHAGE CONDITIONNEL DE LA FICHE ÉLÈVE */}
+      {selectedStudent && (
+          <StudentCard 
+              student={selectedStudent} 
+              onClose={() => setSelectedStudent(null)} 
+          />
+      )}
 
     </div>
   );

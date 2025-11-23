@@ -15,6 +15,10 @@ export class User {
   @Column()
   role: string;
 
+  // --- AJOUT DE LA PHOTO ---
+  @Column({ nullable: true }) // nullable: true car la photo n'est pas obligatoire
+  photo: string;
+
   // Champs optionnels
   @Column({ nullable: true })
   nom: string;
