@@ -2,16 +2,17 @@
 
 import React, { createContext, useContext, useState, useEffect, type PropsWithChildren } from 'react';
 import api from '../services/api';
-import type { Role } from '../types/role';
 
-// 1. AJOUT DE schoolId DANS L'INTERFACE
+// On définit le type Role localement pour être sûr qu'il inclut SuperAdmin
+export type Role = 'Admin' | 'Enseignant' | 'Parent' | 'Élève' | 'SuperAdmin';
+
 export interface User {
   id: number;
   email: string;
   nom: string;
   prenom: string;
   role: Role;
-  schoolId: number | null; // 👈 C'est la clé manquante !
+  schoolId: number | null; // Champ essentiel pour le Multi-Tenant
 }
 
 interface AuthContextType {
@@ -45,9 +46,8 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
       const response = await api.get('/auth/me'); 
       const userData = response.data;
       
-      // On s'assure que schoolId est bien présent (même si null)
       setUser(userData);           
-      setUserRole(userData.role);
+      setUserRole(userData.role as Role); // Force le typage
       setIsAuthenticated(true);
     } catch (error) {
       console.error('Token verification failed:', error);

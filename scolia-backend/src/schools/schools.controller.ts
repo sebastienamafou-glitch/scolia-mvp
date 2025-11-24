@@ -19,7 +19,7 @@ export class SchoolsController {
   ) {}
 
   // --- 1. ROUTE ONBOARDING (Super Admin) ---
-  @Roles('Admin') // On garde 'Admin', mais on sécurise via le check schoolId
+  @Roles('SuperAdmin') 
   @Post('onboard')
   async onboardNewSchool(@Request() req, @Body() body: any) {
     

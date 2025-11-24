@@ -7,11 +7,10 @@ import LoginPage from './pages/LoginPage';
 import ParentDashboard from './pages/ParentDashboard';
 import TeacherDashboard from './pages/TeacherDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import PlatformDashboard from './pages/PlatformDashboard';
 import PrivateRoute from './components/PrivateRoute'; 
-import PlatformDashboard from './pages/PlatformDashboard'; // Dashboard Super Admin
-import NotesPage from './pages/NotesPage';
-
-// Placeholder pour les élèves
+// Assurez-vous que ce fichier existe, sinon remplacez par un placeholder
+import NotesPage from './pages/NotesPage'; 
 
 const App: React.FC = () => {
   const { userRole, isLoading, logout } = useAuth();
@@ -20,29 +19,16 @@ const App: React.FC = () => {
     return <div style={{ textAlign: 'center', paddingTop: '100px' }}>Chargement...</div>;
   }
 
-  // Les rôles Admin, Enseignant, et Parent ont leur propre header intégré au dashboard.
-  // SuperAdmin a aussi son propre header dans PlatformDashboard.
   const rolesWithCustomHeader = ['Enseignant', 'Admin', 'Parent', 'SuperAdmin']; 
   const showGlobalHeader = userRole && !rolesWithCustomHeader.includes(userRole);
 
   return (
     <div>
-      {/* En-tête global (affiché pour les rôles sans header intégré, comme Élève) */}
+      {/* En-tête global pour les rôles simples (ex: Élève) */}
       {showGlobalHeader && (
         <header style={{ padding: '10px 20px', backgroundColor: '#0A2240', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontWeight: 'bold' }}>Scolia - {userRole}</span>
-          <button 
-            onClick={logout} 
-            style={{ 
-              backgroundColor: '#F77F00', 
-              border: 'none', 
-              padding: '8px 15px', 
-              cursor: 'pointer', 
-              color: 'white', 
-              borderRadius: '4px', 
-              fontWeight: 'bold' 
-            }}
-          >
+          <span style={{ fontWeight: 'bold' }}>Scolia - Espace Élève</span>
+          <button onClick={logout} style={{ backgroundColor: '#F77F00', border: 'none', padding: '8px 15px', cursor: 'pointer', color: 'white', borderRadius: '4px', fontWeight: 'bold' }}>
             Déconnexion
           </button>
         </header>
@@ -53,17 +39,11 @@ const App: React.FC = () => {
           {/* Route Publique */}
           <Route path="/login" element={<LoginPage />} />
 
-          {/* --- REDIRECTION INTELLIGENTE SIMPLIFIÉE --- */}
+          {/* REDIRECTION INTELLIGENTE */}
           <Route path="/" element={
-            !userRole ? <Navigate to="/login" /> :
-            
-            // 1. SI C'EST LE SUPER ADMIN (VOUS) -> Direction Platform
+            !userRole ? <Navigate to="/login" replace /> :
             userRole === 'SuperAdmin' ? <Navigate to="/platform" replace /> :
-
-            // 2. SI C'EST UN DIRECTEUR D'ÉCOLE -> Direction Admin Dashboard
             userRole === 'Admin' ? <Navigate to="/admin-dashboard" replace /> :
-            
-            // 3. AUTRES RÔLES
             userRole === 'Enseignant' ? <Navigate to="/teacher-dashboard" replace /> :
             userRole === 'Parent' ? <Navigate to="/parent-dashboard" replace /> : 
             <Navigate to="/student-dashboard" replace />
@@ -71,7 +51,6 @@ const App: React.FC = () => {
 
           {/* --- ROUTES PROTÉGÉES --- */}
 
-          {/* Route Plateforme Super Admin */}
           <Route path="/platform" element={
             <PrivateRoute roles={['SuperAdmin']}>
               <PlatformDashboard />
@@ -98,11 +77,11 @@ const App: React.FC = () => {
           
           <Route path="/student-dashboard" element={
             <PrivateRoute roles={['Élève']}>
-              <NotesPage /> 
+              <NotesPage />
             </PrivateRoute>
           } />
 
-          {/* Redirection par défaut (catch-all) */}
+          {/* Catch-all : Redirige tout lien inconnu vers le login */}
           <Route path="*" element={<Navigate to="/login" replace />} />
 
         </Routes>
