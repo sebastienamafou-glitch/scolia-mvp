@@ -2,8 +2,6 @@ import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, CreateDa
 import { User } from '../../users/entities/user.entity';
 import { School } from '../../schools/entities/school.entity';
 
-export type TransactionStatus = 'Pending' | 'Validated' | 'Rejected';
-
 @Entity()
 export class Transaction {
   @PrimaryGeneratedColumn()
@@ -13,15 +11,14 @@ export class Transaction {
   amount: number;
 
   @Column()
-  mobileMoneyReference: string; // Référence fournie par Orange/MTN/Moov
+  mobileMoneyReference: string; // Le code SMS (ex: CI2301...)
 
   @Column({ default: 'Pending' })
-  status: TransactionStatus;
+  status: 'Pending' | 'Validated' | 'Rejected';
 
   @CreateDateColumn()
   transactionDate: Date;
   
-  // Lien vers l'élève concerné
   @ManyToOne(() => User)
   @JoinColumn({ name: 'studentId' })
   student: User;
@@ -29,7 +26,6 @@ export class Transaction {
   @Column()
   studentId: number;
   
-  // L'école est liée pour l'isolation Multi-Tenant
   @ManyToOne(() => School)
   @JoinColumn({ name: 'schoolId' })
   school: School;

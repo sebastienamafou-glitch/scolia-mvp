@@ -1,6 +1,6 @@
 import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
-import { School } from '../../schools/entities/school.entity'; // 👈 NOUVEL IMPORT
+import { School } from '../../schools/entities/school.entity';
 
 @Entity()
 export class Fee {
@@ -8,15 +8,14 @@ export class Fee {
   id: number;
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
-  amountDue: number; 
+  amountDue: number; // Total à payer (ex: 150000)
 
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
-  amountPaid: number;
+  amountPaid: number; // Total déjà versé
 
   @Column({ type: 'date' })
-  dueDate: Date;
+  dueDate: Date; // Date limite
 
-  // Lien vers l'élève
   @ManyToOne(() => User)
   @JoinColumn({ name: 'studentId' })
   student: User;
@@ -24,12 +23,11 @@ export class Fee {
   @Column()
   studentId: number;
 
-  // --- AJOUT MULTI-TENANT MANQUANT ---
+  // Liaison Multi-Tenant indispensable
   @ManyToOne(() => School)
   @JoinColumn({ name: 'schoolId' })
   school: School;
 
   @Column()
   schoolId: number;
-  // ------------------------------------
 }
