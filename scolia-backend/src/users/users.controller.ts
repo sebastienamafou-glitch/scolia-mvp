@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseGuards, Request } from '@nestjs/common'; // Ajout de Request
+import { Controller, Get, Post, Body, UseGuards, Request } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -9,24 +9,27 @@ import { Roles } from '../auth/roles.decorator';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  // Récupérer UNIQUEMENT les gens de mon école
+  // --- 1. RÉCUPÉRATION DES UTILISATEURS (Sécurisée Multi-Tenant) ---
   @Get()
   findAll(@Request() req) {
-    const mySchoolId = req.user.schoolId; // Récupéré automatiquement du Token
+    const mySchoolId = req.user.schoolId; 
     
-    // Si c'est un SuperAdmin (sans école), il voit tout, sinon on filtre
-    if (!mySchoolId) return this.usersService.findAll(); 
+    // Si c'est le SuperAdmin (schoolId est null), il voit tout
+    if (!mySchoolId) {
+        return this.usersService.findAll();
+    }
 
+    // Sinon, on ne renvoie QUE les utilisateurs de l'école du demandeur
     return this.usersService.findAllBySchool(mySchoolId);
   }
 
-  // Créer un utilisateur dans MON école
+  // --- 2. CRÉATION D'UTILISATEUR (Forçage de l'École) ---
   @Roles('Admin')
   @Post()
   create(@Request() req, @Body() createUserDto: any) {
     const mySchoolId = req.user.schoolId;
     
-    // On force l'ID de l'école de l'admin créateur
+    // On force l'ID de l'école pour empêcher un Admin de créer un user ailleurs
     return this.usersService.create({
         ...createUserDto,
         schoolId: mySchoolId 
