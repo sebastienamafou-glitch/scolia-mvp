@@ -5,7 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Fee } from './entities/fee.entity';
 import { Transaction } from './entities/transaction.entity';
-import { User } from '../users/entities/user.entity';
+import { School } from '../schools/entities/school.entity';
 
 @Injectable()
 export class PaymentsService {
@@ -16,16 +16,15 @@ export class PaymentsService {
     private transactionsRepository: Repository<Transaction>,
   ) {}
 
-  // 1. Consulter le solde d'un élève (Pour les parents)
+  // 1. Consulter le solde d'un élève
   async getFeeByStudent(studentId: number, schoolId: number): Promise<Fee | null> {
-    // CORRECTION : Filtrage par relation school: { id: schoolId }
     return this.feesRepository.findOne({ 
-        where: { studentId, school: { id: schoolId } }, 
-        relations: ['student'] // Ajouté pour s'assurer que TypeORM résout le filtre
+        where: { studentId: studentId, school: { id: schoolId } },
+        relations: ['student']
     });
   }
 
-  // 2. Soumettre une référence de transaction (Pour les parents)
+  // 2. Soumettre une transaction (Parents)
   async submitTransaction(
     studentId: number,
     amount: number,
@@ -36,24 +35,21 @@ export class PaymentsService {
       throw new BadRequestException("Montant ou référence invalide.");
     }
     
-    // Créer la nouvelle transaction en attente (ici, l'utilisation de schoolId est acceptable pour l'insertion)
     const newTransaction = this.transactionsRepository.create({
       studentId,
       amount,
       mobileMoneyReference: reference,
-      schoolId,
+      schoolId, // Ici on peut garder schoolId car c'est une création
       status: 'Pending',
     });
 
     return this.transactionsRepository.save(newTransaction);
   }
 
-  // 3. Valider une transaction (Pour les admins)
+  // 3. Valider une transaction (Admin)
   async validateTransaction(transactionId: number, schoolId: number, adminId: number): Promise<Fee> {
-    // On trouve la transaction en attente pour validation
     const transaction = await this.transactionsRepository.findOne({ 
-        // CORRECTION : Filtrage par relation school: { id: schoolId }
-        where: { id: transactionId, school: { id: schoolId }, status: 'Pending' }, 
+        where: { id: transactionId, school: { id: schoolId }, status: 'Pending' },
         relations: ['student'] 
     });
 
@@ -65,29 +61,27 @@ export class PaymentsService {
     transaction.status = 'Validated';
     await this.transactionsRepository.save(transaction);
 
-    // Mettre à jour la table des frais de l'élève
+    // Mise à jour des frais
     let fee = await this.feesRepository.findOne({ 
-        // CORRECTION : Filtrage par relation school: { id: schoolId }
         where: { studentId: transaction.studentId, school: { id: schoolId } } 
     });
 
     if (!fee) {
-        // Si les frais n'existent pas, l'admin doit d'abord les créer.
-        throw new BadRequestException("Frais dus non définis pour cet élève. L'admin doit les créer d'abord.");
+        throw new BadRequestException("Frais non définis pour cet élève.");
     }
 
-    fee.amountPaid += transaction.amount;
-    
-    // Retourner la Fee mise à jour pour confirmation
+    fee.amountPaid = Number(fee.amountPaid) + Number(transaction.amount);
     return this.feesRepository.save(fee);
   }
 
-  // 4. Récupérer toutes les transactions en attente de validation
+  // 4. LISTE DES TRANSACTIONS EN ATTENTE (C'est ici que ça bloquait)
   async findPending(schoolId: number): Promise<Transaction[]> {
     return this.transactionsRepository.find({
-        // CORRECTION : Filtrage par relation school: { id: schoolId }
-        where: { school: { id: schoolId }, status: 'Pending' },
-        relations: ['student'], // Pour afficher le nom de l'élève
+        where: { 
+            school: { id: schoolId }, // 👈 CORRECTION : Syntaxe relationnelle stricte
+            status: 'Pending' 
+        },
+        relations: ['student'],
         order: { transactionDate: 'ASC' }
     });
   }
