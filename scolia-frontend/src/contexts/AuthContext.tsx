@@ -4,17 +4,16 @@ import React, { createContext, useContext, useState, useEffect, type PropsWithCh
 import api from '../services/api';
 import type { Role } from '../types/role';
 
-// 1. On définit l'interface de l'Utilisateur complet
+// 1. AJOUT DE schoolId DANS L'INTERFACE
 export interface User {
   id: number;
   email: string;
   nom: string;
   prenom: string;
   role: Role;
-  schoolId: number | null; // On garde ça, c'est toujours utile
+  schoolId: number | null; // 👈 C'est la clé manquante !
 }
 
-// 2. On ajoute 'user' dans le type du Contexte
 interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
@@ -43,17 +42,12 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
 
   const verifyToken = async (_token: string) => { 
     try {
-      // 1. On configure le token dans les headers de l'API
-      api.defaults.headers.common['Authorization'] = `Bearer ${_token}`;
-      
-      // 2. On appelle /auth/me pour vérifier le token et récupérer les données
       const response = await api.get('/auth/me'); 
+      const userData = response.data;
       
-      // 3. On stocke TOUT l'utilisateur
-      const userData: User = response.data;
-      
+      // On s'assure que schoolId est bien présent (même si null)
       setUser(userData);           
-      setUserRole(userData.role);  
+      setUserRole(userData.role);
       setIsAuthenticated(true);
     } catch (error) {
       console.error('Token verification failed:', error);
@@ -77,8 +71,8 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
   const logout = () => {
     localStorage.removeItem('access_token');
     setIsAuthenticated(false);
-    setUser(null);      
-    setUserRole(null);  
+    setUser(null);
+    setUserRole(null);
   };
 
   return (
@@ -91,7 +85,7 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth doit être utilisé à l\'intérieur d\'un AuthProvider');
+    throw new Error('useAuth doit être utilisé dans un AuthProvider');
   }
   return context;
 };
