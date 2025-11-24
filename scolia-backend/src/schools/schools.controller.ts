@@ -23,8 +23,7 @@ export class SchoolsController {
   @Post('onboard')
   async onboardNewSchool(@Request() req, @Body() body: any) {
     
-    // SÉCURITÉ CRITIQUE : Seul celui qui n'a pas d'école (Super Admin) peut créer
-    // Si schoolId existe (ex: 1), c'est un admin d'école, donc on bloque.
+    // SÉCURITÉ : Double vérification (Rôle + SchoolId null)
     if (req.user.schoolId) {
       throw new ForbiddenException("Seul le Super Admin peut créer une nouvelle école.");
     }
@@ -35,7 +34,7 @@ export class SchoolsController {
     const newSchool = this.schoolRepo.create({
       name: schoolName,
       address: schoolAddress,
-      isActive: true // Active par défaut
+      isActive: true 
     });
     const savedSchool = await this.schoolRepo.save(newSchool);
 
@@ -47,10 +46,10 @@ export class SchoolsController {
       email: adminEmail,
       nom: adminNom,
       prenom: adminPrenom,
-      password: hash,      // On remplit les deux pour éviter les erreurs DB
-      passwordHash: hash,  // Le vrai champ sécurisé
+      password: hash,      
+      passwordHash: hash,  
       role: 'Admin',       
-      school: savedSchool, // Lien vers la nouvelle école
+      school: savedSchool, 
       schoolId: savedSchool.id
     });
     
@@ -64,14 +63,13 @@ export class SchoolsController {
   }
 
   // --- 2. ROUTE STATUS (Super Admin) ---
-  @Roles('Admin')
+  @Roles('SuperAdmin') // 👈 CORRECTION ICI (était 'Admin')
   @Patch(':id/status')
   async updateSchoolStatus(
     @Request() req,
     @Param('id') schoolId: string,
     @Body('isActive') isActive: boolean,
   ) {
-    // Vérification Super Admin
     if (req.user.schoolId) throw new ForbiddenException("Accès refusé.");
 
     const school = await this.schoolRepo.findOne({ where: { id: Number(schoolId) } });
@@ -84,12 +82,10 @@ export class SchoolsController {
   }
 
   // --- 3. ROUTE LISTE (Super Admin) ---
-  @Roles('Admin')
+  @Roles('SuperAdmin') // 👈 CORRECTION ICI (était 'Admin')
   @Get()
   async findAllSchools(@Request() req) {
-      // Vérification Super Admin
       if (req.user.schoolId) throw new ForbiddenException("Accès refusé.");
-      
       return this.schoolRepo.find({ order: { name: 'ASC' } });
   }
 }
