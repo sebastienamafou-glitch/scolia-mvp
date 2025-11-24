@@ -1,11 +1,10 @@
-// scolia-frontend/src/pages/ParentDashboard.tsx
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import { Logo } from '../components/Logo';
 import { SchoolNews } from '../components/SchoolNews';
-import { PaymentSubmissionForm } from '../components/PaymentSubmissionForm'; // 👈 NOUVEL IMPORT
+import { PaymentSubmissionForm } from '../components/PaymentSubmissionForm';
+import { useReactToPrint } from 'react-to-print'; // 👈 NOUVEL IMPORT
 
 // --- Types ---
 interface Student {
@@ -36,14 +35,23 @@ const ParentDashboard: React.FC = () => {
   const [selectedChildId, setSelectedChildId] = useState<number | null>(null);
   const [bulletin, setBulletin] = useState<BulletinData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [refreshKey, setRefreshKey] = useState(0); // 👈 NOUVEAU STATE
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  // 1. Charger la liste des enfants au démarrage (dépend maintenant de refreshKey)
+  // Référence pour l'impression PDF
+  const componentRef = useRef<HTMLDivElement>(null); // 👈 NOUVELLE REF
+
+  // Fonction d'impression
+  const handlePrint = useReactToPrint({
+    contentRef: componentRef, // Utilisation de contentRef au lieu de content
+    documentTitle: `Bulletin_${user?.nom || 'Scolia'}`,
+  });
+
+  // 1. Charger la liste des enfants
   useEffect(() => {
     fetchChildren();
-  }, [refreshKey]); // 👈 CHANGEMENT DE DÉPENDANCE
+  }, [refreshKey]);
 
-  // 2. Charger le bulletin quand on change d'enfant
+  // 2. Charger le bulletin
   useEffect(() => {
     if (selectedChildId) {
       fetchBulletin(selectedChildId);
@@ -54,7 +62,6 @@ const ParentDashboard: React.FC = () => {
     try {
       const res = await api.get('/students/my-children');
       setChildren(res.data);
-      // Sélectionner automatiquement le premier enfant
       if (res.data.length > 0 && selectedChildId === null) {
         setSelectedChildId(res.data[0].id);
       }
@@ -66,9 +73,8 @@ const ParentDashboard: React.FC = () => {
   };
 
   const fetchBulletin = async (studentId: number) => {
-    setBulletin(null); // Reset affichage en attendant le chargement
+    setBulletin(null);
     try {
-      // On récupère le bulletin du Trimestre 1 (T1) par défaut
       const res = await api.get(`/bulletins?studentId=${studentId}&period=T1`);
       setBulletin(res.data);
     } catch (error) {
@@ -76,12 +82,10 @@ const ParentDashboard: React.FC = () => {
     }
   };
   
-  // 👈 NOUVELLE FONCTION DE RAFRAÎCHISSEMENT
   const handlePaymentSubmitted = () => {
     setRefreshKey(prev => prev + 1);
   };
 
-  // Helper pour l'enfant sélectionné
   const currentChild = children.find(c => c.id === selectedChildId);
 
   return (
@@ -103,19 +107,17 @@ const ParentDashboard: React.FC = () => {
 
       <div style={{ maxWidth: '1000px', margin: '30px auto', padding: '0 20px' }}>
         
-        {/* 📢 MODULE ACTUALITÉS */}
         <SchoolNews />
 
         <h2 style={{ color: '#0A2240', marginTop: '40px' }}>👶 Mes Enfants</h2>
         
-        {loading ? <p>Chargement des dossiers...</p> : children.length === 0 ? (
-            <div style={{ padding: '30px', backgroundColor: 'white', borderRadius: '12px', textAlign: 'center', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
-                <p style={{ fontSize: '1.1rem', color: '#555' }}>Aucun enfant n'est encore lié à votre compte.</p>
-                <small style={{ color: '#999' }}>Veuillez contacter l'administration de l'école.</small>
+        {loading ? <p>Chargement...</p> : children.length === 0 ? (
+            <div style={{ padding: '30px', backgroundColor: 'white', borderRadius: '12px', textAlign: 'center' }}>
+                <p>Aucun enfant lié.</p>
             </div>
         ) : (
             <div>
-                {/* ONGLETS DE SÉLECTION ENFANT */}
+                {/* ONGLETS */}
                 <div style={{ display: 'flex', gap: '15px', marginBottom: '25px', overflowX: 'auto', paddingBottom: '5px' }}>
                     {children.map(child => (
                         <button
@@ -129,15 +131,12 @@ const ParentDashboard: React.FC = () => {
                                 cursor: 'pointer',
                                 backgroundColor: selectedChildId === child.id ? 'white' : '#F9F9F9',
                                 boxShadow: selectedChildId === child.id ? '0 4px 10px rgba(0,0,0,0.1)' : 'none',
-                                transition: 'all 0.2s'
                             }}
                         >
-                            {/* Avatar / Photo */}
-                            <img 
-                                src={child.photo || `https://ui-avatars.com/api/?name=${child.prenom}+${child.nom}&background=random&color=fff&size=64`} 
-                                alt={child.prenom}
-                                style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover' }}
-                            />
+                            {/* Avatar */}
+                            <div style={{ width: '30px', height: '30px', borderRadius: '50%', backgroundColor: '#ddd', overflow:'hidden' }}>
+                                {child.photo ? <img src={child.photo} alt="" style={{width:'100%'}}/> : null}
+                            </div>
                             <span style={{ fontWeight: 'bold', color: selectedChildId === child.id ? '#0A2240' : '#666' }}>
                                 {child.prenom}
                             </span>
@@ -145,92 +144,129 @@ const ParentDashboard: React.FC = () => {
                     ))}
                 </div>
 
-                {/* FICHE DE L'ENFANT SÉLECTIONNÉ */}
+                {/* FICHE ENFANT */}
                 {currentChild && (
                     <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
                         
-                        {/* BANDEAU IDENTITÉ */}
-                        <div style={{ backgroundColor: '#0A2240', padding: '20px', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div>
-                                <h2 style={{ margin: 0, fontSize: '1.4rem' }}>{currentChild.prenom} {currentChild.nom}</h2>
-                                <span style={{ opacity: 0.8, fontSize: '0.9rem' }}>Classe : {currentChild.class?.name || 'Non assigné'}</span>
+                        {/* --- ZONE IMPRIMABLE (Début) --- */}
+                        <div ref={componentRef}> 
+                            
+                            {/* BANDEAU IDENTITÉ */}
+                            <div style={{ backgroundColor: '#0A2240', padding: '20px', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div>
+                                    <h2 style={{ margin: 0, fontSize: '1.4rem' }}>{currentChild.prenom} {currentChild.nom}</h2>
+                                    <span style={{ opacity: 0.8, fontSize: '0.9rem' }}>Classe : {currentChild.class?.name || 'Non assigné'}</span>
+                                </div>
+                                
+                                {/* Moyenne + Bouton PDF (Ce bouton sera caché à l'impression via CSS si besoin, mais ici on l'imprime, ce n'est pas grave) */}
+                                {bulletin && (
+                                    <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
+                                        <div>
+                                            <div style={{ fontSize: '0.8rem', opacity: 0.8 }}>Moyenne Générale</div>
+                                            <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#F77F00' }}>
+                                                {bulletin.globalAverage} <span style={{fontSize:'1rem', color:'white'}}>/ 20</span>
+                                            </div>
+                                        </div>
+                                        
+                                        {/* BOUTON D'IMPRESSION (Visible à l'écran) */}
+                                        <button 
+                                            onClick={() => handlePrint && handlePrint()}
+                                            style={{ 
+                                                backgroundColor: 'white', color: '#0A2240', 
+                                                border: 'none', padding: '5px 10px', borderRadius: '4px', 
+                                                fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem',
+                                                display: 'flex', alignItems: 'center', gap: '5px'
+                                            }}
+                                        >
+                                            🖨️ Télécharger PDF
+                                        </button>
+                                    </div>
+                                )}
                             </div>
-                            {bulletin && (
-                                <div style={{ textAlign: 'right' }}>
-                                    <div style={{ fontSize: '0.8rem', opacity: 0.8 }}>Moyenne Générale</div>
-                                    <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#F77F00' }}>
-                                        {bulletin.globalAverage} <span style={{fontSize:'1rem', color:'white'}}>/ 20</span>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
 
-                        {/* CONTENU DU BULLETIN */}
-                        <div style={{ padding: '25px' }}>
-                            {bulletin ? (
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '40px' }}>
-                                    
-                                    {/* TABLEAU DES NOTES */}
-                                    <div>
-                                        <h3 style={{ marginTop: 0, color: '#0A2240', borderBottom: '2px solid #F0F0F0', paddingBottom: '10px' }}>📊 Résultats par matière</h3>
-                                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                            <tbody>
-                                                {bulletin.subjects.map((sub, index) => (
-                                                    <tr key={index} style={{ borderBottom: '1px solid #f9f9f9' }}>
-                                                        <td style={{ padding: '12px 0', color: '#444', fontWeight: '500' }}>{sub.matiere}</td>
-                                                        <td style={{ padding: '12px 0', textAlign: 'right' }}>
-                                                            <span style={{ 
-                                                                fontWeight: 'bold', 
-                                                                color: sub.moyenne >= 10 ? '#008F39' : '#D32F2F',
-                                                                backgroundColor: sub.moyenne >= 10 ? '#E8F5E9' : '#FFEBEE',
-                                                                padding: '4px 8px',
-                                                                borderRadius: '6px'
-                                                            }}>
-                                                                {sub.moyenne}/20
-                                                            </span>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-
-                                    {/* APPRÉCIATION */}
-                                    <div>
-                                        <h3 style={{ marginTop: 0, color: '#0A2240', borderBottom: '2px solid #F0F0F0', paddingBottom: '10px' }}>👨‍🏫 Avis du Conseil de classe</h3>
-                                        <div style={{ backgroundColor: '#FFF8E1', padding: '20px', borderRadius: '12px', borderLeft: '5px solid #FFC107' }}>
-                                            {bulletin.bulletinData?.appreciation ? (
-                                                <p style={{ margin: 0, color: '#5D4037', fontStyle: 'italic', lineHeight: '1.6' }}>
-                                                    "{bulletin.bulletinData.appreciation}"
-                                                </p>
-                                            ) : (
-                                                <p style={{ color: '#999', margin: 0 }}>Aucune appréciation saisie pour ce trimestre.</p>
-                                            )}
+                            {/* CONTENU DU BULLETIN */}
+                            <div style={{ padding: '25px' }}>
+                                {bulletin ? (
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '40px' }}>
+                                        
+                                        {/* TABLEAU DES NOTES */}
+                                        <div>
+                                            <h3 style={{ marginTop: 0, color: '#0A2240', borderBottom: '2px solid #F0F0F0', paddingBottom: '10px' }}>📊 Résultats par matière</h3>
+                                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                                <tbody>
+                                                    {bulletin.subjects.map((sub, index) => (
+                                                        <tr key={index} style={{ borderBottom: '1px solid #f9f9f9' }}>
+                                                            <td style={{ padding: '12px 0', color: '#444', fontWeight: '500' }}>{sub.matiere}</td>
+                                                            <td style={{ padding: '12px 0', textAlign: 'right' }}>
+                                                                <span style={{ 
+                                                                    fontWeight: 'bold', 
+                                                                    color: sub.moyenne >= 10 ? '#008F39' : '#D32F2F',
+                                                                    padding: '4px 8px',
+                                                                    borderRadius: '6px',
+                                                                    // On retire le background color pour l'impression pour faire plus propre
+                                                                    border: '1px solid #eee'
+                                                                }}>
+                                                                    {sub.moyenne}/20
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
                                         </div>
 
-                                        {/* REMPLACEMENT DU BLOC DE SCOLARITÉ SIMULÉ */}
-                                        <div style={{ marginTop: '30px', padding: '20px', backgroundColor: '#F4F6F8', borderRadius: '12px' }}>
-                                            <h4 style={{ margin: '0 0 10px 0', color: '#555' }}>💰 Gestion Scolarité</h4>
-                                            <PaymentSubmissionForm 
-                                                studentId={currentChild.id}
-                                                onTransactionSubmitted={handlePaymentSubmitted}
-                                            />
+                                        {/* APPRÉCIATION & PAIEMENT */}
+                                        <div>
+                                            <h3 style={{ marginTop: 0, color: '#0A2240', borderBottom: '2px solid #F0F0F0', paddingBottom: '10px' }}>👨‍🏫 Avis du Conseil</h3>
+                                            <div style={{ backgroundColor: '#FFF8E1', padding: '20px', borderRadius: '12px', borderLeft: '5px solid #FFC107', marginBottom: '30px' }}>
+                                                {bulletin.bulletinData?.appreciation ? (
+                                                    <p style={{ margin: 0, color: '#5D4037', fontStyle: 'italic', lineHeight: '1.6' }}>
+                                                        "{bulletin.bulletinData.appreciation}"
+                                                    </p>
+                                                ) : (
+                                                    <p style={{ color: '#999', margin: 0 }}>Aucune appréciation.</p>
+                                                )}
+                                            </div>
+
+                                            {/* Le module de paiement ne doit pas être imprimé idéalement, 
+                                                mais pour le MVP on le laisse dans le flux ou on peut le sortir de la "div ref" 
+                                                si on veut un PDF propre. 
+                                                ICI : Je le laisse DANS la ref pour simplifier l'affichage écran, 
+                                                mais sachez qu'il apparaîtra sur le PDF. 
+                                            */}
+                                            <div className="no-print"> 
+                                                <h4 style={{ margin: '0 0 10px 0', color: '#555' }}>💰 Gestion Scolarité</h4>
+                                                <PaymentSubmissionForm 
+                                                    studentId={currentChild.id}
+                                                    onTransactionSubmitted={handlePaymentSubmitted}
+                                                />
+                                            </div>
+
                                         </div>
 
                                     </div>
+                                ) : (
+                                    <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                                        Chargement des résultats...
+                                    </div>
+                                )}
+                            </div>
+                        </div> 
+                        {/* --- FIN ZONE IMPRIMABLE --- */}
 
-                                </div>
-                            ) : (
-                                <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-                                    Chargement des résultats scolaires...
-                                </div>
-                            )}
-                        </div>
                     </div>
                 )}
             </div>
         )}
       </div>
+      
+      {/* Style CSS pour masquer les éléments indésirables à l'impression */}
+      <style>{`
+        @media print {
+          .no-print { display: none !important; }
+          button { display: none !important; }
+        }
+      `}</style>
     </div>
   );
 };
