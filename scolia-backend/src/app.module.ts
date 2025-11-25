@@ -1,3 +1,6 @@
+
+import { Competence } from './skills/entities/competence.entity';
+import { SkillEvaluation } from './skills/entities/skill-evaluation.entity';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -42,7 +45,7 @@ import { NotificationsModule } from './notifications/notifications.module'; // �
         database: configService.get<string>('DB_DATABASE'),
         ssl: true, 
         // ✅ On s'assure que toutes les entités sont là
-        entities: [User, Student, Class, Grade, Homework, Bulletin, News, School, Fee, Transaction],
+        entities: [User, Student, Class, Grade, Homework, Bulletin, News, School, Fee, Transaction, Competence, SkillEvaluation],
         synchronize: true, 
       }),
       inject: [ConfigService],
