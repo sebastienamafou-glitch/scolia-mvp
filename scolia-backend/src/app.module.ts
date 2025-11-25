@@ -1,4 +1,5 @@
 
+import { SkillsModule } from './skills/skills.module'; // 👈 Import
 import { Competence } from './skills/entities/competence.entity';
 import { SkillEvaluation } from './skills/entities/skill-evaluation.entity';
 import { Module } from '@nestjs/common';
@@ -60,6 +61,7 @@ import { NotificationsModule } from './notifications/notifications.module'; // �
     SchoolsModule,
     PaymentsModule,
     NotificationsModule, // ✅ Ajouté aux imports
+    SkillsModule, // 👈 Ajout
   ],
   controllers: [AppController],
   providers: [AppService],
