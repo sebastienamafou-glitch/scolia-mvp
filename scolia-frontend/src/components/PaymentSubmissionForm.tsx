@@ -94,14 +94,21 @@ export const PaymentSubmissionForm: React.FC<PaymentSubmissionFormProps> = ({ st
     if (error && !fee) return <p style={{ color: '#D32F2F' }}>{error}</p>;
     if (!fee) return <p style={{ color: '#555' }}>Aucun frais de scolarité défini pour cet élève.</p>;
     
-    // Calculs
+    // Calculs de base
     const totalDue = fee.amountDue;
     const totalPaid = fee.amountPaid;
     const remainingBalance = totalDue - totalPaid;
-    
     const isPaid = remainingBalance <= 0;
 
-    // Styles
+    // --- NOUVEAU : Calculs pour la barre de progression ---
+    const percentPaid = totalDue > 0 ? Math.min(100, Math.round((totalPaid / totalDue) * 100)) : 0;
+    
+    // Couleur dynamique de la barre
+    let progressColor = '#D32F2F'; // Rouge (défaut/bas)
+    if (percentPaid >= 50) progressColor = '#F77F00'; // Orange (moyen)
+    if (percentPaid >= 100) progressColor = '#008F39'; // Vert (complet)
+
+    // Styles de texte
     const statusStyle = isPaid 
         ? { color: '#388E3C', fontWeight: 'bold' } 
         : { color: '#D32F2F', fontWeight: 'bold' };
@@ -118,14 +125,31 @@ export const PaymentSubmissionForm: React.FC<PaymentSubmissionFormProps> = ({ st
                 Statut Financier
             </h4>
             <p>
-                Montant dû : **{totalDue.toLocaleString('fr-FR')} FCFA**
+                Montant dû : <strong>{totalDue.toLocaleString('fr-FR')} FCFA</strong>
             </p>
             <p>
-                Montant payé : **{totalPaid.toLocaleString('fr-FR')} FCFA**
+                Montant payé : <strong>{totalPaid.toLocaleString('fr-FR')} FCFA</strong>
             </p>
             <p style={{ fontSize: '1.1rem', marginBottom: '15px' }}>
-                **Solde restant :** <span style={statusStyle}>{Math.max(0, remainingBalance).toLocaleString('fr-FR')} FCFA</span>
+                <strong>Solde restant :</strong> <span style={statusStyle}>{Math.max(0, remainingBalance).toLocaleString('fr-FR')} FCFA</span>
             </p>
+
+            {/* --- NOUVEAU : BARRE DE PROGRESSION --- */}
+            <div style={{ marginTop: '15px', marginBottom: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '5px', fontWeight: 'bold', color: '#555' }}>
+                    <span>Progression</span>
+                    <span>{percentPaid}% payé</span>
+                </div>
+                <div style={{ width: '100%', height: '10px', backgroundColor: '#eee', borderRadius: '5px', overflow: 'hidden' }}>
+                    <div style={{ 
+                        width: `${percentPaid}%`, 
+                        height: '100%', 
+                        backgroundColor: progressColor, 
+                        transition: 'width 0.5s ease-in-out' 
+                    }}></div>
+                </div>
+            </div>
+            {/* ------------------------------------- */}
 
             {/* MESSAGE DE PAIEMENT COMPLET */}
             {isPaid && (
@@ -142,14 +166,14 @@ export const PaymentSubmissionForm: React.FC<PaymentSubmissionFormProps> = ({ st
                         <FaMobileAlt /> Option 1 : Paiement Mobile Money
                     </h5>
                     
-                    {/* INSTRUCTIONS CI (À PERSONNALISER) */}
+                    {/* INSTRUCTIONS CI */}
                     <p style={{ fontSize: '0.9rem', color: '#555' }}>
                         1. Effectuez votre transfert sur l'un des numéros suivants :
                     </p>
                     <ul style={{ listStyleType: 'disc', marginLeft: '20px', fontSize: '0.9rem' }}>
-                        <li>**Orange Money :** **+225 07 00 00 00 00** (Nom de l'école : Scolia CI)</li>
-                        <li>**MTN Mobile Money :** **+225 05 00 00 00 00**</li>
-                        <li>**Moov Money :** **+225 01 00 00 00 00**</li>
+                        <li><strong>Orange Money :</strong> <strong>+225 07 00 00 00 00</strong> (Nom de l'école : Scolia CI)</li>
+                        <li><strong>MTN Mobile Money :</strong> <strong>+225 05 00 00 00 00</strong></li>
+                        <li><strong>Moov Money :</strong> <strong>+225 01 00 00 00 00</strong></li>
                     </ul>
                     
                     <p style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>

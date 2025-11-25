@@ -35,4 +35,12 @@ export class PaymentsController {
   async validate(@Request() req, @Param('id') id: string, @Body('action') action: 'validate' | 'reject') {
     return this.paymentsService.validateTransaction(Number(id), req.user.schoolId, action);
   }
+
+  // Définir les frais (Admin)
+  @Roles('Admin')
+  @Post('fees')
+  async setFee(@Request() req, @Body() body: { studentId: number, amountDue: number, dueDate: string }) {
+    if (!req.user.schoolId) throw new ForbiddenException();
+    return this.paymentsService.setFee(body.studentId, body.amountDue, body.dueDate, req.user.schoolId);
+  }
 }

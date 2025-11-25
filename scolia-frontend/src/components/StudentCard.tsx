@@ -1,100 +1,123 @@
-import React from 'react';
-
-// On définit les types attendus
-interface ParentInfo {
-  nom: string;
-  prenom: string;
-  email: string;
-  telephone?: string;
-}
-
-interface StudentDetails {
-  id: number;
-  nom: string;
-  prenom: string;
-  dateNaissance?: string;
-  adresse?: string;
-  classe?: { name: string };
-  parent?: ParentInfo;
-  contactUrgenceNom?: string;
-  contactUrgenceTel?: string;
-  infosMedicales?: string;
-  photo?: string; // Si vous avez ajouté la photo aux élèves aussi
-}
+import React, { useState, useEffect } from 'react';
+import api from '../services/api';
 
 interface StudentCardProps {
-  student: StudentDetails;
+  student: any; // On utilise any pour simplifier l'intégration rapide, ou votre interface Student
   onClose: () => void;
 }
 
 export const StudentCard: React.FC<StudentCardProps> = ({ student, onClose }) => {
+  // États pour la finance
+  const [amountDue, setAmountDue] = useState('');
+  const [amountPaid, setAmountPaid] = useState(0);
+  const [dueDate, setDueDate] = useState('');
+  const [loadingFee, setLoadingFee] = useState(false);
+
+  // Charger les infos financières à l'ouverture
+  useEffect(() => {
+    const loadFee = async () => {
+        setLoadingFee(true);
+        try {
+            const res = await api.get(`/payments/balance?studentId=${student.id}`);
+            if (res.data) {
+                setAmountDue(res.data.amountDue);
+                setAmountPaid(res.data.amountPaid);
+                // Formater la date pour l'input type="date" (YYYY-MM-DD)
+                const date = new Date(res.data.dueDate);
+                setDueDate(date.toISOString().split('T')[0]);
+            }
+        } catch (e) {
+            console.log("Pas encore de frais définis");
+        } finally {
+            setLoadingFee(false);
+        }
+    };
+    loadFee();
+  }, [student.id]);
+
+  const handleSaveFee = async () => {
+    if (!amountDue || !dueDate) return alert("Veuillez remplir le montant et la date limite.");
+    
+    try {
+        await api.post('/payments/fees', {
+            studentId: student.id,
+            amountDue: Number(amountDue),
+            dueDate: dueDate
+        });
+        alert("✅ Scolarité définie avec succès !");
+    } catch (error) {
+        alert("Erreur lors de la sauvegarde.");
+    }
+  };
+
   if (!student) return null;
 
   return (
-    // Fond sombre semi-transparent (Overlay)
     <div style={{
       position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-      backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center',
-      zIndex: 1000
+      backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
     }} onClick={onClose}>
       
-      {/* La Carte elle-même (on empêche le clic de fermer la modale) */}
       <div style={{
         backgroundColor: 'white', borderRadius: '15px', width: '90%', maxWidth: '600px',
-        maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
-        position: 'relative'
+        maxHeight: '90vh', overflowY: 'auto', position: 'relative'
       }} onClick={e => e.stopPropagation()}>
 
-        {/* En-tête coloré */}
-        <div style={{ backgroundColor: '#0A2240', padding: '20px', color: 'white', borderRadius: '15px 15px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ margin: 0 }}>📄 Fiche Élève</h2>
+        {/* HEADER */}
+        <div style={{ backgroundColor: '#0A2240', padding: '20px', color: 'white', display: 'flex', justifyContent: 'space-between' }}>
+            <h2 style={{ margin: 0 }}>Fiche : {student.prenom} {student.nom}</h2>
             <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.5rem', cursor: 'pointer' }}>✖</button>
         </div>
 
         <div style={{ padding: '25px' }}>
             
-            {/* Section 1 : Identité */}
-            <div style={{ display: 'flex', gap: '20px', marginBottom: '30px', borderBottom: '1px solid #eee', paddingBottom: '20px' }}>
-                <div style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: '#E0E0E0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', fontWeight: 'bold', color: '#666' }}>
-                    {student.photo ? <img src={student.photo} alt="" style={{width:'100%', height:'100%', borderRadius:'50%', objectFit:'cover'}}/> : <span>{student.prenom[0]}{student.nom[0]}</span>}
-                </div>
-                <div>
-                    <h1 style={{ margin: '0 0 5px 0', color: '#0A2240' }}>{student.prenom} {student.nom}</h1>
-                    <span style={{ backgroundColor: '#F77F00', color: 'white', padding: '4px 10px', borderRadius: '12px', fontSize: '0.9rem' }}>
-                        Classe : {student.classe?.name || 'Non assigné'}
-                    </span>
-                    <p style={{ color: '#666', marginTop: '10px' }}>📅 Né(e) le : {student.dateNaissance ? new Date(student.dateNaissance).toLocaleDateString() : 'Non renseigné'}</p>
-                    <p style={{ color: '#666' }}>🏠 Adresse : {student.adresse || 'Non renseignée'}</p>
-                </div>
+            {/* INFO ÉLÈVE (Existantes) */}
+            <div style={{ marginBottom: '30px', borderBottom: '1px solid #eee', paddingBottom: '20px' }}>
+                <p><strong>Classe :</strong> {student.classe || student.class?.name || 'Non assigné'}</p>
+                <p><strong>Email :</strong> {student.email}</p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+            {/* --- SECTION FINANCE (AJOUT) --- */}
+            <div style={{ backgroundColor: '#F9F9F9', padding: '20px', borderRadius: '10px', border: '1px solid #ddd' }}>
+                <h3 style={{ color: '#F77F00', marginTop: 0 }}>💰 Configuration Scolarité</h3>
                 
-                {/* Section 2 : Responsables */}
-                <div style={{ backgroundColor: '#F4F6F8', padding: '15px', borderRadius: '10px' }}>
-                    <h4 style={{ color: '#0A2240', borderBottom: '2px solid #ddd', paddingBottom: '5px', marginTop: 0 }}>👨‍👩‍👦 Responsables</h4>
-                    {student.parent ? (
-                        <>
-                            <p style={{ fontWeight: 'bold', marginBottom: '5px' }}>{student.parent.prenom} {student.parent.nom}</p>
-                            <p style={{ margin: '5px 0', fontSize: '0.9rem' }}>📧 {student.parent.email}</p>
-                            <p style={{ margin: '5px 0', fontSize: '0.9rem' }}>📞 {student.parent.telephone || 'Non renseigné'}</p>
-                        </>
-                    ) : (
-                        <p style={{ fontStyle: 'italic', color: '#999' }}>Aucun parent lié</p>
-                    )}
-                </div>
+                {loadingFee ? <p>Chargement...</p> : (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                        
+                        <div>
+                            <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '5px' }}>Montant Total Annuel (FCFA)</label>
+                            <input 
+                                type="number" 
+                                value={amountDue} 
+                                onChange={e => setAmountDue(e.target.value)}
+                                placeholder="ex: 150000"
+                                style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '5px' }}
+                            />
+                        </div>
 
-                {/* Section 3 : Urgence & Santé */}
-                <div style={{ backgroundColor: '#FFEBEE', padding: '15px', borderRadius: '10px', border: '1px solid #FFCDD2' }}>
-                    <h4 style={{ color: '#D32F2F', borderBottom: '2px solid #EF9A9A', paddingBottom: '5px', marginTop: 0 }}>🚨 Urgence & Santé</h4>
-                    
-                    <p style={{ fontSize: '0.85rem', color: '#D32F2F', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '5px' }}>À prévenir :</p>
-                    <p style={{ margin: 0, fontWeight: 'bold' }}>{student.contactUrgenceNom || 'Non renseigné'}</p>
-                    <p style={{ margin: '0 0 15px 0' }}>📞 {student.contactUrgenceTel || '-'}</p>
+                        <div>
+                            <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '5px' }}>Date Limite</label>
+                            <input 
+                                type="date" 
+                                value={dueDate} 
+                                onChange={e => setDueDate(e.target.value)}
+                                style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '5px' }}
+                            />
+                        </div>
 
-                    <p style={{ fontSize: '0.85rem', color: '#D32F2F', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '5px' }}>⚠️ Infos Médicales :</p>
-                    <p style={{ margin: 0 }}>{student.infosMedicales || 'R.A.S'}</p>
-                </div>
+                        <div style={{ gridColumn: '1 / -1', marginTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ fontSize: '0.9rem' }}>
+                                Déjà payé : <strong>{amountPaid.toLocaleString()} FCFA</strong>
+                            </div>
+                            <button 
+                                onClick={handleSaveFee}
+                                style={{ backgroundColor: '#008F39', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}
+                            >
+                                Enregistrer
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
 
         </div>

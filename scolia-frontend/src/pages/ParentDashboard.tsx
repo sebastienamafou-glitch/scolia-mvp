@@ -7,7 +7,9 @@ import { Logo } from '../components/Logo';
 import { SchoolNews } from '../components/SchoolNews';
 import { PaymentSubmissionForm } from '../components/PaymentSubmissionForm';
 import { useReactToPrint } from 'react-to-print';
-import { requestForToken } from '../firebase-config'; // 👈 NOUVEL IMPORT (Pour les notifs)
+import { requestForToken } from '../firebase-config';
+// 👇 AJOUT : Import de l'icône cadenas
+import { FaLock } from 'react-icons/fa'; 
 
 // --- Types ---
 interface Student {
@@ -28,6 +30,7 @@ interface BulletinData {
   bulletinData: {
     appreciation: string;
   };
+  isBlocked?: boolean; // 👈 AJOUT : Champ pour l'état de blocage
 }
 
 const ParentDashboard: React.FC = () => {
@@ -49,16 +52,12 @@ const ParentDashboard: React.FC = () => {
     documentTitle: `Bulletin_${user?.nom || 'Scolia'}`,
   });
 
-  // 1. Initialisation : Charger la liste des enfants ET activer les notifs
+  // 1. Initialisation
   useEffect(() => {
-    
-    // --- LOGIQUE NOTIFICATION AJOUTÉE ---
     const initNotif = async () => {
         const token = await requestForToken();
         if (token) {
             try {
-                // On envoie le token au backend pour lier ce téléphone/navigateur au compte Parent
-                // Note : Assurez-vous que cette route existe dans votre backend (NotificationsController)
                 await api.post('/notifications/subscribe', { token });
                 console.log("✅ Notifications Push activées !");
             } catch (e) {
@@ -67,8 +66,6 @@ const ParentDashboard: React.FC = () => {
         }
     };
     initNotif();
-    // -------------------------------------
-
     fetchChildren();
   }, [refreshKey]);
 
@@ -154,7 +151,6 @@ const ParentDashboard: React.FC = () => {
                                 boxShadow: selectedChildId === child.id ? '0 4px 10px rgba(0,0,0,0.1)' : 'none',
                             }}
                         >
-                            {/* Avatar */}
                             <div style={{ width: '30px', height: '30px', borderRadius: '50%', backgroundColor: '#ddd', overflow:'hidden' }}>
                                 {child.photo ? <img src={child.photo} alt="" style={{width:'100%'}}/> : null}
                             </div>
@@ -179,28 +175,38 @@ const ParentDashboard: React.FC = () => {
                                     <span style={{ opacity: 0.8, fontSize: '0.9rem' }}>Classe : {currentChild.class?.name || 'Non assigné'}</span>
                                 </div>
                                 
-                                {/* Moyenne + Bouton PDF */}
+                                {/* Moyenne + Bouton PDF (Gérés conditionnellement) */}
                                 {bulletin && (
                                     <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
-                                        <div>
-                                            <div style={{ fontSize: '0.8rem', opacity: 0.8 }}>Moyenne Générale</div>
-                                            <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#F77F00' }}>
-                                                {bulletin.globalAverage} <span style={{fontSize:'1rem', color:'white'}}>/ 20</span>
-                                            </div>
-                                        </div>
                                         
-                                        {/* BOUTON D'IMPRESSION */}
-                                        <button 
-                                            onClick={() => handlePrint && handlePrint()}
-                                            style={{ 
-                                                backgroundColor: 'white', color: '#0A2240', 
-                                                border: 'none', padding: '5px 10px', borderRadius: '4px', 
-                                                fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem',
-                                                display: 'flex', alignItems: 'center', gap: '5px'
-                                            }}
-                                        >
-                                            🖨️ Télécharger PDF
-                                        </button>
+                                        {/* 👇 MODIF : Cacher la moyenne si bloqué */}
+                                        {bulletin.isBlocked ? (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'rgba(255,255,255,0.1)', padding: '5px 12px', borderRadius: '20px' }}>
+                                                <FaLock /> <span>Accès restreint</span>
+                                            </div>
+                                        ) : (
+                                            <div>
+                                                <div style={{ fontSize: '0.8rem', opacity: 0.8 }}>Moyenne Générale</div>
+                                                <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#F77F00' }}>
+                                                    {bulletin.globalAverage} <span style={{fontSize:'1rem', color:'white'}}>/ 20</span>
+                                                </div>
+                                            </div>
+                                        )}
+                                        
+                                        {/* BOUTON D'IMPRESSION (Caché si bloqué) */}
+                                        {!bulletin.isBlocked && (
+                                            <button 
+                                                onClick={() => handlePrint && handlePrint()}
+                                                style={{ 
+                                                    backgroundColor: 'white', color: '#0A2240', 
+                                                    border: 'none', padding: '5px 10px', borderRadius: '4px', 
+                                                    fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem',
+                                                    display: 'flex', alignItems: 'center', gap: '5px'
+                                                }}
+                                            >
+                                                🖨️ Télécharger PDF
+                                            </button>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -210,43 +216,67 @@ const ParentDashboard: React.FC = () => {
                                 {bulletin ? (
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '40px' }}>
                                         
-                                        {/* TABLEAU DES NOTES */}
+                                        {/* 👇 MODIF : Affichage Conditionnel (Notes ou Blocage) */}
                                         <div>
                                             <h3 style={{ marginTop: 0, color: '#0A2240', borderBottom: '2px solid #F0F0F0', paddingBottom: '10px' }}>📊 Résultats par matière</h3>
-                                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                                <tbody>
-                                                    {bulletin.subjects.map((sub, index) => (
-                                                        <tr key={index} style={{ borderBottom: '1px solid #f9f9f9' }}>
-                                                            <td style={{ padding: '12px 0', color: '#444', fontWeight: '500' }}>{sub.matiere}</td>
-                                                            <td style={{ padding: '12px 0', textAlign: 'right' }}>
-                                                                <span style={{ 
-                                                                    fontWeight: 'bold', 
-                                                                    color: sub.moyenne >= 10 ? '#008F39' : '#D32F2F',
-                                                                    padding: '4px 8px',
-                                                                    borderRadius: '6px',
-                                                                    border: '1px solid #eee'
-                                                                }}>
-                                                                    {sub.moyenne}/20
-                                                                </span>
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
+                                            
+                                            {bulletin.isBlocked ? (
+                                                <div style={{ 
+                                                    backgroundColor: '#FFEBEE', 
+                                                    color: '#D32F2F', 
+                                                    padding: '30px', 
+                                                    borderRadius: '10px', 
+                                                    textAlign: 'center',
+                                                    border: '1px solid #FFCDD2'
+                                                }}>
+                                                    <FaLock size={40} style={{ marginBottom: '15px', opacity: 0.5 }} />
+                                                    <h4 style={{ margin: '0 0 10px 0', fontSize: '1.1rem' }}>Bulletin non disponible</h4>
+                                                    <p style={{ margin: 0, fontSize: '0.9rem' }}>
+                                                        Les résultats scolaires sont temporairement masqués. 
+                                                        Veuillez régulariser la situation financière ci-contre ou contacter l'administration.
+                                                    </p>
+                                                </div>
+                                            ) : (
+                                                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                                    <tbody>
+                                                        {bulletin.subjects.map((sub, index) => (
+                                                            <tr key={index} style={{ borderBottom: '1px solid #f9f9f9' }}>
+                                                                <td style={{ padding: '12px 0', color: '#444', fontWeight: '500' }}>{sub.matiere}</td>
+                                                                <td style={{ padding: '12px 0', textAlign: 'right' }}>
+                                                                    <span style={{ 
+                                                                        fontWeight: 'bold', 
+                                                                        color: sub.moyenne >= 10 ? '#008F39' : '#D32F2F',
+                                                                        padding: '4px 8px',
+                                                                        borderRadius: '6px',
+                                                                        border: '1px solid #eee'
+                                                                    }}>
+                                                                        {sub.moyenne}/20
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            )}
                                         </div>
 
-                                        {/* APPRÉCIATION & PAIEMENT */}
+                                        {/* APPRÉCIATION & PAIEMENT (Toujours visible pour permettre le paiement) */}
                                         <div>
-                                            <h3 style={{ marginTop: 0, color: '#0A2240', borderBottom: '2px solid #F0F0F0', paddingBottom: '10px' }}>👨‍🏫 Avis du Conseil</h3>
-                                            <div style={{ backgroundColor: '#FFF8E1', padding: '20px', borderRadius: '12px', borderLeft: '5px solid #FFC107', marginBottom: '30px' }}>
-                                                {bulletin.bulletinData?.appreciation ? (
-                                                    <p style={{ margin: 0, color: '#5D4037', fontStyle: 'italic', lineHeight: '1.6' }}>
-                                                        "{bulletin.bulletinData.appreciation}"
-                                                    </p>
-                                                ) : (
-                                                    <p style={{ color: '#999', margin: 0 }}>Aucune appréciation.</p>
-                                                )}
-                                            </div>
+                                            {/* On cache l'appréciation si bloqué aussi */}
+                                            {!bulletin.isBlocked && (
+                                                <>
+                                                    <h3 style={{ marginTop: 0, color: '#0A2240', borderBottom: '2px solid #F0F0F0', paddingBottom: '10px' }}>👨‍🏫 Avis du Conseil</h3>
+                                                    <div style={{ backgroundColor: '#FFF8E1', padding: '20px', borderRadius: '12px', borderLeft: '5px solid #FFC107', marginBottom: '30px' }}>
+                                                        {bulletin.bulletinData?.appreciation ? (
+                                                            <p style={{ margin: 0, color: '#5D4037', fontStyle: 'italic', lineHeight: '1.6' }}>
+                                                                "{bulletin.bulletinData.appreciation}"
+                                                            </p>
+                                                        ) : (
+                                                            <p style={{ color: '#999', margin: 0 }}>Aucune appréciation.</p>
+                                                        )}
+                                                    </div>
+                                                </>
+                                            )}
 
                                             <div className="no-print"> 
                                                 <h4 style={{ margin: '0 0 10px 0', color: '#555' }}>💰 Gestion Scolarité</h4>

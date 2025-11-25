@@ -15,7 +15,6 @@ export class PaymentsService {
 
   // 1. Voir le solde (Parent)
   async getFeeByStudent(studentId: number, schoolId: number): Promise<Fee | null> {
-    // Syntaxe corrigée pour relation TypeORM
     return this.feesRepository.findOne({ 
         where: { studentId, school: { id: schoolId } },
         relations: ['student']
@@ -78,5 +77,29 @@ export class PaymentsService {
     }
 
     return transaction;
+  }
+
+  // 5. DÉFINIR LA SCOLARITÉ (ADMIN)
+  async setFee(studentId: number, amountDue: number, dueDate: string, schoolId: number): Promise<Fee> {
+    let fee = await this.feesRepository.findOne({ 
+        where: { studentId, school: { id: schoolId } } 
+    });
+
+    if (!fee) {
+        // Création si n'existe pas
+        fee = this.feesRepository.create({
+            studentId,
+            school: { id: schoolId } as any, // Cast as any si TypeORM est strict sur le type partiel
+            amountDue,
+            amountPaid: 0, // Départ à 0
+            dueDate: new Date(dueDate)
+        });
+    } else {
+        // Mise à jour si existe (ex: augmentation ou correction)
+        fee.amountDue = amountDue;
+        fee.dueDate = new Date(dueDate);
+    }
+
+    return this.feesRepository.save(fee);
   }
 }
