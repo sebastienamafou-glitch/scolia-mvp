@@ -8,6 +8,7 @@ import { StudentCard } from '../components/StudentCard';
 import { SchoolNews } from '../components/SchoolNews';
 import { TransactionValidator } from '../components/TransactionValidator';
 
+
 interface User {
   id: number;
   nom: string;

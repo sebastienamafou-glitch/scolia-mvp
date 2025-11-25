@@ -1,10 +1,13 @@
+// scolia-frontend/src/pages/ParentDashboard.tsx
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import { Logo } from '../components/Logo';
 import { SchoolNews } from '../components/SchoolNews';
 import { PaymentSubmissionForm } from '../components/PaymentSubmissionForm';
-import { useReactToPrint } from 'react-to-print'; // 👈 NOUVEL IMPORT
+import { useReactToPrint } from 'react-to-print';
+import { requestForToken } from '../firebase-config'; // 👈 NOUVEL IMPORT (Pour les notifs)
 
 // --- Types ---
 interface Student {
@@ -38,16 +41,34 @@ const ParentDashboard: React.FC = () => {
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Référence pour l'impression PDF
-  const componentRef = useRef<HTMLDivElement>(null); // 👈 NOUVELLE REF
+  const componentRef = useRef<HTMLDivElement>(null); 
 
   // Fonction d'impression
   const handlePrint = useReactToPrint({
-    contentRef: componentRef, // Utilisation de contentRef au lieu de content
+    contentRef: componentRef, 
     documentTitle: `Bulletin_${user?.nom || 'Scolia'}`,
   });
 
-  // 1. Charger la liste des enfants
+  // 1. Initialisation : Charger la liste des enfants ET activer les notifs
   useEffect(() => {
+    
+    // --- LOGIQUE NOTIFICATION AJOUTÉE ---
+    const initNotif = async () => {
+        const token = await requestForToken();
+        if (token) {
+            try {
+                // On envoie le token au backend pour lier ce téléphone/navigateur au compte Parent
+                // Note : Assurez-vous que cette route existe dans votre backend (NotificationsController)
+                await api.post('/notifications/subscribe', { token });
+                console.log("✅ Notifications Push activées !");
+            } catch (e) {
+                console.error("Erreur abonnement notif", e);
+            }
+        }
+    };
+    initNotif();
+    // -------------------------------------
+
     fetchChildren();
   }, [refreshKey]);
 
@@ -158,7 +179,7 @@ const ParentDashboard: React.FC = () => {
                                     <span style={{ opacity: 0.8, fontSize: '0.9rem' }}>Classe : {currentChild.class?.name || 'Non assigné'}</span>
                                 </div>
                                 
-                                {/* Moyenne + Bouton PDF (Ce bouton sera caché à l'impression via CSS si besoin, mais ici on l'imprime, ce n'est pas grave) */}
+                                {/* Moyenne + Bouton PDF */}
                                 {bulletin && (
                                     <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
                                         <div>
@@ -168,7 +189,7 @@ const ParentDashboard: React.FC = () => {
                                             </div>
                                         </div>
                                         
-                                        {/* BOUTON D'IMPRESSION (Visible à l'écran) */}
+                                        {/* BOUTON D'IMPRESSION */}
                                         <button 
                                             onClick={() => handlePrint && handlePrint()}
                                             style={{ 
@@ -203,7 +224,6 @@ const ParentDashboard: React.FC = () => {
                                                                     color: sub.moyenne >= 10 ? '#008F39' : '#D32F2F',
                                                                     padding: '4px 8px',
                                                                     borderRadius: '6px',
-                                                                    // On retire le background color pour l'impression pour faire plus propre
                                                                     border: '1px solid #eee'
                                                                 }}>
                                                                     {sub.moyenne}/20
@@ -228,12 +248,6 @@ const ParentDashboard: React.FC = () => {
                                                 )}
                                             </div>
 
-                                            {/* Le module de paiement ne doit pas être imprimé idéalement, 
-                                                mais pour le MVP on le laisse dans le flux ou on peut le sortir de la "div ref" 
-                                                si on veut un PDF propre. 
-                                                ICI : Je le laisse DANS la ref pour simplifier l'affichage écran, 
-                                                mais sachez qu'il apparaîtra sur le PDF. 
-                                            */}
                                             <div className="no-print"> 
                                                 <h4 style={{ margin: '0 0 10px 0', color: '#555' }}>💰 Gestion Scolarité</h4>
                                                 <PaymentSubmissionForm 
@@ -260,7 +274,6 @@ const ParentDashboard: React.FC = () => {
         )}
       </div>
       
-      {/* Style CSS pour masquer les éléments indésirables à l'impression */}
       <style>{`
         @media print {
           .no-print { display: none !important; }

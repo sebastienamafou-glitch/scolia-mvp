@@ -1,17 +1,15 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { StudentsService } from './students.service';
 import { StudentsController } from './students.controller';
-import { StudentsService } from './students.service'; // <-- Import
 import { Student } from './entities/student.entity';
-import { UsersModule } from '../users/users.module'; // Gardez-le si nécessaire
+import { User } from '../users/entities/user.entity'; // 👈 IMPORT AJOUTÉ
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Student]), 
-    UsersModule 
-  ],
+  // On ajoute User dans la liste pour pouvoir l'utiliser dans le service
+  imports: [TypeOrmModule.forFeature([Student, User])], 
   controllers: [StudentsController],
-  providers: [StudentsService], // <-- C'est la ligne qui répare tout
+  providers: [StudentsService],
   exports: [StudentsService],
 })
 export class StudentsModule {}

@@ -9,13 +9,11 @@ export class User {
   @Column({ unique: true })
   email: string;
 
-  // --- AJOUTEZ CES DEUX COLONNES ---
   @Column({ nullable: true }) 
-  password: string; // Pour l'ancien mot de passe en clair (migration)
+  password: string;
 
   @Column({ nullable: true }) 
-  passwordHash: string; // Pour le nouveau mot de passe crypté (sécurité)
-  // --------------------------------
+  passwordHash: string;
 
   @Column()
   nom: string;
@@ -29,15 +27,19 @@ export class User {
   @Column({ nullable: true })
   photo: string;
 
+  // --- CONFIGURATION MULTI-TENANT ---
   @ManyToOne(() => School, (school) => school.users, { nullable: true })
   @JoinColumn({ name: 'schoolId' })
   school: School;
 
   @Column({ nullable: true })
-  schoolId: number | null; // 💡 CORRECTION : Ajouter | null ici
+  schoolId: number | null; // Null pour le SuperAdmin
 
-  // ... (supprimez 'classe' et 'parentId' s'ils sont encore là, 
-  // car nous gérons cela via Student maintenant, ou gardez-les si vous les utilisez encore pour l'affichage)
+  // --- CONFIGURATION NOTIFICATIONS ---
+  @Column({ nullable: true })
+  fcmToken: string; // ✅ Le jeton Firebase pour les notifications Push
+
+  // Champs hérités (optionnels selon votre usage actuel)
   @Column({ nullable: true })
   classe: string;
 
