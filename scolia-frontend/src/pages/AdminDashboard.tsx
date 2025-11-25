@@ -8,6 +8,7 @@ import { StudentCard } from '../components/StudentCard';
 import { SchoolNews } from '../components/SchoolNews';
 import { TransactionValidator } from '../components/TransactionValidator';
 import { FaUserGraduate, FaChalkboardTeacher, FaUserTie, FaUserShield, FaSearch, FaPlus, FaTimes, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { SkillsManager } from '../components/SkillsManager';
 
 // 1. MISE À JOUR DE L'INTERFACE
 interface User {
@@ -309,6 +310,12 @@ const AdminDashboard: React.FC = () => {
                 <h2 style={{ color: '#0A2240', marginTop: 0 }}>📑 Bulletins</h2>
                 <BulletinEditor />
             </div>
+        </div>
+
+        {/* MODULE DE GESTION DES COMPÉTENCES (Ajouté) */}
+        <div style={{ marginTop: '40px', paddingTop: '40px', borderTop: '2px dashed #ccc' }}>
+            <h3 style={{ color: '#0A2240', marginTop: 0 }}>🌟 Compétences & Soft Skills</h3>
+            <SkillsManager />
         </div>
 
       </div>
