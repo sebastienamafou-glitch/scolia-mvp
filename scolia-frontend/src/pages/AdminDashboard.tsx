@@ -7,9 +7,9 @@ import { BulletinEditor } from '../components/BulletinEditor';
 import { StudentCard } from '../components/StudentCard';
 import { SchoolNews } from '../components/SchoolNews';
 import { TransactionValidator } from '../components/TransactionValidator';
-// Assurez-vous d'avoir installé les icônes : npm install react-icons
 import { FaUserGraduate, FaChalkboardTeacher, FaUserTie, FaUserShield, FaSearch, FaPlus, FaTimes, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 
+// 1. MISE À JOUR DE L'INTERFACE
 interface User {
   id: number;
   nom: string;
@@ -18,6 +18,12 @@ interface User {
   role: string;
   classe?: string;
   photo?: string;
+  // Nouveaux champs
+  dateNaissance?: string;
+  adresse?: string;
+  contactUrgenceNom?: string;
+  contactUrgenceTel?: string;
+  infosMedicales?: string;
 }
 
 const AdminDashboard: React.FC = () => {
@@ -29,16 +35,22 @@ const AdminDashboard: React.FC = () => {
   const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
 
   // États d'Interface (UI)
-  const [activeTab, setActiveTab] = useState<string>('Tous'); // 'Tous', 'Élève', 'Enseignant', 'Parent', 'Admin'
+  const [activeTab, setActiveTab] = useState<string>('Tous');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [showCreateForm, setShowCreateForm] = useState(false);
 
-  // Formulaire de création
+  // 2. MISE À JOUR DE L'ÉTAT INITIAL DU FORMULAIRE
   const [newUser, setNewUser] = useState({
     email: '', password: '', role: 'Enseignant', 
-    nom: '', prenom: '', classe: '', parentId: '', photo: ''
+    nom: '', prenom: '', classe: '', parentId: '', photo: '',
+    // Nouveaux champs initialisés à vide
+    dateNaissance: '',
+    adresse: '',
+    contactUrgenceNom: '',
+    contactUrgenceTel: '',
+    infosMedicales: ''
   });
 
   useEffect(() => {
@@ -58,10 +70,7 @@ const AdminDashboard: React.FC = () => {
 
   // --- LOGIQUE DE FILTRAGE ET RECHERCHE ---
   const filteredUsers = allUsers.filter(user => {
-    // 1. Filtre par Rôle
     const roleMatch = activeTab === 'Tous' || user.role === activeTab;
-    
-    // 2. Filtre par Recherche (Nom, Prénom ou Email)
     const searchLower = searchQuery.toLowerCase();
     const searchMatch = 
         user.nom.toLowerCase().includes(searchLower) || 
@@ -77,27 +86,42 @@ const AdminDashboard: React.FC = () => {
   const currentUsers = filteredUsers.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
 
-  // --- LOGIQUE KPI (CALCULS) ---
+  // --- LOGIQUE KPI ---
   const countStudents = allUsers.filter(u => u.role === 'Élève').length;
   const countTeachers = allUsers.filter(u => u.role === 'Enseignant').length;
   const countParents = allUsers.filter(u => u.role === 'Parent').length;
   const countAdmins = allUsers.filter(u => u.role === 'Admin').length;
 
+  // 3. MISE À JOUR DU HANDLER DE CRÉATION
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const payload: any = { ...newUser };
+      
+      // Nettoyage des champs inutiles si ce n'est pas un élève
       if (payload.role !== 'Élève') {
           delete payload.classe;
           delete payload.parentId;
+          delete payload.dateNaissance;
+          delete payload.adresse;
+          delete payload.contactUrgenceNom;
+          delete payload.contactUrgenceTel;
+          delete payload.infosMedicales;
       } else {
           payload.parentId = payload.parentId ? Number(payload.parentId) : undefined;
       }
+
       await api.post('/users', payload);
       alert('Utilisateur créé avec succès !');
       fetchUsers(); 
-      setNewUser({ ...newUser, email: '', password: '', nom: '', prenom: '', classe: '', parentId: '', photo: '' });
-      setShowCreateForm(false); // Fermer le formulaire après succès
+      
+      // Reset complet du formulaire
+      setNewUser({ 
+          email: '', password: '', role: 'Enseignant', nom: '', prenom: '', 
+          classe: '', parentId: '', photo: '', dateNaissance: '', adresse: '',
+          contactUrgenceNom: '', contactUrgenceTel: '', infosMedicales: ''
+      });
+      setShowCreateForm(false);
     } catch (error) {
       alert("Erreur lors de la création.");
     }
@@ -121,7 +145,7 @@ const AdminDashboard: React.FC = () => {
 
       <div style={{ maxWidth: '1200px', margin: '30px auto', padding: '0 20px' }}>
 
-        {/* 1. SECTION KPI (INDICATEURS) */}
+        {/* 1. SECTION KPI */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '30px' }}>
             <KpiCard title="Élèves" count={countStudents} icon={<FaUserGraduate />} color="#3498db" />
             <KpiCard title="Enseignants" count={countTeachers} icon={<FaChalkboardTeacher />} color="#e67e22" />
@@ -129,7 +153,7 @@ const AdminDashboard: React.FC = () => {
             <KpiCard title="Admin Staff" count={countAdmins} icon={<FaUserShield />} color="#34495e" />
         </div>
 
-        {/* 2. MODULES ALERTES (News & Paiements) */}
+        {/* 2. MODULES ALERTES */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '30px' }}>
             <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
                 <SchoolNews />
@@ -139,13 +163,11 @@ const AdminDashboard: React.FC = () => {
             </div>
         </div>
 
-        {/* 3. GESTION UTILISATEURS (LA GRANDE LISTE) */}
+        {/* 3. GESTION UTILISATEURS */}
         <div style={{ backgroundColor: 'white', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
             
-            {/* BARRE D'OUTILS (Onglets + Recherche + Bouton Ajout) */}
+            {/* BARRE D'OUTILS */}
             <div style={{ padding: '20px', borderBottom: '1px solid #eee', display: 'flex', flexWrap: 'wrap', gap: '20px', justifyContent: 'space-between', alignItems: 'center' }}>
-                
-                {/* Onglets */}
                 <div style={{ display: 'flex', gap: '10px' }}>
                     {['Tous', 'Élève', 'Enseignant', 'Parent', 'Admin'].map(role => (
                         <button 
@@ -162,7 +184,6 @@ const AdminDashboard: React.FC = () => {
                     ))}
                 </div>
 
-                {/* Recherche & Ajout */}
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                     <div style={{ position: 'relative' }}>
                         <FaSearch style={{ position: 'absolute', left: '10px', top: '10px', color: '#aaa' }} />
@@ -183,11 +204,13 @@ const AdminDashboard: React.FC = () => {
                 </div>
             </div>
 
-            {/* FORMULAIRE DE CRÉATION (TIROIR) */}
+            {/* 4. FORMULAIRE DE CRÉATION MIS À JOUR */}
             {showCreateForm && (
                 <div style={{ padding: '20px', backgroundColor: '#fafafa', borderBottom: '1px solid #eee' }}>
                     <h3 style={{ marginTop: 0, color: '#0A2240' }}>Ajouter un utilisateur</h3>
                     <form onSubmit={handleCreate} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+                        
+                        {/* Champs de base */}
                         <select value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})} style={inputStyle}>
                             <option value="Enseignant">Enseignant</option>
                             <option value="Élève">Élève</option>
@@ -200,16 +223,38 @@ const AdminDashboard: React.FC = () => {
                         <input type="password" placeholder="Mot de passe" required value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} style={inputStyle} />
                         <input type="text" placeholder="URL Photo (opt)" value={newUser.photo} onChange={e => setNewUser({...newUser, photo: e.target.value})} style={inputStyle} />
                         
+                        {/* CHAMPS SPÉCIFIQUES ÉLÈVE (Zone Bleue) */}
                         {newUser.role === 'Élève' && (
-                            <>
+                            <div style={{ gridColumn: '1 / -1', backgroundColor: '#E3F2FD', padding: '15px', borderRadius: '8px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+                                <h4 style={{ gridColumn: '1 / -1', margin: '0 0 10px 0', color: '#1565C0' }}>Dossier Scolaire & Vie</h4>
+                                
                                 <input type="text" placeholder="Classe (ex: 6ème A)" value={newUser.classe} onChange={e => setNewUser({...newUser, classe: e.target.value})} style={inputStyle} />
+                                
                                 <select value={newUser.parentId} onChange={e => setNewUser({...newUser, parentId: e.target.value})} style={inputStyle}>
                                     <option value="">-- Lier à un Parent --</option>
                                     {availableParents.map(p => <option key={p.id} value={p.id}>{p.nom} {p.prenom}</option>)}
                                 </select>
-                            </>
+
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                    <label style={{fontSize:'0.8rem', color:'#666'}}>Date de Naissance</label>
+                                    <input type="date" value={newUser.dateNaissance} onChange={e => setNewUser({...newUser, dateNaissance: e.target.value})} style={inputStyle} />
+                                </div>
+
+                                <input type="text" placeholder="Adresse de résidence" value={newUser.adresse} onChange={e => setNewUser({...newUser, adresse: e.target.value})} style={inputStyle} />
+
+                                <input type="text" placeholder="Nom Contact Urgence" value={newUser.contactUrgenceNom} onChange={e => setNewUser({...newUser, contactUrgenceNom: e.target.value})} style={inputStyle} />
+                                <input type="text" placeholder="Tél Contact Urgence" value={newUser.contactUrgenceTel} onChange={e => setNewUser({...newUser, contactUrgenceTel: e.target.value})} style={inputStyle} />
+                                
+                                <textarea 
+                                    placeholder="Infos Médicales / Allergies (R.A.S par défaut)" 
+                                    value={newUser.infosMedicales} 
+                                    onChange={e => setNewUser({...newUser, infosMedicales: e.target.value})} 
+                                    style={{ ...inputStyle, gridColumn: '1 / -1', minHeight: '60px' }} 
+                                />
+                            </div>
                         )}
-                        <button type="submit" style={{ gridColumn: '1 / -1', backgroundColor: '#008F39', color: 'white', border: 'none', padding: '10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Valider</button>
+
+                        <button type="submit" style={{ gridColumn: '1 / -1', backgroundColor: '#008F39', color: 'white', border: 'none', padding: '10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Valider la création</button>
                     </form>
                 </div>
             )}
@@ -257,7 +302,7 @@ const AdminDashboard: React.FC = () => {
             </div>
         </div>
 
-        {/* MODULES DE GESTION (EN BAS) */}
+        {/* MODULES DE GESTION BAS DE PAGE */}
         <div style={{ marginTop: '40px', display: 'grid', gap: '30px' }}>
             <ClassManager />
             <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px' }}>

@@ -27,19 +27,33 @@ export class User {
   @Column({ nullable: true })
   photo: string;
 
-  // --- CONFIGURATION MULTI-TENANT ---
+  // --- INFOS COMPLÉMENTAIRES ÉLÈVE ---
+  @Column({ nullable: true, type: 'date' }) // Date
+  dateNaissance: string;
+
+  @Column({ nullable: true })
+  adresse: string;
+
+  @Column({ nullable: true })
+  contactUrgenceNom: string;
+
+  @Column({ nullable: true })
+  contactUrgenceTel: string;
+
+  @Column({ nullable: true, type: 'text' })
+  infosMedicales: string;
+  // ------------------------------------
+
   @ManyToOne(() => School, (school) => school.users, { nullable: true })
   @JoinColumn({ name: 'schoolId' })
   school: School;
 
   @Column({ nullable: true })
-  schoolId: number | null; // Null pour le SuperAdmin
+  schoolId: number | null;
 
-  // --- CONFIGURATION NOTIFICATIONS ---
   @Column({ nullable: true })
-  fcmToken: string; // ✅ Le jeton Firebase pour les notifications Push
+  fcmToken: string;
 
-  // Champs hérités (optionnels selon votre usage actuel)
   @Column({ nullable: true })
   classe: string;
 
