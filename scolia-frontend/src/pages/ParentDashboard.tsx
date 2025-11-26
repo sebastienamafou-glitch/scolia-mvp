@@ -8,8 +8,9 @@ import { SchoolNews } from '../components/SchoolNews';
 import { PaymentSubmissionForm } from '../components/PaymentSubmissionForm';
 import { useReactToPrint } from 'react-to-print';
 import { requestForToken } from '../firebase-config';
-// 👇 AJOUT : Import de l'icône cadenas
 import { FaLock } from 'react-icons/fa'; 
+// 1. IMPORT DU FOOTER
+import { Footer } from '../components/Footer';
 
 // --- Types ---
 interface Student {
@@ -30,7 +31,7 @@ interface BulletinData {
   bulletinData: {
     appreciation: string;
   };
-  isBlocked?: boolean; // 👈 AJOUT : Champ pour l'état de blocage
+  isBlocked?: boolean; 
 }
 
 const ParentDashboard: React.FC = () => {
@@ -179,7 +180,7 @@ const ParentDashboard: React.FC = () => {
                                 {bulletin && (
                                     <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
                                         
-                                        {/* 👇 MODIF : Cacher la moyenne si bloqué */}
+                                        {/* Affichage Conditionnel : Cacher la moyenne si bloqué */}
                                         {bulletin.isBlocked ? (
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'rgba(255,255,255,0.1)', padding: '5px 12px', borderRadius: '20px' }}>
                                                 <FaLock /> <span>Accès restreint</span>
@@ -216,7 +217,7 @@ const ParentDashboard: React.FC = () => {
                                 {bulletin ? (
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '40px' }}>
                                         
-                                        {/* 👇 MODIF : Affichage Conditionnel (Notes ou Blocage) */}
+                                        {/* Affichage Conditionnel (Notes ou Blocage) */}
                                         <div>
                                             <h3 style={{ marginTop: 0, color: '#0A2240', borderBottom: '2px solid #F0F0F0', paddingBottom: '10px' }}>📊 Résultats par matière</h3>
                                             
@@ -310,6 +311,10 @@ const ParentDashboard: React.FC = () => {
           button { display: none !important; }
         }
       `}</style>
+      
+      {/* 2. PIED DE PAGE AJOUTÉ */}
+      <Footer />
+
     </div>
   );
 };

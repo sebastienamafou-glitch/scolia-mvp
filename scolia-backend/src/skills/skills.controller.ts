@@ -29,4 +29,14 @@ export class SkillsController {
 
     return this.skillsService.findAllBySchool(schoolId);
   }
+
+  // --- ÉVALUER UN ÉLÈVE (Enseignant) ---
+  @Roles('Enseignant')
+  @Post('evaluate')
+  async evaluate(@Request() req, @Body() body: { studentId: number; competenceId: number; level: number; comment?: string }) {
+    return this.skillsService.evaluate({
+        ...body,
+        teacherId: req.user.sub // ID du prof connecté
+    });
+  }
 }

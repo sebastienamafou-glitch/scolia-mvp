@@ -9,8 +9,10 @@ import { SchoolNews } from '../components/SchoolNews';
 import { TransactionValidator } from '../components/TransactionValidator';
 import { FaUserGraduate, FaChalkboardTeacher, FaUserTie, FaUserShield, FaSearch, FaPlus, FaTimes, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { SkillsManager } from '../components/SkillsManager';
+import { TimetableManager } from '../components/TimetableManager';
+import { Footer } from '../components/Footer';
 
-// 1. MISE À JOUR DE L'INTERFACE
+
 interface User {
   id: number;
   nom: string;
@@ -19,7 +21,6 @@ interface User {
   role: string;
   classe?: string;
   photo?: string;
-  // Nouveaux champs
   dateNaissance?: string;
   adresse?: string;
   contactUrgenceNom?: string;
@@ -42,11 +43,10 @@ const AdminDashboard: React.FC = () => {
   const [itemsPerPage] = useState(10);
   const [showCreateForm, setShowCreateForm] = useState(false);
 
-  // 2. MISE À JOUR DE L'ÉTAT INITIAL DU FORMULAIRE
+  // État initial du formulaire
   const [newUser, setNewUser] = useState({
     email: '', password: '', role: 'Enseignant', 
     nom: '', prenom: '', classe: '', parentId: '', photo: '',
-    // Nouveaux champs initialisés à vide
     dateNaissance: '',
     adresse: '',
     contactUrgenceNom: '',
@@ -93,13 +93,12 @@ const AdminDashboard: React.FC = () => {
   const countParents = allUsers.filter(u => u.role === 'Parent').length;
   const countAdmins = allUsers.filter(u => u.role === 'Admin').length;
 
-  // 3. MISE À JOUR DU HANDLER DE CRÉATION
+  // HANDLER DE CRÉATION
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const payload: any = { ...newUser };
       
-      // Nettoyage des champs inutiles si ce n'est pas un élève
       if (payload.role !== 'Élève') {
           delete payload.classe;
           delete payload.parentId;
@@ -116,7 +115,6 @@ const AdminDashboard: React.FC = () => {
       alert('Utilisateur créé avec succès !');
       fetchUsers(); 
       
-      // Reset complet du formulaire
       setNewUser({ 
           email: '', password: '', role: 'Enseignant', nom: '', prenom: '', 
           classe: '', parentId: '', photo: '', dateNaissance: '', adresse: '',
@@ -205,13 +203,12 @@ const AdminDashboard: React.FC = () => {
                 </div>
             </div>
 
-            {/* 4. FORMULAIRE DE CRÉATION MIS À JOUR */}
+            {/* 4. FORMULAIRE DE CRÉATION */}
             {showCreateForm && (
                 <div style={{ padding: '20px', backgroundColor: '#fafafa', borderBottom: '1px solid #eee' }}>
                     <h3 style={{ marginTop: 0, color: '#0A2240' }}>Ajouter un utilisateur</h3>
                     <form onSubmit={handleCreate} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
                         
-                        {/* Champs de base */}
                         <select value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})} style={inputStyle}>
                             <option value="Enseignant">Enseignant</option>
                             <option value="Élève">Élève</option>
@@ -224,7 +221,6 @@ const AdminDashboard: React.FC = () => {
                         <input type="password" placeholder="Mot de passe" required value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} style={inputStyle} />
                         <input type="text" placeholder="URL Photo (opt)" value={newUser.photo} onChange={e => setNewUser({...newUser, photo: e.target.value})} style={inputStyle} />
                         
-                        {/* CHAMPS SPÉCIFIQUES ÉLÈVE (Zone Bleue) */}
                         {newUser.role === 'Élève' && (
                             <div style={{ gridColumn: '1 / -1', backgroundColor: '#E3F2FD', padding: '15px', borderRadius: '8px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
                                 <h4 style={{ gridColumn: '1 / -1', margin: '0 0 10px 0', color: '#1565C0' }}>Dossier Scolaire & Vie</h4>
@@ -306,13 +302,21 @@ const AdminDashboard: React.FC = () => {
         {/* MODULES DE GESTION BAS DE PAGE */}
         <div style={{ marginTop: '40px', display: 'grid', gap: '30px' }}>
             <ClassManager />
+
+            {/* --- AJOUT TIMETABLE MANAGER --- */}
+            <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px' }}>
+                <h2 style={{ color: '#0A2240', marginTop: 0 }}>📅 Gestion des Emplois du Temps</h2>
+                <TimetableManager />
+            </div>
+            {/* ------------------------------- */}
+
             <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px' }}>
                 <h2 style={{ color: '#0A2240', marginTop: 0 }}>📑 Bulletins</h2>
                 <BulletinEditor />
             </div>
         </div>
 
-        {/* MODULE DE GESTION DES COMPÉTENCES (Ajouté) */}
+        {/* MODULE DE GESTION DES COMPÉTENCES */}
         <div style={{ marginTop: '40px', paddingTop: '40px', borderTop: '2px dashed #ccc' }}>
             <h3 style={{ color: '#0A2240', marginTop: 0 }}>🌟 Compétences & Soft Skills</h3>
             <SkillsManager />
@@ -322,6 +326,10 @@ const AdminDashboard: React.FC = () => {
 
       {/* MODALE ÉLÈVE */}
       {selectedStudent && <StudentCard student={selectedStudent} onClose={() => setSelectedStudent(null)} />}
+
+      {/* 2. PIED DE PAGE AJOUTÉ */}
+      <Footer />
+
     </div>
   );
 };
