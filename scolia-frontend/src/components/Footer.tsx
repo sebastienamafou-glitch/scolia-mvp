@@ -1,35 +1,73 @@
 import React from 'react';
-// Importez votre logo ici
-import webappciLogo from '../assets/webappci-logo.png'; // Ajustez le chemin et le nom
+// Assurez-vous que l'image est bien dans src/assets/
+import webappciLogo from '../assets/webappci-logo.png';
 
 export const Footer: React.FC = () => {
-  const currentYear = new Date().getFullYear();
+    const currentYear = new Date().getFullYear();
 
-  return (
-    <footer style={{ 
-        textAlign: 'center', 
-        padding: '20px', 
-        marginTop: 'auto', // Pousse le footer vers le bas si la page est courte
-        borderTop: '1px solid #eee',
-        color: '#888',
-        fontSize: '0.85rem',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: '8px'
-    }}>
-      <span>© {currentYear} Scolia. Tous droits réservés.</span>
-      <span style={{ margin: '0 5px' }}>|</span>
-      <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-          Créé par 
-          <a href="https://webapp.com" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', color: '#555', fontWeight: 'bold' }}>
-            {/* Si vous avez l'image : */}
-            <img src={webappciLogo} alt="webappci" style={{ height: '20px', marginRight: '4px' }} />
-            {/* Ou juste du texte stylisé si pas d'image : */}
-            {/* <span style={{ color: '#F77F00' }}>web</span>appci */}
-             webappci
-          </a>
-      </span>
-    </footer>
-  );
+    return (
+        <footer style={{
+            backgroundColor: 'white',
+            borderTop: '1px solid #e0e0e0',
+            padding: '20px 30px',
+            marginTop: 'auto', // Pousse le footer vers le bas
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '20px',
+            fontSize: '0.85rem',
+            color: '#666',
+            boxShadow: '0 -2px 10px rgba(0,0,0,0.02)'
+        }}>
+            
+            {/* GAUCHE : Logo & Crédit Développeur */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>Développé par</span>
+                <a href="https://webappci.com" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+                    <img 
+                        src={webappciLogo} 
+                        alt="Logo WebappCI" 
+                        style={{ height: '30px', width: 'auto', objectFit: 'contain' }} 
+                    />
+                    <span style={{ fontWeight: 'bold', color: '#0A2240', marginLeft: '8px' }}>WebappCI</span>
+                </a>
+            </div>
+
+            {/* CENTRE : Copyright */}
+            <div style={{ textAlign: 'center' }}>
+                &copy; {currentYear} Scolia. Une solution <strong>WebappCI</strong>.
+                <br />
+                <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>Tous droits réservés.</span>
+            </div>
+
+            {/* DROITE : Liens Légaux */}
+            <div style={{ display: 'flex', gap: '15px' }}>
+                <a 
+                    href="/privacy" 
+                    style={linkStyle}
+                    onMouseOver={(e) => e.currentTarget.style.color = '#0A2240'}
+                    onMouseOut={(e) => e.currentTarget.style.color = '#666'}
+                >
+                    Politique de Confidentialité
+                </a>
+                <span style={{ opacity: 0.3 }}>|</span>
+                <a 
+                    href="/terms" 
+                    style={linkStyle}
+                    onMouseOver={(e) => e.currentTarget.style.color = '#0A2240'}
+                    onMouseOut={(e) => e.currentTarget.style.color = '#666'}
+                >
+                    Mentions Légales
+                </a>
+            </div>
+        </footer>
+    );
+};
+
+const linkStyle = {
+    color: '#666',
+    textDecoration: 'none',
+    transition: 'color 0.2s',
+    cursor: 'pointer'
 };

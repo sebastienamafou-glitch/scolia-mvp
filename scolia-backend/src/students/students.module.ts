@@ -2,12 +2,10 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { StudentsService } from './students.service';
 import { StudentsController } from './students.controller';
-import { Student } from './entities/student.entity';
-import { User } from '../users/entities/user.entity'; // 👈 IMPORT AJOUTÉ
+import { User } from '../users/entities/user.entity'; // 👈 IMPORT
 
 @Module({
-  // On ajoute User dans la liste pour pouvoir l'utiliser dans le service
-  imports: [TypeOrmModule.forFeature([Student, User])], 
+  imports: [TypeOrmModule.forFeature([User])], // 👈 ON INJECTE USER
   controllers: [StudentsController],
   providers: [StudentsService],
   exports: [StudentsService],
