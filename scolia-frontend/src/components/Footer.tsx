@@ -24,7 +24,8 @@ export const Footer: React.FC = () => {
             {/* GAUCHE : Logo & Crédit Développeur */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>Développé par</span>
-                <a href="https://webappci.com" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+                {/* 👇 LIEN CORRIGÉ ICI */}
+                <a href="https://www.webappci.com/" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
                     <img 
                         src={webappciLogo} 
                         alt="Logo WebappCI" 
