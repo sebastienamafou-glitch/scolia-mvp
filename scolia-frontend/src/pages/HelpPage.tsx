@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Logo } from '../components/Logo';
-import { FaArrowLeft, FaUserTie, FaChalkboardTeacher, FaUserGraduate, FaUsers, FaLifeRing, FaCode } from 'react-icons/fa';
+import { FaArrowLeft, FaUserTie, FaChalkboardTeacher, FaUsers, FaLifeRing, FaCode } from 'react-icons/fa';
 
 const HelpPage: React.FC = () => {
   const { userRole } = useAuth();

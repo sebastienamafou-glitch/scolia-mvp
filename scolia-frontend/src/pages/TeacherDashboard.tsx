@@ -1,20 +1,20 @@
 // scolia-frontend/src/pages/TeacherDashboard.tsx
 
-import React, { useState, useEffect } from 'react'; // Ajout de useEffect
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import api from '../services/api'; // Ajout de api
+import api from '../services/api';
 import { Logo } from '../components/Logo';
+import { Link } from 'react-router-dom'; // 👈 IMPORT AJOUTÉ POUR LE LIEN
 
 // Imports des modules
 import { NoteEntry, AttendanceEntry } from '../components/TeacherEntries';
 import { BulletinEditor } from '../components/BulletinEditor';
 import { SchoolNews } from '../components/SchoolNews';
-import { SkillsEvaluator } from '../components/SkillsEvaluator'; // 👈 IMPORT AJOUTÉ
+import { SkillsEvaluator } from '../components/SkillsEvaluator';
 
 const TeacherDashboard: React.FC = () => {
     const { user, logout } = useAuth();
     
-    // Mise à jour des onglets possibles avec 'skills'
     const [activeTab, setActiveTab] = useState<'appel' | 'notes' | 'bulletins' | 'skills'>('appel');
 
     return (
@@ -29,9 +29,25 @@ const TeacherDashboard: React.FC = () => {
                         <span style={{ fontSize: '0.9rem', color: '#666' }}>Bonjour, {user?.prenom} {user?.nom}</span>
                     </div>
                 </div>
-                <button onClick={logout} style={{ backgroundColor: '#F77F00', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
-                    Déconnexion
-                </button>
+
+                {/* 👈 NOUVEAU BLOC BOUTONS (AIDE + DÉCONNEXION) */}
+                <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                    {/* BOUTON AIDE */}
+                    <Link 
+                        to="/help" 
+                        style={{ 
+                            backgroundColor: '#E3F2FD', color: '#0A2240', 
+                            padding: '8px 15px', borderRadius: '5px', textDecoration: 'none', 
+                            fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.9rem'
+                        }}
+                    >
+                        ❓ Aide
+                    </Link>
+
+                    <button onClick={logout} style={{ backgroundColor: '#F77F00', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
+                        Déconnexion
+                    </button>
+                </div>
             </header>
 
             <div style={{ maxWidth: '1000px', margin: '30px auto', padding: '0 20px' }}>
@@ -79,7 +95,6 @@ const TeacherDashboard: React.FC = () => {
                     >
                         🎓 Conseils de Classe
                     </button>
-                    {/* 👈 NOUVEAU BOUTON AJOUTÉ */}
                     <button 
                         onClick={() => setActiveTab('skills')}
                         style={{
@@ -99,7 +114,6 @@ const TeacherDashboard: React.FC = () => {
                     {activeTab === 'appel' && <AttendanceEntry />}
                     {activeTab === 'notes' && <NoteEntry />}
                     {activeTab === 'bulletins' && <BulletinEditor />}
-                    {/* 👈 NOUVEAU CONTENU AJOUTÉ */}
                     {activeTab === 'skills' && <SkillsManagerWrapper />} 
                 </div>
 
@@ -114,7 +128,6 @@ const SkillsManagerWrapper = () => {
     const [selectedClassId, setSelectedClassId] = useState('');
 
     useEffect(() => {
-        // Charger la liste des classes disponibles pour cet enseignant
         const fetchClasses = async () => {
             try {
                 const res = await api.get('/classes');

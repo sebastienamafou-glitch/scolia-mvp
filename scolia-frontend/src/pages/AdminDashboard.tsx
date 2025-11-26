@@ -1,3 +1,5 @@
+// scolia-frontend/src/pages/AdminDashboard.tsx
+
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -11,7 +13,7 @@ import { FaUserGraduate, FaChalkboardTeacher, FaUserTie, FaUserShield, FaSearch,
 import { SkillsManager } from '../components/SkillsManager';
 import { TimetableManager } from '../components/TimetableManager';
 import { Footer } from '../components/Footer';
-
+import { Link } from 'react-router-dom'; // 👈 IMPORT AJOUTÉ POUR LE LIEN
 
 interface User {
   id: number;
@@ -137,9 +139,25 @@ const AdminDashboard: React.FC = () => {
             <Logo width={36} height={36} showText={false} />
             <h1 style={{ color: '#0A2240', margin: 0, fontSize: '1.3rem' }}>Dashboard Administration</h1>
         </div>
-        <button onClick={logout} style={{ backgroundColor: '#e74c3c', color: 'white', border: 'none', padding: '8px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
-            Déconnexion
-        </button>
+        
+        {/* 👈 NOUVEAU BLOC BOUTONS */}
+        <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+            {/* BOUTON AIDE */}
+            <Link 
+                to="/help" 
+                style={{ 
+                    backgroundColor: '#E3F2FD', color: '#0A2240', 
+                    padding: '8px 15px', borderRadius: '5px', textDecoration: 'none', 
+                    fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.9rem'
+                }}
+            >
+                ❓ Aide
+            </Link>
+
+            <button onClick={logout} style={{ backgroundColor: '#e74c3c', color: 'white', border: 'none', padding: '8px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
+                Déconnexion
+            </button>
+        </div>
       </header>
 
       <div style={{ maxWidth: '1200px', margin: '30px auto', padding: '0 20px' }}>

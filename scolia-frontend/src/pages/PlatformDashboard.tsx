@@ -1,9 +1,12 @@
+// scolia-frontend/src/pages/PlatformDashboard.tsx
+
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Logo } from '../components/Logo';
 // Assurez-vous d'avoir les icônes
 import { FaSchool, FaCheckCircle, FaBan, FaSearch, FaPlus, FaPowerOff, FaTimes, FaChevronLeft, FaChevronRight, FaMapMarkerAlt } from 'react-icons/fa';
+import { Link } from 'react-router-dom'; // 👈 IMPORT AJOUTÉ
 
 interface School {
   id: number;
@@ -119,9 +122,25 @@ const PlatformDashboard: React.FC = () => {
                 <span style={{ fontSize: '0.8rem', color: '#a0aec0' }}>Super Admin Control Center</span>
             </div>
         </div>
-        <button onClick={logout} style={{ backgroundColor: '#e53e3e', color: 'white', border: 'none', padding: '8px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
-            Déconnexion
-        </button>
+
+        {/* 👈 NOUVEAU BLOC BOUTONS */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            {/* BOUTON AIDE */}
+            <Link 
+                to="/help" 
+                style={{ 
+                    backgroundColor: '#4a5568', color: 'white', 
+                    padding: '8px 15px', borderRadius: '5px', textDecoration: 'none', 
+                    fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.9rem' 
+                }}
+            >
+                ❓ Aide
+            </Link>
+
+            <button onClick={logout} style={{ backgroundColor: '#e53e3e', color: 'white', border: 'none', padding: '8px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
+                Déconnexion
+            </button>
+        </div>
       </header>
 
       <div style={{ maxWidth: '1200px', margin: '30px auto', padding: '0 20px' }}>

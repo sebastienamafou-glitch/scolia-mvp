@@ -1,7 +1,8 @@
 // scolia-frontend/src/App.tsx
 
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+// 👇 AJOUT DE 'Link' DANS LES IMPORTS
+import { Routes, Route, Navigate, Link } from 'react-router-dom'; 
 import { useAuth } from './contexts/AuthContext';
 import LoginPage from './pages/LoginPage';
 import ParentDashboard from './pages/ParentDashboard';
@@ -9,8 +10,8 @@ import TeacherDashboard from './pages/TeacherDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import PlatformDashboard from './pages/PlatformDashboard';
 import PrivateRoute from './components/PrivateRoute'; 
-// Assurez-vous que ce fichier existe, sinon remplacez par un placeholder
-import NotesPage from './pages/NotesPage'; 
+import NotesPage from './pages/NotesPage';
+import HelpPage from './pages/HelpPage'; 
 
 const App: React.FC = () => {
   const { userRole, isLoading, logout } = useAuth();
@@ -27,10 +28,19 @@ const App: React.FC = () => {
       {/* En-tête global pour les rôles simples (ex: Élève) */}
       {showGlobalHeader && (
         <header style={{ padding: '10px 20px', backgroundColor: '#0A2240', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontWeight: 'bold' }}>Scolia - Espace Élève</span>
-          <button onClick={logout} style={{ backgroundColor: '#F77F00', border: 'none', padding: '8px 15px', cursor: 'pointer', color: 'white', borderRadius: '4px', fontWeight: 'bold' }}>
-            Déconnexion
-          </button>
+          <span style={{ fontWeight: 'bold' }}>Scolia - {userRole}</span>
+          
+          {/* 👇 NOUVEAU BLOC : AIDE + DÉCONNEXION */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+              {/* BOUTON AIDE */}
+              <Link to="/help" style={{ textDecoration:'none', color:'white', display:'flex', alignItems:'center', gap:'5px', fontSize:'0.9rem', fontWeight: '500' }}>
+                ❓ Aide
+              </Link>
+
+              <button onClick={logout} style={{ backgroundColor: '#F77F00', border: 'none', padding: '8px 15px', cursor: 'pointer', color: 'white', borderRadius: '4px', fontWeight: 'bold' }}>
+                Déconnexion
+              </button>
+          </div>
         </header>
       )}
 
@@ -81,7 +91,14 @@ const App: React.FC = () => {
             </PrivateRoute>
           } />
 
-          {/* Catch-all : Redirige tout lien inconnu vers le login */}
+          {/* Route Aide (Accessible à tous les connectés) */}
+          <Route path="/help" element={
+            <PrivateRoute roles={['SuperAdmin', 'Admin', 'Enseignant', 'Parent', 'Élève']}>
+              <HelpPage />
+            </PrivateRoute>
+          } />
+
+          {/* Catch-all */}
           <Route path="*" element={<Navigate to="/login" replace />} />
 
         </Routes>
