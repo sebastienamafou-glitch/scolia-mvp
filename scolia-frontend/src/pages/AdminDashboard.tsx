@@ -9,11 +9,11 @@ import { BulletinEditor } from '../components/BulletinEditor';
 import { StudentCard } from '../components/StudentCard';
 import { SchoolNews } from '../components/SchoolNews';
 import { TransactionValidator } from '../components/TransactionValidator';
-import { FaUserGraduate, FaChalkboardTeacher, FaUserTie, FaUserShield, FaSearch, FaPlus, FaTimes, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { FaUserGraduate, FaChalkboardTeacher, FaUserTie, FaUserShield, FaSearch, FaPlus, FaTimes, FaChevronLeft, FaChevronRight, FaCog } from 'react-icons/fa';
 import { SkillsManager } from '../components/SkillsManager';
 import { TimetableManager } from '../components/TimetableManager';
 import { Footer } from '../components/Footer';
-import { Link } from 'react-router-dom'; // 👈 IMPORT AJOUTÉ POUR LE LIEN
+import { Link } from 'react-router-dom';
 
 interface User {
   id: number;
@@ -33,10 +33,14 @@ interface User {
 const AdminDashboard: React.FC = () => {
   const { logout } = useAuth();
   
-  // Données
+  // Données Utilisateurs
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
+
+  // Données École (Paramètres)
+  const [mySchool, setMySchool] = useState<any>(null);
+  const [schoolForm, setSchoolForm] = useState({ name: '', address: '', logo: '', description: '' });
 
   // États d'Interface (UI)
   const [activeTab, setActiveTab] = useState<string>('Tous');
@@ -45,7 +49,7 @@ const AdminDashboard: React.FC = () => {
   const [itemsPerPage] = useState(10);
   const [showCreateForm, setShowCreateForm] = useState(false);
 
-  // État initial du formulaire
+  // État initial du formulaire utilisateur
   const [newUser, setNewUser] = useState({
     email: '', password: '', role: 'Enseignant', 
     nom: '', prenom: '', classe: '', parentId: '', photo: '',
@@ -58,6 +62,7 @@ const AdminDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchUsers();
+    fetchMySchool();
   }, []);
 
   const fetchUsers = async () => {
@@ -68,6 +73,33 @@ const AdminDashboard: React.FC = () => {
       console.error("Erreur chargement utilisateurs", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchMySchool = async () => {
+    try {
+        const res = await api.get('/schools/my-school');
+        setMySchool(res.data);
+        // Pré-remplir le formulaire
+        setSchoolForm({
+            name: res.data.name || '',
+            address: res.data.address || '',
+            logo: res.data.logo || '',
+            description: res.data.description || ''
+        });
+    } catch (e) {
+        console.error("Erreur chargement école", e);
+    }
+  };
+
+  const handleUpdateSchool = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+        await api.patch('/schools/my-school', schoolForm);
+        alert('Informations de l\'école mises à jour !');
+        fetchMySchool();
+    } catch (e) {
+        alert("Erreur lors de la mise à jour.");
     }
   };
 
@@ -95,12 +127,13 @@ const AdminDashboard: React.FC = () => {
   const countParents = allUsers.filter(u => u.role === 'Parent').length;
   const countAdmins = allUsers.filter(u => u.role === 'Admin').length;
 
-  // HANDLER DE CRÉATION
+  // --- HANDLER DE CRÉATION UTILISATEUR (MISE À JOUR) ---
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const payload: any = { ...newUser };
       
+      // Nettoyage des champs inutiles selon le rôle
       if (payload.role !== 'Élève') {
           delete payload.classe;
           delete payload.parentId;
@@ -113,10 +146,20 @@ const AdminDashboard: React.FC = () => {
           payload.parentId = payload.parentId ? Number(payload.parentId) : undefined;
       }
 
-      await api.post('/users', payload);
-      alert('Utilisateur créé avec succès !');
+      // 1. Envoi au serveur
+      const response = await api.post('/users', payload);
+      const createdUser = response.data;
+
+      // 2. Déterminer quel mot de passe afficher
+      // Priorité : Mot de passe généré par le serveur (plainPassword) > Mot de passe saisi > Défaut
+      const passwordDisplay = createdUser.plainPassword || newUser.password || 'scolia123';
+
+      // 3. Affichage de l'alerte avec les identifiants
+      alert(`✅ Utilisateur créé avec succès !\n\n📧 Identifiant : ${createdUser.email}\n🔑 Mot de passe : ${passwordDisplay}`);
+      
       fetchUsers(); 
       
+      // Réinitialisation du formulaire
       setNewUser({ 
           email: '', password: '', role: 'Enseignant', nom: '', prenom: '', 
           classe: '', parentId: '', photo: '', dateNaissance: '', adresse: '',
@@ -124,7 +167,8 @@ const AdminDashboard: React.FC = () => {
       });
       setShowCreateForm(false);
     } catch (error) {
-      alert("Erreur lors de la création.");
+      console.error(error);
+      alert("Erreur lors de la création. Vérifiez que tous les champs obligatoires sont remplis.");
     }
   };
 
@@ -133,16 +177,24 @@ const AdminDashboard: React.FC = () => {
   return (
     <div style={{ backgroundColor: '#f0f2f5', minHeight: '100vh', color: '#333', fontFamily: 'sans-serif' }}>
       
-      {/* HEADER */}
+      {/* HEADER DYNAMIQUE */}
       <header style={{ backgroundColor: 'white', padding: '15px 30px', borderBottom: '1px solid #ddd', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 100 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <Logo width={36} height={36} showText={false} />
-            <h1 style={{ color: '#0A2240', margin: 0, fontSize: '1.3rem' }}>Dashboard Administration</h1>
+            {mySchool?.logo ? (
+                <img src={mySchool.logo} alt="Logo École" style={{ width: '40px', height: '40px', objectFit: 'contain', borderRadius: '5px' }} />
+            ) : (
+                <Logo width={36} height={36} showText={false} />
+            )}
+            
+            <div>
+                <h1 style={{ color: '#0A2240', margin: 0, fontSize: '1.3rem' }}>
+                    {mySchool ? mySchool.name : 'Dashboard Administration'}
+                </h1>
+                {mySchool && <span style={{ fontSize: '0.8rem', color: '#666' }}>{mySchool.address}</span>}
+            </div>
         </div>
         
-        {/* 👈 NOUVEAU BLOC BOUTONS */}
         <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-            {/* BOUTON AIDE */}
             <Link 
                 to="/help" 
                 style={{ 
@@ -163,29 +215,33 @@ const AdminDashboard: React.FC = () => {
       <div style={{ maxWidth: '1200px', margin: '30px auto', padding: '0 20px' }}>
 
         {/* 1. SECTION KPI */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '30px' }}>
-            <KpiCard title="Élèves" count={countStudents} icon={<FaUserGraduate />} color="#3498db" />
-            <KpiCard title="Enseignants" count={countTeachers} icon={<FaChalkboardTeacher />} color="#e67e22" />
-            <KpiCard title="Parents" count={countParents} icon={<FaUserTie />} color="#2ecc71" />
-            <KpiCard title="Admin Staff" count={countAdmins} icon={<FaUserShield />} color="#34495e" />
-        </div>
+        {activeTab !== 'Paramètres' && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '30px' }}>
+                <KpiCard title="Élèves" count={countStudents} icon={<FaUserGraduate />} color="#3498db" />
+                <KpiCard title="Enseignants" count={countTeachers} icon={<FaChalkboardTeacher />} color="#e67e22" />
+                <KpiCard title="Parents" count={countParents} icon={<FaUserTie />} color="#2ecc71" />
+                <KpiCard title="Admin Staff" count={countAdmins} icon={<FaUserShield />} color="#34495e" />
+            </div>
+        )}
 
         {/* 2. MODULES ALERTES */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '30px' }}>
-            <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
-                <SchoolNews />
+        {activeTab !== 'Paramètres' && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '30px' }}>
+                <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+                    <SchoolNews />
+                </div>
+                <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+                    <TransactionValidator />
+                </div>
             </div>
-            <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
-                <TransactionValidator />
-            </div>
-        </div>
+        )}
 
-        {/* 3. GESTION UTILISATEURS */}
+        {/* 3. GESTION PRINCIPALE */}
         <div style={{ backgroundColor: 'white', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
             
-            {/* BARRE D'OUTILS */}
+            {/* BARRE D'OUTILS ET ONGLETS */}
             <div style={{ padding: '20px', borderBottom: '1px solid #eee', display: 'flex', flexWrap: 'wrap', gap: '20px', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', gap: '10px' }}>
+                <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '5px' }}>
                     {['Tous', 'Élève', 'Enseignant', 'Parent', 'Admin'].map(role => (
                         <button 
                             key={role}
@@ -193,159 +249,245 @@ const AdminDashboard: React.FC = () => {
                             style={{
                                 padding: '8px 16px', borderRadius: '20px', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem',
                                 backgroundColor: activeTab === role ? '#0A2240' : '#f0f2f5',
-                                color: activeTab === role ? 'white' : '#555'
+                                color: activeTab === role ? 'white' : '#555',
+                                whiteSpace: 'nowrap'
                             }}
                         >
                             {role}
                         </button>
                     ))}
-                </div>
 
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                    <div style={{ position: 'relative' }}>
-                        <FaSearch style={{ position: 'absolute', left: '10px', top: '10px', color: '#aaa' }} />
-                        <input 
-                            type="text" 
-                            placeholder="Rechercher..." 
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            style={{ padding: '8px 10px 8px 35px', borderRadius: '6px', border: '1px solid #ddd' }}
-                        />
-                    </div>
                     <button 
-                        onClick={() => setShowCreateForm(!showCreateForm)}
-                        style={{ display: 'flex', alignItems: 'center', gap: '5px', backgroundColor: '#F77F00', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
+                        onClick={() => setActiveTab('Paramètres')}
+                        style={{
+                            padding: '8px 16px', borderRadius: '20px', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem',
+                            backgroundColor: activeTab === 'Paramètres' ? '#F77F00' : '#f0f2f5',
+                            color: activeTab === 'Paramètres' ? 'white' : '#555',
+                            display: 'flex', alignItems: 'center', gap: '5px',
+                            whiteSpace: 'nowrap'
+                        }}
                     >
-                        {showCreateForm ? <><FaTimes /> Fermer</> : <><FaPlus /> Nouveau</>}
+                        <FaCog /> Paramètres École
                     </button>
                 </div>
+
+                {activeTab !== 'Paramètres' && (
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <div style={{ position: 'relative' }}>
+                            <FaSearch style={{ position: 'absolute', left: '10px', top: '10px', color: '#aaa' }} />
+                            <input 
+                                type="text" 
+                                placeholder="Rechercher..." 
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                style={{ padding: '8px 10px 8px 35px', borderRadius: '6px', border: '1px solid #ddd' }}
+                            />
+                        </div>
+                        <button 
+                            onClick={() => setShowCreateForm(!showCreateForm)}
+                            style={{ display: 'flex', alignItems: 'center', gap: '5px', backgroundColor: '#F77F00', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
+                        >
+                            {showCreateForm ? <><FaTimes /> Fermer</> : <><FaPlus /> Nouveau</>}
+                        </button>
+                    </div>
+                )}
             </div>
 
-            {/* 4. FORMULAIRE DE CRÉATION */}
-            {showCreateForm && (
-                <div style={{ padding: '20px', backgroundColor: '#fafafa', borderBottom: '1px solid #eee' }}>
-                    <h3 style={{ marginTop: 0, color: '#0A2240' }}>Ajouter un utilisateur</h3>
-                    <form onSubmit={handleCreate} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+            {/* --- CONTENU PRINCIPAL --- */}
+
+            {activeTab === 'Paramètres' ? (
+                // --- VUE PARAMÈTRES ---
+                <div style={{ padding: '30px' }}>
+                    <h2 style={{ color: '#0A2240', marginTop: 0 }}>Personnaliser mon Établissement</h2>
+                    <p style={{ color: '#666', marginBottom: '20px' }}>Modifiez ici les informations visibles sur votre espace et les bulletins.</p>
+                    
+                    <form onSubmit={handleUpdateSchool} style={{ display: 'grid', gap: '20px', maxWidth: '600px' }}>
                         
-                        <select value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})} style={inputStyle}>
-                            <option value="Enseignant">Enseignant</option>
-                            <option value="Élève">Élève</option>
-                            <option value="Parent">Parent</option>
-                            <option value="Admin">Admin</option>
-                        </select>
-                        <input type="text" placeholder="Nom" required value={newUser.nom} onChange={e => setNewUser({...newUser, nom: e.target.value})} style={inputStyle} />
-                        <input type="text" placeholder="Prénom" required value={newUser.prenom} onChange={e => setNewUser({...newUser, prenom: e.target.value})} style={inputStyle} />
-                        <input type="email" placeholder="Email" required value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} style={inputStyle} />
-                        <input type="password" placeholder="Mot de passe" required value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} style={inputStyle} />
-                        <input type="text" placeholder="URL Photo (opt)" value={newUser.photo} onChange={e => setNewUser({...newUser, photo: e.target.value})} style={inputStyle} />
-                        
-                        {newUser.role === 'Élève' && (
-                            <div style={{ gridColumn: '1 / -1', backgroundColor: '#E3F2FD', padding: '15px', borderRadius: '8px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
-                                <h4 style={{ gridColumn: '1 / -1', margin: '0 0 10px 0', color: '#1565C0' }}>Dossier Scolaire & Vie</h4>
-                                
-                                <input type="text" placeholder="Classe (ex: 6ème A)" value={newUser.classe} onChange={e => setNewUser({...newUser, classe: e.target.value})} style={inputStyle} />
-                                
-                                <select value={newUser.parentId} onChange={e => setNewUser({...newUser, parentId: e.target.value})} style={inputStyle}>
-                                    <option value="">-- Lier à un Parent --</option>
-                                    {availableParents.map(p => <option key={p.id} value={p.id}>{p.nom} {p.prenom}</option>)}
-                                </select>
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#444' }}>Nom de l'établissement</label>
+                            <input 
+                                type="text" 
+                                value={schoolForm.name} 
+                                onChange={e => setSchoolForm({...schoolForm, name: e.target.value})} 
+                                style={inputStyle} 
+                                required
+                            />
+                        </div>
 
-                                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                    <label style={{fontSize:'0.8rem', color:'#666'}}>Date de Naissance</label>
-                                    <input type="date" value={newUser.dateNaissance} onChange={e => setNewUser({...newUser, dateNaissance: e.target.value})} style={inputStyle} />
-                                </div>
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#444' }}>Adresse / Ville</label>
+                            <input 
+                                type="text" 
+                                value={schoolForm.address} 
+                                onChange={e => setSchoolForm({...schoolForm, address: e.target.value})} 
+                                style={inputStyle} 
+                            />
+                        </div>
 
-                                <input type="text" placeholder="Adresse de résidence" value={newUser.adresse} onChange={e => setNewUser({...newUser, adresse: e.target.value})} style={inputStyle} />
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#444' }}>URL du Logo</label>
+                            <input 
+                                type="text" 
+                                placeholder="https://mon-ecole.com/logo.png"
+                                value={schoolForm.logo} 
+                                onChange={e => setSchoolForm({...schoolForm, logo: e.target.value})} 
+                                style={inputStyle} 
+                            />
+                            <p style={{ fontSize: '0.8rem', color: '#888', marginTop: '5px' }}>
+                                Utilisez un lien direct vers une image (clic droit sur une image {'>'} Copier l'adresse de l'image).
+                            </p>
+                        </div>
 
-                                <input type="text" placeholder="Nom Contact Urgence" value={newUser.contactUrgenceNom} onChange={e => setNewUser({...newUser, contactUrgenceNom: e.target.value})} style={inputStyle} />
-                                <input type="text" placeholder="Tél Contact Urgence" value={newUser.contactUrgenceTel} onChange={e => setNewUser({...newUser, contactUrgenceTel: e.target.value})} style={inputStyle} />
-                                
-                                <textarea 
-                                    placeholder="Infos Médicales / Allergies (R.A.S par défaut)" 
-                                    value={newUser.infosMedicales} 
-                                    onChange={e => setNewUser({...newUser, infosMedicales: e.target.value})} 
-                                    style={{ ...inputStyle, gridColumn: '1 / -1', minHeight: '60px' }} 
-                                />
+                        {schoolForm.logo && (
+                            <div style={{ padding: '15px', border: '1px dashed #ccc', borderRadius: '8px', textAlign: 'center', backgroundColor: '#fafafa' }}>
+                                <p style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: '#555' }}>Aperçu du logo :</p>
+                                <img src={schoolForm.logo} alt="Aperçu" style={{ maxHeight: '80px', objectFit: 'contain' }} />
                             </div>
                         )}
 
-                        <button type="submit" style={{ gridColumn: '1 / -1', backgroundColor: '#008F39', color: 'white', border: 'none', padding: '10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Valider la création</button>
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#444' }}>Description / Slogan</label>
+                            <textarea 
+                                placeholder="Une école d'excellence..."
+                                value={schoolForm.description} 
+                                onChange={e => setSchoolForm({...schoolForm, description: e.target.value})} 
+                                style={{ ...inputStyle, minHeight: '80px', fontFamily: 'inherit' }} 
+                            />
+                        </div>
+
+                        <button type="submit" style={{ padding: '14px', backgroundColor: '#008F39', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem', marginTop: '10px' }}>
+                            💾 Enregistrer les modifications
+                        </button>
                     </form>
                 </div>
+            ) : (
+                // --- VUE TABLEAU UTILISATEURS ---
+                <>
+                    {showCreateForm && (
+                        <div style={{ padding: '20px', backgroundColor: '#fafafa', borderBottom: '1px solid #eee' }}>
+                            <h3 style={{ marginTop: 0, color: '#0A2240' }}>Ajouter un utilisateur</h3>
+                            <form onSubmit={handleCreate} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+                                
+                                <select value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})} style={inputStyle}>
+                                    <option value="Enseignant">Enseignant</option>
+                                    <option value="Élève">Élève</option>
+                                    <option value="Parent">Parent</option>
+                                    <option value="Admin">Admin</option>
+                                </select>
+                                <input type="text" placeholder="Nom" required value={newUser.nom} onChange={e => setNewUser({...newUser, nom: e.target.value})} style={inputStyle} />
+                                <input type="text" placeholder="Prénom" required value={newUser.prenom} onChange={e => setNewUser({...newUser, prenom: e.target.value})} style={inputStyle} />
+                                <input type="email" placeholder="Email" required value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} style={inputStyle} />
+                                <input type="password" placeholder="Mot de passe (laisser vide pour auto)" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} style={inputStyle} />
+                                <input type="text" placeholder="URL Photo (opt)" value={newUser.photo} onChange={e => setNewUser({...newUser, photo: e.target.value})} style={inputStyle} />
+                                
+                                {newUser.role === 'Élève' && (
+                                    <div style={{ gridColumn: '1 / -1', backgroundColor: '#E3F2FD', padding: '15px', borderRadius: '8px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+                                        <h4 style={{ gridColumn: '1 / -1', margin: '0 0 10px 0', color: '#1565C0' }}>Dossier Scolaire & Vie</h4>
+                                        
+                                        <input type="text" placeholder="Classe (ex: 6ème A)" value={newUser.classe} onChange={e => setNewUser({...newUser, classe: e.target.value})} style={inputStyle} />
+                                        
+                                        <select value={newUser.parentId} onChange={e => setNewUser({...newUser, parentId: e.target.value})} style={inputStyle}>
+                                            <option value="">-- Lier à un Parent --</option>
+                                            {availableParents.map(p => <option key={p.id} value={p.id}>{p.nom} {p.prenom}</option>)}
+                                        </select>
+
+                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                            <label style={{fontSize:'0.8rem', color:'#666'}}>Date de Naissance</label>
+                                            <input type="date" value={newUser.dateNaissance} onChange={e => setNewUser({...newUser, dateNaissance: e.target.value})} style={inputStyle} />
+                                        </div>
+
+                                        <input type="text" placeholder="Adresse de résidence" value={newUser.adresse} onChange={e => setNewUser({...newUser, adresse: e.target.value})} style={inputStyle} />
+
+                                        <input type="text" placeholder="Nom Contact Urgence" value={newUser.contactUrgenceNom} onChange={e => setNewUser({...newUser, contactUrgenceNom: e.target.value})} style={inputStyle} />
+                                        <input type="text" placeholder="Tél Contact Urgence" value={newUser.contactUrgenceTel} onChange={e => setNewUser({...newUser, contactUrgenceTel: e.target.value})} style={inputStyle} />
+                                        
+                                        <textarea 
+                                            placeholder="Infos Médicales / Allergies (R.A.S par défaut)" 
+                                            value={newUser.infosMedicales} 
+                                            onChange={e => setNewUser({...newUser, infosMedicales: e.target.value})} 
+                                            style={{ ...inputStyle, gridColumn: '1 / -1', minHeight: '60px' }} 
+                                        />
+                                    </div>
+                                )}
+
+                                <button type="submit" style={{ gridColumn: '1 / -1', backgroundColor: '#008F39', color: 'white', border: 'none', padding: '10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Valider la création</button>
+                            </form>
+                        </div>
+                    )}
+
+                    <div style={{ overflowX: 'auto', width: '100%' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem', minWidth: '600px' }}>
+                            <thead style={{ backgroundColor: '#f8f9fa', color: '#666' }}>
+                                <tr>
+                                    <th style={{ padding: '15px', textAlign: 'left' }}>Photo</th>
+                                    <th style={{ padding: '15px', textAlign: 'left' }}>Identité</th>
+                                    <th style={{ padding: '15px', textAlign: 'left' }}>Rôle</th>
+                                    <th style={{ padding: '15px', textAlign: 'left' }}>Contact</th>
+                                    <th style={{ padding: '15px', textAlign: 'left' }}>Infos</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {loading ? <tr><td colSpan={5} style={{ padding: '20px', textAlign: 'center' }}>Chargement...</td></tr> : 
+                                currentUsers.length === 0 ? <tr><td colSpan={5} style={{ padding: '20px', textAlign: 'center' }}>Aucun résultat trouvé.</td></tr> :
+                                currentUsers.map(user => (
+                                    <tr key={user.id} style={{ borderBottom: '1px solid #eee', cursor: user.role === 'Élève' ? 'pointer' : 'default' }} onClick={() => user.role === 'Élève' && setSelectedStudent(user)}>
+                                        <td style={{ padding: '10px 15px' }}>
+                                            {user.photo ? <img src={user.photo} alt="" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover' }} /> : 
+                                            <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#ddd', display:'flex', alignItems:'center', justifyContent:'center' }}>{user.nom[0]}</div>}
+                                        </td>
+                                        <td style={{ padding: '10px 15px', fontWeight: 'bold' }}>{user.nom} {user.prenom}</td>
+                                        <td style={{ padding: '10px 15px' }}>
+                                            <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', backgroundColor: getRoleColor(user.role).bg, color: getRoleColor(user.role).text }}>
+                                                {user.role}
+                                            </span>
+                                        </td>
+                                        <td style={{ padding: '10px 15px', color: '#666' }}>{user.email}</td>
+                                        <td style={{ padding: '10px 15px' }}>{user.classe || '-'}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* PAGINATION */}
+                    <div style={{ padding: '15px', borderTop: '1px solid #eee', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '15px' }}>
+                        <span style={{ fontSize: '0.9rem', color: '#666' }}>Page {currentPage} sur {totalPages}</span>
+                        <div style={{ display: 'flex', gap: '5px' }}>
+                            <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} style={paginationBtnStyle}><FaChevronLeft /></button>
+                            <button onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages} style={paginationBtnStyle}><FaChevronRight /></button>
+                        </div>
+                    </div>
+                </>
             )}
-
-            {/* TABLEAU DES DONNÉES */}
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                <thead style={{ backgroundColor: '#f8f9fa', color: '#666' }}>
-                    <tr>
-                        <th style={{ padding: '15px', textAlign: 'left' }}>Photo</th>
-                        <th style={{ padding: '15px', textAlign: 'left' }}>Identité</th>
-                        <th style={{ padding: '15px', textAlign: 'left' }}>Rôle</th>
-                        <th style={{ padding: '15px', textAlign: 'left' }}>Contact</th>
-                        <th style={{ padding: '15px', textAlign: 'left' }}>Infos</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {loading ? <tr><td colSpan={5} style={{ padding: '20px', textAlign: 'center' }}>Chargement...</td></tr> : 
-                     currentUsers.length === 0 ? <tr><td colSpan={5} style={{ padding: '20px', textAlign: 'center' }}>Aucun résultat trouvé.</td></tr> :
-                     currentUsers.map(user => (
-                        <tr key={user.id} style={{ borderBottom: '1px solid #eee', cursor: user.role === 'Élève' ? 'pointer' : 'default' }} onClick={() => user.role === 'Élève' && setSelectedStudent(user)}>
-                            <td style={{ padding: '10px 15px' }}>
-                                {user.photo ? <img src={user.photo} alt="" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover' }} /> : 
-                                <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#ddd', display:'flex', alignItems:'center', justifyContent:'center' }}>{user.nom[0]}</div>}
-                            </td>
-                            <td style={{ padding: '10px 15px', fontWeight: 'bold' }}>{user.nom} {user.prenom}</td>
-                            <td style={{ padding: '10px 15px' }}>
-                                <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', backgroundColor: getRoleColor(user.role).bg, color: getRoleColor(user.role).text }}>
-                                    {user.role}
-                                </span>
-                            </td>
-                            <td style={{ padding: '10px 15px', color: '#666' }}>{user.email}</td>
-                            <td style={{ padding: '10px 15px' }}>{user.classe || '-'}</td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-
-            {/* PAGINATION */}
-            <div style={{ padding: '15px', borderTop: '1px solid #eee', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '15px' }}>
-                <span style={{ fontSize: '0.9rem', color: '#666' }}>Page {currentPage} sur {totalPages}</span>
-                <div style={{ display: 'flex', gap: '5px' }}>
-                    <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} style={paginationBtnStyle}><FaChevronLeft /></button>
-                    <button onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages} style={paginationBtnStyle}><FaChevronRight /></button>
-                </div>
-            </div>
         </div>
 
         {/* MODULES DE GESTION BAS DE PAGE */}
-        <div style={{ marginTop: '40px', display: 'grid', gap: '30px' }}>
-            <ClassManager />
+        {activeTab !== 'Paramètres' && (
+            <>
+                <div style={{ marginTop: '40px', display: 'grid', gap: '30px' }}>
+                    <ClassManager />
+                    <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px' }}>
+                        <h2 style={{ color: '#0A2240', marginTop: 0 }}>📅 Gestion des Emplois du Temps</h2>
+                        <TimetableManager />
+                    </div>
+                    <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px' }}>
+                        <h2 style={{ color: '#0A2240', marginTop: 0 }}>📑 Bulletins</h2>
+                        <BulletinEditor />
+                    </div>
+                </div>
 
-            {/* --- AJOUT TIMETABLE MANAGER --- */}
-            <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px' }}>
-                <h2 style={{ color: '#0A2240', marginTop: 0 }}>📅 Gestion des Emplois du Temps</h2>
-                <TimetableManager />
-            </div>
-            {/* ------------------------------- */}
-
-            <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px' }}>
-                <h2 style={{ color: '#0A2240', marginTop: 0 }}>📑 Bulletins</h2>
-                <BulletinEditor />
-            </div>
-        </div>
-
-        {/* MODULE DE GESTION DES COMPÉTENCES */}
-        <div style={{ marginTop: '40px', paddingTop: '40px', borderTop: '2px dashed #ccc' }}>
-            <h3 style={{ color: '#0A2240', marginTop: 0 }}>🌟 Compétences & Soft Skills</h3>
-            <SkillsManager />
-        </div>
+                <div style={{ marginTop: '40px', paddingTop: '40px', borderTop: '2px dashed #ccc' }}>
+                    <h3 style={{ color: '#0A2240', marginTop: 0 }}>🌟 Compétences & Soft Skills</h3>
+                    <SkillsManager />
+                </div>
+            </>
+        )}
 
       </div>
 
       {/* MODALE ÉLÈVE */}
       {selectedStudent && <StudentCard student={selectedStudent} onClose={() => setSelectedStudent(null)} />}
 
-      {/* 2. PIED DE PAGE AJOUTÉ */}
       <Footer />
 
     </div>

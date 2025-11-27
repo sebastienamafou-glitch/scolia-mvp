@@ -4,9 +4,8 @@ import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Logo } from '../components/Logo';
-// Assurez-vous d'avoir les icônes
 import { FaSchool, FaCheckCircle, FaBan, FaSearch, FaPlus, FaPowerOff, FaTimes, FaChevronLeft, FaChevronRight, FaMapMarkerAlt } from 'react-icons/fa';
-import { Link } from 'react-router-dom'; // 👈 IMPORT AJOUTÉ
+import { Link } from 'react-router-dom';
 
 interface School {
   id: number;
@@ -33,7 +32,7 @@ const PlatformDashboard: React.FC = () => {
   // Formulaire de création
   const [formData, setFormData] = useState({
     schoolName: '', schoolAddress: '',
-    adminNom: '', adminPrenom: '', adminEmail: '', adminPassword: ''
+    adminNom: '', adminPrenom: '', adminEmail: '', adminPassword: '' // adminPassword reste dans le state pour éviter les erreurs, mais n'est plus utilisé dans le formulaire
   });
 
   useEffect(() => {
@@ -79,19 +78,35 @@ const PlatformDashboard: React.FC = () => {
   const activeCount = allSchools.filter(s => s.isActive).length;
   const suspendedCount = totalCount - activeCount;
 
-  // --- ACTIONS ---
+  // --- ACTIONS (MISE À JOUR) ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if(!window.confirm("Confirmer la création de ce nouveau client ?")) return;
 
     try {
-      await api.post('/schools/onboard', formData);
-      alert('✅ École créée avec succès !');
+      // On envoie les infos (sans password manuel, le backend gère)
+      const response = await api.post('/schools/onboard', formData);
+      
+      const { admin } = response.data;
+
+      // 📢 AFFICHAGE DES IDENTIFIANTS GÉNÉRÉS
+      alert(
+        `✅ SUCCÈS : École créée !\n\n` +
+        `Voici les accès à transmettre au Directeur :\n` +
+        `------------------------------------------------\n` +
+        `📧 EMAIL : ${admin.generatedEmail}\n` +
+        `🔑 MOT DE PASSE : ${admin.generatedPassword}\n` +
+        `------------------------------------------------\n\n` +
+        `⚠️ Copiez ces informations maintenant, elles ne seront plus affichées.`
+      );
+
+      // Reset du formulaire
       setFormData({ schoolName: '', schoolAddress: '', adminNom: '', adminPrenom: '', adminEmail: '', adminPassword: '' });
       setShowForm(false);
       fetchSchools(); 
     } catch (error) {
-      alert("Erreur création (Email peut-être déjà utilisé).");
+      console.error(error);
+      alert("Erreur lors de la création.");
     }
   };
 
@@ -123,9 +138,7 @@ const PlatformDashboard: React.FC = () => {
             </div>
         </div>
 
-        {/* 👈 NOUVEAU BLOC BOUTONS */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            {/* BOUTON AIDE */}
             <Link 
                 to="/help" 
                 style={{ 
@@ -200,13 +213,19 @@ const PlatformDashboard: React.FC = () => {
             {showForm && (
                 <div style={{ padding: '25px', backgroundColor: '#232c3b', borderBottom: '1px solid #4a5568' }}>
                     <h3 style={{ marginTop: 0, color: '#F77F00', marginBottom: '20px' }}>🚀 Onboarding Nouveau Client</h3>
+                    <p style={{ fontSize: '0.9rem', color: '#cbd5e0', marginBottom: '20px' }}>
+                        Remplissez les informations ci-dessous. L'identifiant (email) et le mot de passe seront <b>générés automatiquement</b> par le système.
+                    </p>
                     <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
                         <div><label style={labelStyle}>Nom École</label><input name="schoolName" value={formData.schoolName} onChange={handleChange} required style={inputStyle} /></div>
                         <div><label style={labelStyle}>Ville</label><input name="schoolAddress" value={formData.schoolAddress} onChange={handleChange} required style={inputStyle} /></div>
                         <div><label style={labelStyle}>Nom Directeur</label><input name="adminNom" value={formData.adminNom} onChange={handleChange} required style={inputStyle} /></div>
                         <div><label style={labelStyle}>Prénom Directeur</label><input name="adminPrenom" value={formData.adminPrenom} onChange={handleChange} required style={inputStyle} /></div>
-                        <div><label style={labelStyle}>Email Admin</label><input type="email" name="adminEmail" value={formData.adminEmail} onChange={handleChange} required style={inputStyle} /></div>
-                        <div><label style={labelStyle}>Mot de passe</label><input type="text" name="adminPassword" value={formData.adminPassword} onChange={handleChange} required style={inputStyle} /></div>
+                        
+                        {/* Champ Email facultatif ou pour contact secours - Non utilisé pour le login */}
+                        <div><label style={labelStyle}>Email de contact (facultatif)</label><input type="email" name="adminEmail" value={formData.adminEmail} onChange={handleChange} style={inputStyle} /></div>
+                        
+                        {/* 👇 CHAMPS MOT DE PASSE RETIRÉ ICI CAR GÉNÉRÉ AUTOMATIQUEMENT */}
                         
                         <button type="submit" style={{ gridColumn: '1 / -1', padding: '12px', backgroundColor: '#F77F00', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', marginTop: '10px' }}>
                             Valider la création

@@ -15,6 +15,13 @@ export class School {
   @Column({ nullable: true })
   address: string;
 
+  @Column({ nullable: true })
+  logo: string; 
+
+  // 👇 AJOUT : Description optionnelle pour la page de l'école
+  @Column({ nullable: true, type: 'text' })
+  description: string;
+
   @CreateDateColumn()
   createdAt: Date;
 
