@@ -118,7 +118,7 @@ const LoginPage: React.FC = () => {
                 <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', alignItems: 'center' }}>
                         <label style={labelStyle}>Mot de passe</label>
-                        <a href="mailto:support@scolia.ci?subject=Mot%20de%20passe%20oublié" style={{ fontSize: '0.85rem', color: '#F77F00', textDecoration: 'none', fontWeight: '600' }}>Mot de passe oublié ?</a>
+                        <a href="mailto:contact@scolia.ci?subject=Mot%20de%20passe%20oublié" style={{ fontSize: '0.85rem', color: '#F77F00', textDecoration: 'none', fontWeight: '600' }}>Mot de passe oublié ?</a>
                     </div>
                     <div style={{
                         ...inputWrapperStyle,
