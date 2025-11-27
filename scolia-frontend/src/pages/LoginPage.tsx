@@ -79,7 +79,7 @@ const LoginPage: React.FC = () => {
             
             {/* En-tête Formulaire */}
             <div style={{ marginBottom: '40px' }}>
-                <h2 style={{ margin: '0 0 10px 0', color: '#0F172A', fontSize: '2.2rem', fontWeight: '800', letterSpacing: '-0.03em' }}>Bon retour</h2>
+                <h2 style={{ margin: '0 0 10px 0', color: '#0F172A', fontSize: '2.2rem', fontWeight: '800', letterSpacing: '-0.03em' }}>Espace Scolia</h2>
                 <p style={{ color: '#64748B', fontSize: '1.05rem' }}>Veuillez entrer vos coordonnées pour continuer.</p>
             </div>
 
