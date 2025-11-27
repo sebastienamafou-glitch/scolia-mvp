@@ -17,8 +17,6 @@ export class UsersService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    // IMPORTANT : En production avec Neon, assurez-vous de n'exécuter seedUsers()
-    // qu'au premier démarrage ou utilisez des migrations.
     await this.seedUsers();
   }
 
@@ -35,15 +33,14 @@ export class UsersService implements OnModuleInit {
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash('password', saltRounds);
 
-    // 1. Création du Super Admin (Utilisateur développeur)
     const usersToCreate = [
       {
         email: 'superadmin@scolia.ci',
         passwordHash: hashedPassword,
-        role: 'Admin', // Le rôle est 'Admin'
+        role: 'Admin',
         nom: 'Super',
         prenom: 'Admin',
-        schoolId: null, // 🔑 CLÉ : schoolId est NULL pour le Super Admin
+        schoolId: null, // Super Admin n'a pas d'école
       },
     ];
 
@@ -53,7 +50,6 @@ export class UsersService implements OnModuleInit {
 
   // --- MÉTHODES ADMIN ---
 
-  // Créer un nouvel utilisateur
   async create(createUserDto: CreateUserDto): Promise<User> {
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(createUserDto.password, saltRounds);
@@ -69,17 +65,15 @@ export class UsersService implements OnModuleInit {
     return this.usersRepository.save(newUser);
   }
 
-  // Lister tous les utilisateurs (Super Admin global)
   async findAll(): Promise<User[]> {
     return this.usersRepository.find({
       select: ['id', 'nom', 'prenom', 'email', 'role', 'classe', 'parentId', 'photo', 'schoolId'],
     });
   }
 
-  // --- AJOUT : Lister les utilisateurs par École (Multi-Tenant) ---
   async findAllBySchool(schoolId: number): Promise<User[]> {
     return this.usersRepository.find({
-        where: { school: { id: schoolId } }, // Le filtre Multi-Tenant
+        where: { school: { id: schoolId } },
         order: { nom: 'ASC' },
         select: ['id', 'nom', 'prenom', 'email', 'role', 'classe', 'parentId', 'photo', 'schoolId']
     });
@@ -87,17 +81,25 @@ export class UsersService implements OnModuleInit {
 
   // --- MÉTHODES LOGIN / DASHBOARD ---
 
-  // MÉTHODE CLÉ : Récupère les données d'utilisateur pour l'authentification
   async findOneByEmail(email: string): Promise<User | null> {
     return this.usersRepository.createQueryBuilder("user")
         .where("user.email = :email", { email })
-        // CRUCIAL : On force l'ajout du hash pour la vérification BCrypt
         .addSelect("user.passwordHash")
-        .leftJoinAndSelect("user.school", "school") // Charge l'école pour schoolId
+        .leftJoinAndSelect("user.school", "school") 
         .getOne();
   }
   
   async findStudentsByParentId(parentId: number): Promise<User[]> {
     return this.usersRepository.find({ where: { role: 'Élève', parentId } });
+  }
+
+  // 👇 AJOUT : Méthode pour mettre à jour le mot de passe (Reset Password)
+  async updatePassword(userId: number, plainPassword: string): Promise<void> {
+    const saltRounds = 10;
+    const newHash = await bcrypt.hash(plainPassword, saltRounds);
+
+    await this.usersRepository.update(userId, { 
+        passwordHash: newHash 
+    });
   }
 }

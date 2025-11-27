@@ -1,24 +1,30 @@
 // scolia-backend/src/auth/auth.module.ts
+
 import { Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
-import { UsersModule } from '../users/users.module'; // <-- On importe le module Users
+import { UsersModule } from '../users/users.module';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
-import { jwtConstants } from './constants';
-import { LocalStrategy } from './strategies/local.strategy'; // <-- Notre garde "login"
-import { JwtStrategy } from './strategies/jwt.strategy';   // <-- Notre garde "token"
+import { JwtStrategy } from './strategies/jwt.strategy'; 
+// 👇 1. Import du MailService
+import { MailService } from '../mail/mail.service';
 
 @Module({
   imports: [
-    UsersModule, // On a besoin du UsersService
+    UsersModule,
     PassportModule,
     JwtModule.register({
-      secret: jwtConstants.secret,
-      signOptions: { expiresIn: '1d' }, // Le token expire après 1 jour
+      secret: 'SECRET_KEY', // Idéalement dans .env
+      signOptions: { expiresIn: '60m' },
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, LocalStrategy, JwtStrategy], // On déclare nos 3 services/stratégies
+  providers: [
+    AuthService, 
+    JwtStrategy, 
+    MailService // 👈 2. Ajout indispensable ici !
+  ],
+  exports: [AuthService],
 })
 export class AuthModule {}
