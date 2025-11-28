@@ -8,6 +8,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler'; // 👈 NOUVEL IMPORT
+import { APP_GUARD } from '@nestjs/core'; // Pour appliquer le guard globalement
 
 // --- 1. IMPORT DES ENTITÉS ---
 import { User } from './users/entities/user.entity';
@@ -60,6 +62,14 @@ import { AnalyticsModule } from './analytics/analytics.module';
       }),
       inject: [ConfigService],
     }),
+
+    // ✅ AJOUT DU MODULE RATE LIMITING
+    ThrottlerModule.forRoot([{
+        // Limite globale par défaut (ex: 10 requêtes par 60 secondes par IP)
+        ttl: 60000, // Durée de vie (Time To Live) de la limitation : 60 secondes
+        limit: 10,  // Nombre maximum de requêtes autorisées
+    }]),
+
     AuthModule,
     UsersModule,
     StudentsModule,
@@ -74,6 +84,13 @@ import { AnalyticsModule } from './analytics/analytics.module';
     AnalyticsModule, 
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    // ✅ Appliquer ThrottlerGuard globalement
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    }
+  ],
 })
 export class AppModule {}
