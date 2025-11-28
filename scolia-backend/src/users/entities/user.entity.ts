@@ -9,6 +9,10 @@ export class User {
   @Column({ unique: true })
   email: string;
 
+  // ✅ AJOUT POUR CORRIGER L'ERREUR DE NOTIFICATION
+  @Column({ nullable: true })
+  fcmToken: string;
+
   @Column({ nullable: true })
   passwordHash: string; 
 

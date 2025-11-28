@@ -1,4 +1,15 @@
-import { Controller, Get, Post, Patch, Body, Query, UseGuards, Request, ForbiddenException, Param } from '@nestjs/common';
+import { 
+    Controller, 
+    Get, 
+    Post, 
+    Patch, 
+    Body, 
+    Query, 
+    UseGuards, 
+    Request,
+    ForbiddenException, 
+    Param, 
+} from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -9,38 +20,62 @@ import { Roles } from '../auth/roles.decorator';
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
-  // Parents : Voir le solde
+  // 1. GET /payments/balance?studentId=X (Parent/Admin)
   @Get('balance')
   async getBalance(@Request() req, @Query('studentId') studentId: string) {
-    return this.paymentsService.getFeeByStudent(Number(studentId), req.user.schoolId);
+    const schoolId = req.user.schoolId;
+    return this.paymentsService.getFeeByStudent(Number(studentId), schoolId);
   }
 
-  // Parents : Soumettre un paiement
+  // 2. POST /payments/submit (Parent)
   @Roles('Parent')
   @Post('submit')
   async submitTransaction(@Request() req, @Body() body: { studentId: number, amount: number, reference: string }) {
-    return this.paymentsService.submitTransaction(body.studentId, body.amount, body.reference, req.user.schoolId);
+    if (!req.user.schoolId) throw new ForbiddenException("Erreur d'authentification école.");
+    
+    return this.paymentsService.submitTransaction(
+        body.studentId,
+        body.amount,
+        body.reference,
+        req.user.schoolId
+    );
   }
 
-  // Admin : Voir les paiements en attente
-  @Roles('Admin')
-  @Get('pending')
-  async getPending(@Request() req) {
-    return this.paymentsService.findPending(req.user.schoolId);
-  }
-
-  // Admin : Valider ou Rejeter
+  // 3. PATCH /payments/validate/:id (Admin)
   @Roles('Admin')
   @Patch('validate/:id')
-  async validate(@Request() req, @Param('id') id: string, @Body('action') action: 'validate' | 'reject') {
-    return this.paymentsService.validateTransaction(Number(id), req.user.schoolId, action);
+  async validateTransaction(@Request() req, @Param('id') transactionId: string) {
+    if (!req.user.schoolId) throw new ForbiddenException("Accès Admin refusé.");
+    
+    // ✅ CORRECTION : On passe req.user.sub (ID Admin) comme 3ème argument
+    // au lieu de 'action' (string) qui causait l'erreur de type.
+    return this.paymentsService.validateTransaction(
+        Number(transactionId),
+        req.user.schoolId,
+        req.user.sub // L'ID de l'admin qui valide
+    );
   }
 
-  // Définir les frais (Admin)
+  // 4. GET /payments/pending (Admin)
   @Roles('Admin')
-  @Post('fees')
-  async setFee(@Request() req, @Body() body: { studentId: number, amountDue: number, dueDate: string }) {
-    if (!req.user.schoolId) throw new ForbiddenException();
-    return this.paymentsService.setFee(body.studentId, body.amountDue, body.dueDate, req.user.schoolId);
+  @Get('pending')
+  async getPendingTransactions(@Request() req) {
+      if (!req.user.schoolId) throw new ForbiddenException("Accès Admin refusé.");
+      return this.paymentsService.findPending(req.user.schoolId);
+  }
+
+  // 5. POST /payments/set-tuition (Admin - Définir montant)
+  @Roles('Admin')
+  @Post('set-tuition')
+  async setTuition(@Request() req, @Body() body: { studentId: number, amount: number }) {
+      if (!req.user.schoolId) throw new ForbiddenException();
+      
+      // ✅ CORRECTION : On appelle la bonne méthode 'setStudentTuition'
+      // (L'erreur "Property setFee does not exist" venait de là)
+      return this.paymentsService.setStudentTuition(
+          body.studentId, 
+          body.amount, 
+          req.user.schoolId
+      );
   }
 }
