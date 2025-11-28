@@ -27,12 +27,10 @@ export class CreateUserDto {
   @IsString()
   role: string; // Ex: 'Admin', 'Enseignant', 'Parent', 'Élève'
 
-  // --- CHAMPS AJOUTÉS POUR LA COMPATIBILITÉ ET LES RELATIONS ---
-  
   // 👇 AJOUT CRITIQUE (Corrige l'erreur TS2322 dans ImportService)
   @IsOptional()
-  @IsString() // Type présumé, ajuster si c'est un booléen ou autre
-  traisScolarite?: string; 
+  @IsNumber() // Doit être un nombre, puisque vous faites un Number() dans le service
+  fraisScolarite?: number; // Utilisez le nom correct ! 
 
   // ID de l'école (important pour l'Admin qui crée dans SON école)
   @IsOptional()
