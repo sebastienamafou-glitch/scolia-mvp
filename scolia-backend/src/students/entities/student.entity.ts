@@ -47,4 +47,7 @@ export class Student {
 
   @OneToMany(() => Grade, (grade) => grade.student)
   grades: Grade[];
+
+  @Column({ nullable: true }) // nullable: true car certains n'ont pas encore de photo
+  photo: string;
 }

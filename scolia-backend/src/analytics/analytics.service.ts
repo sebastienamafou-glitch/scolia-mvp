@@ -1,3 +1,5 @@
+// scolia-backend/src/analytics/analytics.service.ts
+
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -20,7 +22,8 @@ export class AnalyticsService {
         relations: ['grades', 'class', 'parent'] 
     });
 
-    const atRiskList = [];
+    // 👇 FIX 1 : Typage explicite de l'array pour éviter l'erreur 'never[]'
+    const atRiskList: any[] = [];
 
     for (const student of students) {
       let riskScore = 0;
@@ -28,8 +31,10 @@ export class AnalyticsService {
 
       // --- ANALYSE FINANCIÈRE ---
       const fee = await this.feeRepo.findOne({ where: { studentId: student.id } });
-      if (fee && fee.totalAmount > 0) {
+      // Note: Utilise totalAmount (variable locale) pour la logique
+      if (fee && fee.totalAmount > 0) { 
           const percentPaid = (Number(fee.amountPaid) / Number(fee.totalAmount)) * 100;
+          
           // Si on a payé moins de 30% de la scolarité (seuil d'alerte arbitraire)
           if (percentPaid < 30) {
               riskScore += 1;
@@ -49,22 +54,19 @@ export class AnalyticsService {
           }
       }
 
-      // --- (Optionnel) ANALYSE ASSIDUITÉ ---
-      // Si vous ajoutez le module Attendance plus tard :
-      // if (student.absences > 5) { riskScore += 1; reasons.push('🚫 Absences répétées'); }
-
       // --- DÉCISION ---
-      // On ajoute à la liste si au moins un facteur de risque est détecté
       if (riskScore >= 1) {
           atRiskList.push({
               id: student.id,
               nom: student.nom,
               prenom: student.prenom,
               classe: student.class?.name || 'Sans classe',
-              photo: student.photo,
-              // On récupère le téléphone du parent s'il existe (via la relation User parent)
-              // Assurez-vous que votre entité User a un champ 'telephone' ou utilisez l'email
-              parentPhone: student.parent?.email, // Fallback sur email si pas de tel
+              
+              // 👇 FIX 2 : On utilise le casting (as any) pour l'accès à 'photo'
+              // Le temps que le champ soit ajouté à l'entité Student
+              photo: (student as any).photo || '', 
+              
+              parentPhone: student.parent?.email, 
               riskLevel: riskScore >= 2 ? 'HIGH' : 'MEDIUM',
               reasons: reasons
           });
