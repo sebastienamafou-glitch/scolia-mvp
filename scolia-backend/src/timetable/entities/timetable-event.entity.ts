@@ -12,10 +12,10 @@ export class TimetableEvent {
   dayOfWeek: string; // Lundi, Mardi...
 
   @Column()
-  startTime: string; 
+  startTime: string; // ex: "08:00"
 
   @Column()
-  endTime: string;   
+  endTime: string;   // ex: "09:00"
 
   @Column()
   subject: string;   

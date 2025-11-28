@@ -35,6 +35,7 @@ import { SchoolsModule } from './schools/schools.module';
 import { PaymentsModule } from './payments/payments.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AnalyticsModule } from './analytics/analytics.module'; 
+import { TimetableModule } from './timetable/timetable.module';
 
 @Module({
   imports: [
@@ -78,6 +79,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
     NotificationsModule, 
     SkillsModule,
     AnalyticsModule, 
+    TimetableModule,
   ],
   controllers: [AppController],
   providers: [
