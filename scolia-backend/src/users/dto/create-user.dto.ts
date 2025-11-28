@@ -1,17 +1,19 @@
 // scolia-backend/src/users/dto/create-user.dto.ts
 
-import { IsString, IsOptional, IsEmail, IsNotEmpty, IsNumber, IsDateString } from 'class-validator';
+import { IsString, IsOptional, IsEmail, IsNotEmpty, IsNumber, IsDateString, IsNumberString } from 'class-validator';
 
 export class CreateUserDto {
-  // 👇 MODIFICATION CRITIQUE 1 : Rendre l'email facultatif pour la génération
+  // --- CHAMPS PRIMAIRES (Rendus optionnels pour la génération par le service) ---
+
   @IsOptional() 
   @IsEmail()
-  email?: string; 
+  email?: string; // Rendu optionnel pour l'auto-génération
 
-  // 👇 MODIFICATION CRITIQUE 2 : Rendre le mot de passe facultatif pour l'auto-génération
   @IsOptional()
   @IsString()
-  password?: string; 
+  password?: string; // Rendu optionnel pour l'auto-génération
+
+  // --- CHAMPS OBLIGATOIRES ---
 
   @IsNotEmpty()
   @IsString()
@@ -23,13 +25,28 @@ export class CreateUserDto {
 
   @IsNotEmpty()
   @IsString()
-  role: string; 
+  role: string; // Ex: 'Admin', 'Enseignant', 'Parent', 'Élève'
 
-  // --- Le reste de vos champs facultatifs ---
+  // --- CHAMPS AJOUTÉS POUR LA COMPATIBILITÉ ET LES RELATIONS ---
+  
+  // 👇 AJOUT CRITIQUE (Corrige l'erreur TS2322 dans ImportService)
+  @IsOptional()
+  @IsString() // Type présumé, ajuster si c'est un booléen ou autre
+  traisScolarite?: string; 
+
+  // ID de l'école (important pour l'Admin qui crée dans SON école)
+  @IsOptional()
+  @IsNumber()
+  schoolId?: number; 
+
+  // --- CHAMPS D'INFORMATIONS SUPPLÉMENTAIRES (MÉTA-DONNÉES) ---
+  
+  // Classe de l'élève/enseignant (peut être le nom ou l'ID selon votre formulaire)
   @IsOptional()
   @IsString()
-  classe?: string;
-  
+  classe?: string; 
+
+  // Relation Parent (ID du parent associé à l'élève)
   @IsOptional()
   @IsNumber()
   parentId?: number;
