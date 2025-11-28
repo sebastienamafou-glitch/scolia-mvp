@@ -41,16 +41,16 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
     }
   }, []);
 
-  const verifyToken = async (_token: string) => { 
+  const verifyToken = async (token: string) => { 
     try {
-      // 1. On met à jour la config globale pour les futures requêtes
-      api.defaults.headers.common['Authorization'] = `Bearer ${_token}`;
+      // 1. On configure axios globalement pour les futures requêtes
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
-      // 2. ⚡ CORRECTION CRITIQUE ICI ⚡
-      // On force l'envoi du token DANS cette requête spécifique pour éviter le 401
-      // car parfois la config globale 'api.defaults' prend quelques millisecondes à s'appliquer.
+      // 2. ⚡ CORRECTION CRITIQUE (Fixe l'erreur 401) ⚡
+      // On force l'envoi du token DANS cette requête spécifique.
+      // Cela contourne les délais de mise à jour des intercepteurs/defaults.
       const response = await api.get('/auth/me', {
-        headers: { Authorization: `Bearer ${_token}` } 
+        headers: { Authorization: `Bearer ${token}` } 
       }); 
       
       const userData = response.data;
@@ -60,7 +60,8 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
       setIsAuthenticated(true);
     } catch (error) {
       console.error('Token verification failed:', error);
-      // Nettoyage en cas d'erreur
+      
+      // Nettoyage complet en cas d'échec
       localStorage.removeItem('access_token');
       delete api.defaults.headers.common['Authorization'];
       
@@ -76,14 +77,25 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
     setIsLoading(true); 
     try {
       const response = await api.post('/auth/login', { email, password });
-      const { access_token } = response.data;
-
-      localStorage.setItem('access_token', access_token);
       
-      // On lance la vérification immédiatement
-      await verifyToken(access_token);
+      // 👇 ROBUSTESSE : On cherche le token sous plusieurs noms possibles
+      // Le backend peut renvoyer 'access_token' ou 'accessToken'
+      const token = response.data.access_token || response.data.accessToken || response.data.token;
+
+      if (!token) {
+        throw new Error("Token introuvable dans la réponse du serveur");
+      }
+
+      // Sauvegarde
+      localStorage.setItem('access_token', token);
+      
+      // On lance la vérification immédiatement avec le token reçu
+      await verifyToken(token);
+
     } catch (error) {
       console.error("Erreur Login:", error);
+      // En cas d'erreur au login, on s'assure que rien ne traine
+      localStorage.removeItem('access_token');
       throw error; 
     } finally {
       setIsLoading(false);
