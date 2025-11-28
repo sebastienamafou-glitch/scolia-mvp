@@ -1,5 +1,4 @@
-
-import { SkillsModule } from './skills/skills.module'; // 👈 Import
+import { SkillsModule } from './skills/skills.module'; 
 import { Competence } from './skills/entities/competence.entity';
 import { SkillEvaluation } from './skills/entities/skill-evaluation.entity';
 import { Module } from '@nestjs/common';
@@ -30,7 +29,8 @@ import { HomeworksModule } from './homeworks/homeworks.module';
 import { NewsModule } from './news/news.module';
 import { SchoolsModule } from './schools/schools.module'; 
 import { PaymentsModule } from './payments/payments.module';
-import { NotificationsModule } from './notifications/notifications.module'; // ✅ Module Notifications
+import { NotificationsModule } from './notifications/notifications.module';
+import { AnalyticsModule } from './analytics/analytics.module'; // 👈 IMPORT AJOUTÉ
 
 @Module({
   imports: [
@@ -60,8 +60,9 @@ import { NotificationsModule } from './notifications/notifications.module'; // �
     NewsModule,
     SchoolsModule,
     PaymentsModule,
-    NotificationsModule, // ✅ Ajouté aux imports
-    SkillsModule, // 👈 Ajout
+    NotificationsModule, 
+    SkillsModule,
+    AnalyticsModule, // 👈 MODULE AJOUTÉ ICI
   ],
   controllers: [AppController],
   providers: [AppService],

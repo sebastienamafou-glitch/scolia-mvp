@@ -9,6 +9,8 @@ import { BulletinEditor } from '../components/BulletinEditor';
 import { StudentCard } from '../components/StudentCard';
 import { SchoolNews } from '../components/SchoolNews';
 import { TransactionValidator } from '../components/TransactionValidator';
+// 👇 1. IMPORT DU WIDGET
+import { RiskRadarWidget } from '../components/RiskRadarWidget';
 import { FaUserGraduate, FaChalkboardTeacher, FaUserTie, FaUserShield, FaSearch, FaPlus, FaTimes, FaChevronLeft, FaChevronRight, FaCog } from 'react-icons/fa';
 import { SkillsManager } from '../components/SkillsManager';
 import { TimetableManager } from '../components/TimetableManager';
@@ -127,7 +129,7 @@ const AdminDashboard: React.FC = () => {
   const countParents = allUsers.filter(u => u.role === 'Parent').length;
   const countAdmins = allUsers.filter(u => u.role === 'Admin').length;
 
-  // --- HANDLER DE CRÉATION UTILISATEUR (MISE À JOUR) ---
+  // --- HANDLER DE CRÉATION UTILISATEUR ---
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -151,7 +153,6 @@ const AdminDashboard: React.FC = () => {
       const createdUser = response.data;
 
       // 2. Déterminer quel mot de passe afficher
-      // Priorité : Mot de passe généré par le serveur (plainPassword) > Mot de passe saisi > Défaut
       const passwordDisplay = createdUser.plainPassword || newUser.password || 'scolia123';
 
       // 3. Affichage de l'alerte avec les identifiants
@@ -213,6 +214,13 @@ const AdminDashboard: React.FC = () => {
       </header>
 
       <div style={{ maxWidth: '1200px', margin: '30px auto', padding: '0 20px' }}>
+
+        {/* 👇 2. ZONE PRIORITAIRE : WIDGET RADAR (Ajouté ici) */}
+        {activeTab !== 'Paramètres' && (
+            <div style={{ marginBottom: '30px' }}>
+                <RiskRadarWidget />
+            </div>
+        )}
 
         {/* 1. SECTION KPI */}
         {activeTab !== 'Paramètres' && (
@@ -302,57 +310,27 @@ const AdminDashboard: React.FC = () => {
                     <p style={{ color: '#666', marginBottom: '20px' }}>Modifiez ici les informations visibles sur votre espace et les bulletins.</p>
                     
                     <form onSubmit={handleUpdateSchool} style={{ display: 'grid', gap: '20px', maxWidth: '600px' }}>
-                        
+                        {/* ... champs formulaire ... */}
                         <div>
                             <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#444' }}>Nom de l'établissement</label>
-                            <input 
-                                type="text" 
-                                value={schoolForm.name} 
-                                onChange={e => setSchoolForm({...schoolForm, name: e.target.value})} 
-                                style={inputStyle} 
-                                required
-                            />
+                            <input type="text" value={schoolForm.name} onChange={e => setSchoolForm({...schoolForm, name: e.target.value})} style={inputStyle} required />
                         </div>
-
                         <div>
                             <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#444' }}>Adresse / Ville</label>
-                            <input 
-                                type="text" 
-                                value={schoolForm.address} 
-                                onChange={e => setSchoolForm({...schoolForm, address: e.target.value})} 
-                                style={inputStyle} 
-                            />
+                            <input type="text" value={schoolForm.address} onChange={e => setSchoolForm({...schoolForm, address: e.target.value})} style={inputStyle} />
                         </div>
-
                         <div>
                             <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#444' }}>URL du Logo</label>
-                            <input 
-                                type="text" 
-                                placeholder="https://mon-ecole.com/logo.png"
-                                value={schoolForm.logo} 
-                                onChange={e => setSchoolForm({...schoolForm, logo: e.target.value})} 
-                                style={inputStyle} 
-                            />
-                            <p style={{ fontSize: '0.8rem', color: '#888', marginTop: '5px' }}>
-                                Utilisez un lien direct vers une image (clic droit sur une image {'>'} Copier l'adresse de l'image).
-                            </p>
+                            <input type="text" placeholder="https://mon-ecole.com/logo.png" value={schoolForm.logo} onChange={e => setSchoolForm({...schoolForm, logo: e.target.value})} style={inputStyle} />
                         </div>
-
                         {schoolForm.logo && (
                             <div style={{ padding: '15px', border: '1px dashed #ccc', borderRadius: '8px', textAlign: 'center', backgroundColor: '#fafafa' }}>
-                                <p style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: '#555' }}>Aperçu du logo :</p>
                                 <img src={schoolForm.logo} alt="Aperçu" style={{ maxHeight: '80px', objectFit: 'contain' }} />
                             </div>
                         )}
-
                         <div>
                             <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#444' }}>Description / Slogan</label>
-                            <textarea 
-                                placeholder="Une école d'excellence..."
-                                value={schoolForm.description} 
-                                onChange={e => setSchoolForm({...schoolForm, description: e.target.value})} 
-                                style={{ ...inputStyle, minHeight: '80px', fontFamily: 'inherit' }} 
-                            />
+                            <textarea placeholder="Une école d'excellence..." value={schoolForm.description} onChange={e => setSchoolForm({...schoolForm, description: e.target.value})} style={{ ...inputStyle, minHeight: '80px', fontFamily: 'inherit' }} />
                         </div>
 
                         <button type="submit" style={{ padding: '14px', backgroundColor: '#008F39', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem', marginTop: '10px' }}>
@@ -383,33 +361,21 @@ const AdminDashboard: React.FC = () => {
                                 {newUser.role === 'Élève' && (
                                     <div style={{ gridColumn: '1 / -1', backgroundColor: '#E3F2FD', padding: '15px', borderRadius: '8px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
                                         <h4 style={{ gridColumn: '1 / -1', margin: '0 0 10px 0', color: '#1565C0' }}>Dossier Scolaire & Vie</h4>
-                                        
                                         <input type="text" placeholder="Classe (ex: 6ème A)" value={newUser.classe} onChange={e => setNewUser({...newUser, classe: e.target.value})} style={inputStyle} />
-                                        
                                         <select value={newUser.parentId} onChange={e => setNewUser({...newUser, parentId: e.target.value})} style={inputStyle}>
                                             <option value="">-- Lier à un Parent --</option>
                                             {availableParents.map(p => <option key={p.id} value={p.id}>{p.nom} {p.prenom}</option>)}
                                         </select>
-
                                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                                             <label style={{fontSize:'0.8rem', color:'#666'}}>Date de Naissance</label>
                                             <input type="date" value={newUser.dateNaissance} onChange={e => setNewUser({...newUser, dateNaissance: e.target.value})} style={inputStyle} />
                                         </div>
-
                                         <input type="text" placeholder="Adresse de résidence" value={newUser.adresse} onChange={e => setNewUser({...newUser, adresse: e.target.value})} style={inputStyle} />
-
                                         <input type="text" placeholder="Nom Contact Urgence" value={newUser.contactUrgenceNom} onChange={e => setNewUser({...newUser, contactUrgenceNom: e.target.value})} style={inputStyle} />
                                         <input type="text" placeholder="Tél Contact Urgence" value={newUser.contactUrgenceTel} onChange={e => setNewUser({...newUser, contactUrgenceTel: e.target.value})} style={inputStyle} />
-                                        
-                                        <textarea 
-                                            placeholder="Infos Médicales / Allergies (R.A.S par défaut)" 
-                                            value={newUser.infosMedicales} 
-                                            onChange={e => setNewUser({...newUser, infosMedicales: e.target.value})} 
-                                            style={{ ...inputStyle, gridColumn: '1 / -1', minHeight: '60px' }} 
-                                        />
+                                        <textarea placeholder="Infos Médicales / Allergies (R.A.S par défaut)" value={newUser.infosMedicales} onChange={e => setNewUser({...newUser, infosMedicales: e.target.value})} style={{ ...inputStyle, gridColumn: '1 / -1', minHeight: '60px' }} />
                                     </div>
                                 )}
-
                                 <button type="submit" style={{ gridColumn: '1 / -1', backgroundColor: '#008F39', color: 'white', border: 'none', padding: '10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Valider la création</button>
                             </form>
                         </div>
