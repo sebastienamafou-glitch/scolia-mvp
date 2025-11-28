@@ -10,7 +10,7 @@ import { StudentCard } from '../components/StudentCard';
 import { SchoolNews } from '../components/SchoolNews';
 import { TransactionValidator } from '../components/TransactionValidator';
 import { RiskRadarWidget } from '../components/RiskRadarWidget';
-import { FaUserGraduate, FaChalkboardTeacher, FaUserTie, FaUserShield, FaSearch, FaPlus, FaTimes, FaChevronLeft, FaChevronRight, FaCog } from 'react-icons/fa';
+import { FaUserGraduate, FaChalkboardTeacher, FaUserTie, FaUserShield, FaSearch, FaPlus, FaTimes, FaChevronLeft, FaChevronRight, FaCog, FaUnlockAlt } from 'react-icons/fa'; // Ajout de FaUnlockAlt
 import { SkillsManager } from '../components/SkillsManager';
 import { TimetableManager } from '../components/TimetableManager';
 import { Footer } from '../components/Footer';
@@ -191,7 +191,29 @@ const AdminDashboard: React.FC = () => {
       alert("Erreur lors de la création. Vérifiez que tous les champs obligatoires sont remplis.");
     }
   };
+  
+  // 👇 AJOUT : Gère le clic sur le bouton Reset
+  const handleResetPassword = async (user: User) => {
+    if (!window.confirm(`Confirmer la réinitialisation du mot de passe pour ${user.prenom} ${user.nom} ?`)) {
+        return;
+    }
 
+    try {
+        // Appel à la nouvelle route PATCH /users/:id/reset-password
+        const res = await api.patch(`/users/${user.id}/reset-password`);
+        
+        // Afficher le nouveau mot de passe temporaire
+        const newPassword = res.data.plainPassword;
+        
+        alert(`✅ NOUVEAU MOT DE PASSE : ${newPassword}\n\nL'utilisateur doit l'utiliser immédiatement pour se connecter.`);
+        
+    } catch (error) {
+        console.error("Erreur lors de la réinitialisation du mot de passe:", error);
+        alert("Erreur lors de la réinitialisation du mot de passe.");
+    }
+  };
+  // ... (Reste du code inchangé)
+  
   const availableParents = allUsers.filter(user => user.role === 'Parent');
 
   return (
@@ -415,7 +437,7 @@ const AdminDashboard: React.FC = () => {
                     )}
 
                     <div style={{ overflowX: 'auto', width: '100%' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem', minWidth: '600px' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem', minWidth: '700px' }}> {/* Augmenté la taille min */}
                             <thead style={{ backgroundColor: '#f8f9fa', color: '#666' }}>
                                 <tr>
                                     <th style={{ padding: '15px', textAlign: 'left' }}>Photo</th>
@@ -423,11 +445,12 @@ const AdminDashboard: React.FC = () => {
                                     <th style={{ padding: '15px', textAlign: 'left' }}>Rôle</th>
                                     <th style={{ padding: '15px', textAlign: 'left' }}>Contact</th>
                                     <th style={{ padding: '15px', textAlign: 'left' }}>Infos</th>
+                                    <th style={{ padding: '15px', textAlign: 'center' }}>Actions</th> {/* Nouvelle colonne */}
                                 </tr>
                             </thead>
                             <tbody>
-                                {loading ? <tr><td colSpan={5} style={{ padding: '20px', textAlign: 'center' }}>Chargement...</td></tr> : 
-                                currentUsers.length === 0 ? <tr><td colSpan={5} style={{ padding: '20px', textAlign: 'center' }}>Aucun résultat trouvé.</td></tr> :
+                                {loading ? <tr><td colSpan={6} style={{ padding: '20px', textAlign: 'center' }}>Chargement...</td></tr> : 
+                                currentUsers.length === 0 ? <tr><td colSpan={6} style={{ padding: '20px', textAlign: 'center' }}>Aucun résultat trouvé.</td></tr> :
                                 currentUsers.map(user => (
                                     <tr key={user.id} style={{ borderBottom: '1px solid #eee', cursor: user.role === 'Élève' ? 'pointer' : 'default' }} onClick={() => user.role === 'Élève' && setSelectedStudent(user)}>
                                         <td style={{ padding: '10px 15px' }}>
@@ -442,6 +465,23 @@ const AdminDashboard: React.FC = () => {
                                         </td>
                                         <td style={{ padding: '10px 15px', color: '#666' }}>{user.email}</td>
                                         <td style={{ padding: '10px 15px' }}>{user.classe || '-'}</td>
+                                        <td style={{ padding: '10px 15px', textAlign: 'center' }}>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleResetPassword(user); }} // Empêcher l'ouverture de la carte élève
+                                                title="Réinitialiser le mot de passe"
+                                                style={{ 
+                                                    padding: '6px 10px', 
+                                                    backgroundColor: '#ffc107', 
+                                                    color: '#333', 
+                                                    border: 'none', 
+                                                    borderRadius: '4px', 
+                                                    cursor: 'pointer', 
+                                                    fontSize: '0.9rem' 
+                                                }}
+                                            >
+                                                <FaUnlockAlt /> Reset
+                                            </button>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
