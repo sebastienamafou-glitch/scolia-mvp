@@ -9,8 +9,9 @@ import { PaymentSubmissionForm } from '../components/PaymentSubmissionForm';
 import { useReactToPrint } from 'react-to-print';
 import { requestForToken } from '../firebase-config';
 import { FaLock } from 'react-icons/fa'; 
-// 1. IMPORT DU FOOTER
 import { Footer } from '../components/Footer';
+// 👇 AJOUT IMPORT CARTE
+import { DigitalIdCard } from '../components/DigitalIdCard';
 
 // --- Types ---
 interface Student {
@@ -19,6 +20,7 @@ interface Student {
   nom: string;
   class?: { name: string };
   photo?: string;
+  dateNaissance?: string; // 👈 AJOUTÉ POUR LA CARTE
 }
 
 interface BulletinData {
@@ -212,89 +214,115 @@ const ParentDashboard: React.FC = () => {
                                 )}
                             </div>
 
-                            {/* CONTENU DU BULLETIN */}
+                            {/* CONTENU PRINCIPAL */}
                             <div style={{ padding: '25px' }}>
-                                {bulletin ? (
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '40px' }}>
-                                        
-                                        {/* Affichage Conditionnel (Notes ou Blocage) */}
-                                        <div>
-                                            <h3 style={{ marginTop: 0, color: '#0A2240', borderBottom: '2px solid #F0F0F0', paddingBottom: '10px' }}>📊 Résultats par matière</h3>
-                                            
-                                            {bulletin.isBlocked ? (
-                                                <div style={{ 
-                                                    backgroundColor: '#FFEBEE', 
-                                                    color: '#D32F2F', 
-                                                    padding: '30px', 
-                                                    borderRadius: '10px', 
-                                                    textAlign: 'center',
-                                                    border: '1px solid #FFCDD2'
-                                                }}>
-                                                    <FaLock size={40} style={{ marginBottom: '15px', opacity: 0.5 }} />
-                                                    <h4 style={{ margin: '0 0 10px 0', fontSize: '1.1rem' }}>Bulletin non disponible</h4>
-                                                    <p style={{ margin: 0, fontSize: '0.9rem' }}>
-                                                        Les résultats scolaires sont temporairement masqués. 
-                                                        Veuillez régulariser la situation financière ci-contre ou contacter l'administration.
-                                                    </p>
-                                                </div>
-                                            ) : (
-                                                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                                    <tbody>
-                                                        {bulletin.subjects.map((sub, index) => (
-                                                            <tr key={index} style={{ borderBottom: '1px solid #f9f9f9' }}>
-                                                                <td style={{ padding: '12px 0', color: '#444', fontWeight: '500' }}>{sub.matiere}</td>
-                                                                <td style={{ padding: '12px 0', textAlign: 'right' }}>
-                                                                    <span style={{ 
-                                                                        fontWeight: 'bold', 
-                                                                        color: sub.moyenne >= 10 ? '#008F39' : '#D32F2F',
-                                                                        padding: '4px 8px',
-                                                                        borderRadius: '6px',
-                                                                        border: '1px solid #eee'
-                                                                    }}>
-                                                                        {sub.moyenne}/20
-                                                                    </span>
-                                                                </td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-                                            )}
-                                        </div>
+                                
+                                {/* 👇 AJOUT : Layout Flexible pour intégrer la Carte Scolaire */}
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '40px', alignItems: 'flex-start' }}>
+                                    
+                                    {/* SECTION GAUCHE : CARTE SCOLAIRE */}
+                                    <div style={{ flex: '0 0 auto' }}>
+                                        <h3 style={{ marginTop: 0, color: '#0A2240', marginBottom: '15px' }}>🆔 Carte Scolaire</h3>
+                                        <DigitalIdCard 
+                                            student={{
+                                                id: currentChild.id,
+                                                nom: currentChild.nom,
+                                                prenom: currentChild.prenom,
+                                                photo: currentChild.photo,
+                                                classe: currentChild.class?.name,
+                                                dateNaissance: currentChild.dateNaissance,
+                                                schoolName: "Scolia Academy"
+                                            }}
+                                        />
+                                        <button style={{ marginTop: '10px', border: 'none', background: 'transparent', color: '#666', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.9rem' }}>
+                                            Télécharger la carte
+                                        </button>
+                                    </div>
 
-                                        {/* APPRÉCIATION & PAIEMENT (Toujours visible pour permettre le paiement) */}
-                                        <div>
-                                            {/* On cache l'appréciation si bloqué aussi */}
-                                            {!bulletin.isBlocked && (
-                                                <>
-                                                    <h3 style={{ marginTop: 0, color: '#0A2240', borderBottom: '2px solid #F0F0F0', paddingBottom: '10px' }}>👨‍🏫 Avis du Conseil</h3>
-                                                    <div style={{ backgroundColor: '#FFF8E1', padding: '20px', borderRadius: '12px', borderLeft: '5px solid #FFC107', marginBottom: '30px' }}>
-                                                        {bulletin.bulletinData?.appreciation ? (
-                                                            <p style={{ margin: 0, color: '#5D4037', fontStyle: 'italic', lineHeight: '1.6' }}>
-                                                                "{bulletin.bulletinData.appreciation}"
+                                    {/* SECTION DROITE : BULLETIN & PAIEMENT */}
+                                    <div style={{ flex: 1, minWidth: '300px' }}>
+                                        {bulletin ? (
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '40px' }}>
+                                                
+                                                {/* NOTES OU BLOCAGE */}
+                                                <div>
+                                                    <h3 style={{ marginTop: 0, color: '#0A2240', borderBottom: '2px solid #F0F0F0', paddingBottom: '10px' }}>📊 Résultats par matière</h3>
+                                                    
+                                                    {bulletin.isBlocked ? (
+                                                        <div style={{ 
+                                                            backgroundColor: '#FFEBEE', 
+                                                            color: '#D32F2F', 
+                                                            padding: '30px', 
+                                                            borderRadius: '10px', 
+                                                            textAlign: 'center',
+                                                            border: '1px solid #FFCDD2'
+                                                        }}>
+                                                            <FaLock size={40} style={{ marginBottom: '15px', opacity: 0.5 }} />
+                                                            <h4 style={{ margin: '0 0 10px 0', fontSize: '1.1rem' }}>Bulletin non disponible</h4>
+                                                            <p style={{ margin: 0, fontSize: '0.9rem' }}>
+                                                                Les résultats scolaires sont temporairement masqués. 
+                                                                Veuillez régulariser la situation financière ci-contre ou contacter l'administration.
                                                             </p>
-                                                        ) : (
-                                                            <p style={{ color: '#999', margin: 0 }}>Aucune appréciation.</p>
-                                                        )}
+                                                        </div>
+                                                    ) : (
+                                                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                                            <tbody>
+                                                                {bulletin.subjects.map((sub, index) => (
+                                                                    <tr key={index} style={{ borderBottom: '1px solid #f9f9f9' }}>
+                                                                        <td style={{ padding: '12px 0', color: '#444', fontWeight: '500' }}>{sub.matiere}</td>
+                                                                        <td style={{ padding: '12px 0', textAlign: 'right' }}>
+                                                                            <span style={{ 
+                                                                                fontWeight: 'bold', 
+                                                                                color: sub.moyenne >= 10 ? '#008F39' : '#D32F2F',
+                                                                                padding: '4px 8px',
+                                                                                borderRadius: '6px',
+                                                                                border: '1px solid #eee'
+                                                                            }}>
+                                                                                {sub.moyenne}/20
+                                                                            </span>
+                                                                        </td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    )}
+                                                </div>
+
+                                                {/* APPRÉCIATION & PAIEMENT */}
+                                                <div>
+                                                    {!bulletin.isBlocked && (
+                                                        <>
+                                                            <h3 style={{ marginTop: 0, color: '#0A2240', borderBottom: '2px solid #F0F0F0', paddingBottom: '10px' }}>👨‍🏫 Avis du Conseil</h3>
+                                                            <div style={{ backgroundColor: '#FFF8E1', padding: '20px', borderRadius: '12px', borderLeft: '5px solid #FFC107', marginBottom: '30px' }}>
+                                                                {bulletin.bulletinData?.appreciation ? (
+                                                                    <p style={{ margin: 0, color: '#5D4037', fontStyle: 'italic', lineHeight: '1.6' }}>
+                                                                        "{bulletin.bulletinData.appreciation}"
+                                                                    </p>
+                                                                ) : (
+                                                                    <p style={{ color: '#999', margin: 0 }}>Aucune appréciation.</p>
+                                                                )}
+                                                            </div>
+                                                        </>
+                                                    )}
+
+                                                    <div className="no-print"> 
+                                                        <h4 style={{ margin: '0 0 10px 0', color: '#555' }}>💰 Gestion Scolarité</h4>
+                                                        <PaymentSubmissionForm 
+                                                            studentId={currentChild.id}
+                                                            onTransactionSubmitted={handlePaymentSubmitted}
+                                                        />
                                                     </div>
-                                                </>
-                                            )}
+                                                </div>
 
-                                            <div className="no-print"> 
-                                                <h4 style={{ margin: '0 0 10px 0', color: '#555' }}>💰 Gestion Scolarité</h4>
-                                                <PaymentSubmissionForm 
-                                                    studentId={currentChild.id}
-                                                    onTransactionSubmitted={handlePaymentSubmitted}
-                                                />
                                             </div>
-
-                                        </div>
-
+                                        ) : (
+                                            <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                                                Chargement des résultats...
+                                            </div>
+                                        )}
                                     </div>
-                                ) : (
-                                    <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-                                        Chargement des résultats...
-                                    </div>
-                                )}
+                                </div>
+
                             </div>
                         </div> 
                         {/* --- FIN ZONE IMPRIMABLE --- */}
@@ -312,7 +340,6 @@ const ParentDashboard: React.FC = () => {
         }
       `}</style>
       
-      {/* 2. PIED DE PAGE AJOUTÉ */}
       <Footer />
 
     </div>
