@@ -1,9 +1,7 @@
-// scolia-backend/src/auth/strategies/jwt.strategy.ts
-
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PassportStrategy } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
-import { jwtConstants } from '../constants';
+import { jwtConstants } from '../constants'; // Assurez-vous que le chemin est bon
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -11,18 +9,20 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: jwtConstants.secret,
+      secretOrKey: jwtConstants.secret, // Doit être la même clé que dans AuthModule
     });
   }
 
-  // CORRECTION : Nous reformons l'objet utilisateur à partir du payload
+  // Cette méthode s'exécute si le token est valide (signature OK)
   async validate(payload: any) {
-    // Le payload est le contenu du jeton. Il DOIT contenir sub (ID) et role.
-    // Nous retournons un objet clair pour req.user
+    // On renvoie directement les infos contenues dans le token
+    // Elles seront accessibles via req.user dans les contrôleurs
     return { 
-        sub: payload.sub, // <-- L'ID utilisateur
+        userId: payload.sub, // L'ID utilisateur
+        sub: payload.sub,    // Alias utile
         email: payload.email, 
-        role: payload.role 
+        role: payload.role,
+        schoolId: payload.schoolId 
     };
   }
 }
