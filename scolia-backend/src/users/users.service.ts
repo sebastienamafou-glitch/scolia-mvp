@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import * as bcrypt from 'bcrypt';
-import { CreateUserDto } from './dto/create-user.dto';
+// import { CreateUserDto } from './dto/create-user.dto'; // Optionnel si on utilise 'any' pour flexibilité
 import { PaymentsService } from '../payments/payments.service';
 
 @Injectable()
@@ -21,7 +21,7 @@ export class UsersService implements OnModuleInit {
     await this.seedUsers();
   }
 
-  // --- 1. INITIALISATION (SEEDING) ---
+  // --- SEEDING ---
   private async seedUsers() {
     const count = await this.usersRepository.count();
     if (count > 0) return;
@@ -30,6 +30,7 @@ export class UsersService implements OnModuleInit {
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash('password', saltRounds);
 
+    // Utilisation de 'any' pour contourner la vérification stricte de schoolId: null ici
     const superAdmin: any = {
         email: 'superadmin@scolia.ci',
         passwordHash: hashedPassword,
@@ -43,7 +44,7 @@ export class UsersService implements OnModuleInit {
     this.logger.log('✅ Super Admin créé : superadmin@scolia.ci');
   }
 
-  // --- 2. UTILITAIRES ---
+  // --- UTILITAIRES ---
   private generateRandomPassword(length: number = 8): string {
     const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#";
     let password = "";
@@ -72,10 +73,9 @@ export class UsersService implements OnModuleInit {
     return candidateEmail;
   }
 
-  // --- 3. CRÉATION D'UTILISATEUR ---
+  // --- CRÉATION ---
   async create(createUserDto: any): Promise<User> {
     const saltRounds = 10;
-    
     const plainPassword = createUserDto.password || this.generateRandomPassword(8);
     const hashedPassword = await bcrypt.hash(plainPassword, saltRounds);
 
@@ -84,6 +84,7 @@ export class UsersService implements OnModuleInit {
         finalEmail = await this.generateUniqueEmail(createUserDto.prenom, createUserDto.nom);
     }
 
+    // Extraction des champs non-User
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, email, fraisScolarite, ...userData } = createUserDto; 
 
@@ -93,9 +94,10 @@ export class UsersService implements OnModuleInit {
       passwordHash: hashedPassword,
     });
 
-    // 💡 CORRECTION ICI : On utilise "as unknown as User" pour forcer TypeScript à accepter
+    // 💡 SÉCURITÉ TYPAGE : On force le retour en User unique
     const savedUser = (await this.usersRepository.save(newUser)) as unknown as User;
     
+    // Gestion des frais
     if (savedUser.role === 'Élève' && fraisScolarite) {
         try {
             await this.paymentsService.setStudentTuition(
@@ -115,7 +117,7 @@ export class UsersService implements OnModuleInit {
     return savedUser;
   }
 
-  // --- 4. AUTRES MÉTHODES ---
+  // --- LECTURE & UPDATE ---
   async findAll(): Promise<User[]> { return this.usersRepository.find(); }
 
   async findAllBySchool(schoolId: number): Promise<User[]> {
@@ -139,34 +141,26 @@ export class UsersService implements OnModuleInit {
   }
 
   async updatePassword(userId: number, plainPassword: string): Promise<void> {
-    const saltRounds = 10;
-    const newHash = await bcrypt.hash(plainPassword, saltRounds);
+    const newHash = await bcrypt.hash(plainPassword, 10);
     await this.usersRepository.update(userId, { passwordHash: newHash });
   }
   
   async updateResetToken(userId: number, token: string, exp: Date) {
     return this.usersRepository.update(userId, { resetToken: token, resetTokenExp: exp });
   }
-  
-  // ✅ NOUVELLE MÉTHODE : Mettre à jour les préférences de notification
-  async updateNotificationPreferences(userId: number, prefs: any) {
-    // Note : Le dépôt est nommé 'usersRepository' dans ce fichier
-    const user = await this.usersRepository.findOne({ where: { id: userId } });
-    if (!user) {
-        throw new NotFoundException('Utilisateur non trouvé.');
-    }
 
-    // Le backend ne met à jour que les champs définis dans l'entité
+  async updateNotificationPreferences(userId: number, prefs: any) {
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('Utilisateur non trouvé.');
+
     const dataToUpdate: any = {
         notifGradesEnabled: prefs.notifGradesEnabled,
         notifAbsencesEnabled: prefs.notifAbsencesEnabled,
         notifFinanceEnabled: prefs.notifFinanceEnabled,
-        // Convertit l'objet JS { start, end } en chaîne JSON pour le stockage
         notifQuietHours: prefs.notifQuietHours ? JSON.stringify(prefs.notifQuietHours) : null,
     };
 
     await this.usersRepository.update(userId, dataToUpdate);
-    // Retourne l'utilisateur mis à jour (sans le mot de passe hashé)
     return this.usersRepository.findOne({ where: { id: userId } });
   }
 }
