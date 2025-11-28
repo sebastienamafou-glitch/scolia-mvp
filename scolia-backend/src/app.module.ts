@@ -1,3 +1,5 @@
+// scolia-backend/src/app.module.ts
+
 import { SkillsModule } from './skills/skills.module'; 
 import { Competence } from './skills/entities/competence.entity';
 import { SkillEvaluation } from './skills/entities/skill-evaluation.entity';
@@ -30,7 +32,7 @@ import { NewsModule } from './news/news.module';
 import { SchoolsModule } from './schools/schools.module'; 
 import { PaymentsModule } from './payments/payments.module';
 import { NotificationsModule } from './notifications/notifications.module';
-import { AnalyticsModule } from './analytics/analytics.module'; // 👈 IMPORT AJOUTÉ
+import { AnalyticsModule } from './analytics/analytics.module'; 
 
 @Module({
   imports: [
@@ -40,12 +42,19 @@ import { AnalyticsModule } from './analytics/analytics.module'; // 👈 IMPORT A
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
         host: configService.get<string>('DB_HOST'),
-        port: 5432,
+        
+        // 👇 CORRECTION 1 : Utiliser DB_PORT et non 5432 en dur
+        port: configService.get<number>('DB_PORT') || 5432, 
+        
         username: configService.get<string>('DB_USER'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
-        ssl: true, 
-        // ✅ On s'assure que toutes les entités sont là
+        
+        // 👇 CORRECTION 2 : Configuration SSL obligatoire pour Render/Vercel vers une base de données cloud
+        ssl: process.env.NODE_ENV === 'production' 
+             ? { rejectUnauthorized: false } // Permet la connexion sans certificat racine reconnu (standard sur cloud)
+             : false, // SSL désactivé en développement local
+
         entities: [User, Student, Class, Grade, Homework, Bulletin, News, School, Fee, Transaction, Competence, SkillEvaluation],
         synchronize: true, 
       }),
@@ -62,7 +71,7 @@ import { AnalyticsModule } from './analytics/analytics.module'; // 👈 IMPORT A
     PaymentsModule,
     NotificationsModule, 
     SkillsModule,
-    AnalyticsModule, // 👈 MODULE AJOUTÉ ICI
+    AnalyticsModule, 
   ],
   controllers: [AppController],
   providers: [AppService],

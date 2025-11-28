@@ -9,7 +9,6 @@ import { BulletinEditor } from '../components/BulletinEditor';
 import { StudentCard } from '../components/StudentCard';
 import { SchoolNews } from '../components/SchoolNews';
 import { TransactionValidator } from '../components/TransactionValidator';
-// 👇 1. IMPORT DU WIDGET
 import { RiskRadarWidget } from '../components/RiskRadarWidget';
 import { FaUserGraduate, FaChalkboardTeacher, FaUserTie, FaUserShield, FaSearch, FaPlus, FaTimes, FaChevronLeft, FaChevronRight, FaCog } from 'react-icons/fa';
 import { SkillsManager } from '../components/SkillsManager';
@@ -105,6 +104,26 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  // 👇 FONCTION POUR L'IMPORT CSV (AJOUTÉE)
+  const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file); // 'file' doit correspondre au champ attendu par l'interceptor Multer
+
+    try {
+      const res = await api.post('/import/users', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      alert(`✅ Import réussi ! ${res.data.message || ''}`);
+      fetchUsers(); // Rafraîchit la liste
+    } catch (error) {
+      console.error(error);
+      alert("Erreur serveur lors de l'importation. Vérifiez le format du fichier.");
+    }
+  };
+
   // --- LOGIQUE DE FILTRAGE ET RECHERCHE ---
   const filteredUsers = allUsers.filter(user => {
     const roleMatch = activeTab === 'Tous' || user.role === activeTab;
@@ -153,7 +172,7 @@ const AdminDashboard: React.FC = () => {
       const createdUser = response.data;
 
       // 2. Déterminer quel mot de passe afficher
-      const passwordDisplay = createdUser.plainPassword || newUser.password || 'scolia123';
+      const passwordDisplay = createdUser.temporaryPassword || newUser.password || 'scolia123';
 
       // 3. Affichage de l'alerte avec les identifiants
       alert(`✅ Utilisateur créé avec succès !\n\n📧 Identifiant : ${createdUser.email}\n🔑 Mot de passe : ${passwordDisplay}`);
@@ -215,7 +234,7 @@ const AdminDashboard: React.FC = () => {
 
       <div style={{ maxWidth: '1200px', margin: '30px auto', padding: '0 20px' }}>
 
-        {/* 👇 2. ZONE PRIORITAIRE : WIDGET RADAR (Ajouté ici) */}
+        {/* ZONE PRIORITAIRE : WIDGET RADAR */}
         {activeTab !== 'Paramètres' && (
             <div style={{ marginBottom: '30px' }}>
                 <RiskRadarWidget />
@@ -291,6 +310,20 @@ const AdminDashboard: React.FC = () => {
                                 style={{ padding: '8px 10px 8px 35px', borderRadius: '6px', border: '1px solid #ddd' }}
                             />
                         </div>
+                        
+                        {/* 👇 NOUVEAU : BOUTON IMPORT CSV */}
+                        <input type="file" accept=".csv" onChange={handleFileImport} style={{ display: 'none' }} id="csv-upload" />
+                        <label 
+                            htmlFor="csv-upload" 
+                            style={{ 
+                                backgroundColor: '#0A2240', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', 
+                                fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '5px' 
+                            }}
+                        >
+                            Importer CSV
+                        </label>
+                        {/* ------------------------------------ */}
+
                         <button 
                             onClick={() => setShowCreateForm(!showCreateForm)}
                             style={{ display: 'flex', alignItems: 'center', gap: '5px', backgroundColor: '#F77F00', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
@@ -310,7 +343,7 @@ const AdminDashboard: React.FC = () => {
                     <p style={{ color: '#666', marginBottom: '20px' }}>Modifiez ici les informations visibles sur votre espace et les bulletins.</p>
                     
                     <form onSubmit={handleUpdateSchool} style={{ display: 'grid', gap: '20px', maxWidth: '600px' }}>
-                        {/* ... champs formulaire ... */}
+                        
                         <div>
                             <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#444' }}>Nom de l'établissement</label>
                             <input type="text" value={schoolForm.name} onChange={e => setSchoolForm({...schoolForm, name: e.target.value})} style={inputStyle} required />
@@ -371,7 +404,7 @@ const AdminDashboard: React.FC = () => {
                                             <input type="date" value={newUser.dateNaissance} onChange={e => setNewUser({...newUser, dateNaissance: e.target.value})} style={inputStyle} />
                                         </div>
                                         <input type="text" placeholder="Adresse de résidence" value={newUser.adresse} onChange={e => setNewUser({...newUser, adresse: e.target.value})} style={inputStyle} />
-                                        <input type="text" placeholder="Nom Contact Urgence" value={newUser.contactUrgenceNom} onChange={e => setNewUser({...newUser, contactUrgenceNom: e.target.value})} style={inputStyle} />
+                                        <input type="text" placeholder="Nom Contact Urgence" value={newUser.contactUrgenceNom} onChange={e => setNewUser({...newUser, contactUrgenceTel: e.target.value})} style={inputStyle} />
                                         <input type="text" placeholder="Tél Contact Urgence" value={newUser.contactUrgenceTel} onChange={e => setNewUser({...newUser, contactUrgenceTel: e.target.value})} style={inputStyle} />
                                         <textarea placeholder="Infos Médicales / Allergies (R.A.S par défaut)" value={newUser.infosMedicales} onChange={e => setNewUser({...newUser, infosMedicales: e.target.value})} style={{ ...inputStyle, gridColumn: '1 / -1', minHeight: '60px' }} />
                                     </div>
