@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, type PropsWithChildren } from 'react';
 import api from '../services/api';
 
-// On définit le type Role localement pour être sûr qu'il inclut SuperAdmin
+// On définit le type Role localement
 export type Role = 'Admin' | 'Enseignant' | 'Parent' | 'Élève' | 'SuperAdmin';
 
 export interface User {
@@ -12,7 +12,7 @@ export interface User {
   nom: string;
   prenom: string;
   role: Role;
-  schoolId: number | null; // Champ essentiel pour le Multi-Tenant
+  schoolId: number | null; 
 }
 
 interface AuthContextType {
@@ -43,15 +43,27 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
 
   const verifyToken = async (_token: string) => { 
     try {
-      const response = await api.get('/auth/me'); 
+      // 1. On met à jour la config globale pour les futures requêtes
+      api.defaults.headers.common['Authorization'] = `Bearer ${_token}`;
+
+      // 2. ⚡ CORRECTION CRITIQUE ICI ⚡
+      // On force l'envoi du token DANS cette requête spécifique pour éviter le 401
+      // car parfois la config globale 'api.defaults' prend quelques millisecondes à s'appliquer.
+      const response = await api.get('/auth/me', {
+        headers: { Authorization: `Bearer ${_token}` } 
+      }); 
+      
       const userData = response.data;
       
       setUser(userData);           
-      setUserRole(userData.role as Role); // Force le typage
+      setUserRole(userData.role as Role);
       setIsAuthenticated(true);
     } catch (error) {
       console.error('Token verification failed:', error);
+      // Nettoyage en cas d'erreur
       localStorage.removeItem('access_token');
+      delete api.defaults.headers.common['Authorization'];
+      
       setIsAuthenticated(false);
       setUser(null);
       setUserRole(null);
@@ -60,25 +72,27 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
     }
   };
 
-  // 👇 FONCTION LOGIN MISE À JOUR
   const login = async (email: string, password: string) => { 
-    setIsLoading(true); // 1. ON ACTIVE LE CHARGEMENT DÈS LE CLIC
+    setIsLoading(true); 
     try {
       const response = await api.post('/auth/login', { email, password });
       const { access_token } = response.data;
 
       localStorage.setItem('access_token', access_token);
+      
+      // On lance la vérification immédiatement
       await verifyToken(access_token);
     } catch (error) {
       console.error("Erreur Login:", error);
       throw error; 
     } finally {
-      setIsLoading(false); // 2. ON DÉSACTIVE À LA FIN (Réussite ou Échec)
+      setIsLoading(false);
     }
   };
 
   const logout = () => {
     localStorage.removeItem('access_token');
+    delete api.defaults.headers.common['Authorization']; // On nettoie le header
     setIsAuthenticated(false);
     setUser(null);
     setUserRole(null);
