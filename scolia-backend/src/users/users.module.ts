@@ -10,10 +10,11 @@ import { PaymentsModule } from '../payments/payments.module'; // 👈 Import
 @Module({
   imports: [
       TypeOrmModule.forFeature([User]),
-      forwardRef(() => PaymentsModule) // 👈 Import du module Payments
+      // ✅ CORRECTION : Assurer que la dépendance Payments est gérée de ce côté
+      forwardRef(() => PaymentsModule) 
   ],
   controllers: [UsersController],
   providers: [UsersService],
-  exports: [UsersService],
+  exports: [UsersService], 
 })
 export class UsersModule {}
