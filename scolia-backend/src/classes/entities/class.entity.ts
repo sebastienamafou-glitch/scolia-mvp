@@ -1,7 +1,7 @@
 import { Entity, Column, PrimaryGeneratedColumn, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
 import { Student } from '../../students/entities/student.entity';
 import { Homework } from '../../homeworks/entities/homework.entity';
-import { School } from '../../schools/entities/school.entity'; // <--- IMPORT AJOUTÉ
+import { School } from '../../schools/entities/school.entity'; // 👈 Import School
 
 @Entity()
 export class Class {
@@ -22,7 +22,7 @@ export class Class {
   @OneToMany(() => Homework, (homework) => homework.class)
   homeworks: Homework[];
 
-  // --- AJOUT MULTI-TENANT ---
+  // ✅ AJOUT MULTI-TENANT (Lier la classe à une école)
   @ManyToOne(() => School, (school) => school.classes, { nullable: true })
   @JoinColumn({ name: 'schoolId' })
   school: School;
