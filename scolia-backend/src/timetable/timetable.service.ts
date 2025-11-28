@@ -13,90 +13,111 @@ export class TimetableService {
     @InjectRepository(TimetableEvent)
     private timetableRepo: Repository<TimetableEvent>,
   ) {
-    // S'assure que la clé API est bien chargée
     this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
   }
 
-  // 1. Récupérer l'emploi du temps (Lecture)
+  // --- 1. LECTURE (Sécurisée) ---
   async findByClass(classId: number): Promise<TimetableEvent[]> {
-    const events = await this.timetableRepo.find({ 
-        where: { classId },
-    });
+    try {
+        const events = await this.timetableRepo.find({ 
+            where: { classId },
+        });
 
-    // Tri manuel des jours car "Lundi", "Mardi" ne se trient pas alphabétiquement correctement
-    const dayOrder = { 'Lundi': 1, 'Mardi': 2, 'Mercredi': 3, 'Jeudi': 4, 'Vendredi': 5, 'Samedi': 6, 'Dimanche': 7 };
-    
-    return events.sort((a, b) => {
-        const dayDiff = (dayOrder[a.dayOfWeek] || 99) - (dayOrder[b.dayOfWeek] || 99);
-        if (dayDiff !== 0) return dayDiff;
-        return a.startTime.localeCompare(b.startTime); // Tri par heure ensuite
-    });
+        // Si aucun événement, on renvoie une liste vide sans planter
+        if (!events || events.length === 0) return [];
+
+        const dayOrder: { [key: string]: number } = { 
+            'Lundi': 1, 'Mardi': 2, 'Mercredi': 3, 'Jeudi': 4, 'Vendredi': 5, 'Samedi': 6, 'Dimanche': 7 
+        };
+        
+        return events.sort((a, b) => {
+            const dayA = dayOrder[a.dayOfWeek] || 99;
+            const dayB = dayOrder[b.dayOfWeek] || 99;
+            
+            const diffDay = dayA - dayB;
+            if (diffDay !== 0) return diffDay;
+            
+            // Tri par heure (gestion sécurisée si startTime est nul)
+            return (a.startTime || '').localeCompare(b.startTime || '');
+        });
+    } catch (error) {
+        this.logger.error(`Erreur lecture emploi du temps classe ${classId}`, error);
+        return []; // On ne plante pas, on renvoie vide
+    }
   }
 
-  // 2. Générer avec IA (Écriture)
+  // --- 2. GÉNÉRATION IA (Modèle Flash + Logs détaillés) ---
   async generateWithAI(classId: number, constraints: any, schoolId: number) {
-    const model = this.genAI.getGenerativeModel({ model: "gemini-pro" });
+    // 👇changement de modèle vers FLASH (plus rapide et stable)
+    const model = this.genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const prompt = `
-      Agis comme un planificateur scolaire expert.
-      Génère un emploi du temps hebdomadaire structuré en JSON.
+      Agis comme un planificateur scolaire.
+      Génère un emploi du temps JSON pour une classe.
       
-      CONTRAINTES :
+      MATIÈRES : ${JSON.stringify(constraints)}
+      
+      RÈGLES :
       - Jours : Lundi, Mardi, Mercredi, Jeudi, Vendredi.
-      - Horaires possibles : 08:00 à 12:00 et 14:00 à 17:00.
-      - Pause Midi obligatoire : 12:00 à 14:00 (pas de cours).
-      - Durée des cours : 1h ou 2h.
+      - Heures : 08:00-12:00 et 14:00-17:00.
+      - Format heure : "HH:MM" (ex: "08:00").
       
-      MATIÈRES À PLACER (et leur fréquence par semaine) :
-      ${JSON.stringify(constraints)}
-
-      FORMAT DE RÉPONSE ATTENDU (Uniquement ce tableau JSON, pas de texte autour) :
+      FORMAT JSON STRICT (Tableau d'objets) :
       [
-        { "day": "Lundi", "start": "08:00", "end": "09:00", "subject": "Maths", "room": "Salle 1" }
+        { "day": "Lundi", "start": "08:00", "end": "09:00", "subject": "Maths", "room": "A1" }
       ]
+      Retourne UNIQUEMENT le JSON brut, sans markdown, sans mot d'intro.
     `;
 
     try {
+      this.logger.log(`Demande IA envoyée pour classe ${classId}...`);
+      
       const result = await model.generateContent(prompt);
       const response = await result.response;
       const text = response.text();
 
-      // Nettoyage robuste du JSON (l'IA met souvent des balises markdown ```json ... ```)
-      const jsonString = text.replace(/```json|```/g, '').trim();
+      this.logger.log("Réponse IA reçue (extrait) : " + text.substring(0, 100) + "...");
+
+      // Nettoyage agressif du JSON
+      let jsonString = text.replace(/```json/g, '').replace(/```/g, '').trim();
       
-      // Chercher le début '[' et la fin ']' pour ignorer le blabla éventuel de l'IA
-      const startIndex = jsonString.indexOf('[');
-      const endIndex = jsonString.lastIndexOf(']');
+      // Extraction pure entre [ et ]
+      const firstBracket = jsonString.indexOf('[');
+      const lastBracket = jsonString.lastIndexOf(']');
       
-      if (startIndex === -1 || endIndex === -1) {
-          throw new Error("Format JSON invalide reçu de l'IA");
+      if (firstBracket !== -1 && lastBracket !== -1) {
+          jsonString = jsonString.substring(firstBracket, lastBracket + 1);
+      } else {
+          throw new Error("JSON introuvable dans la réponse IA");
       }
 
-      const cleanJson = jsonString.substring(startIndex, endIndex + 1);
-      const scheduleData = JSON.parse(cleanJson);
+      const scheduleData = JSON.parse(jsonString);
 
-      // Suppression de l'ancien emploi du temps pour cette classe
+      // Suppression de l'ancien emploi du temps
       await this.timetableRepo.delete({ classId });
 
-      // Création des nouveaux événements
+      // Insertion des nouveaux cours
       const events = scheduleData.map((slot: any) => {
           return this.timetableRepo.create({
               dayOfWeek: slot.day,
               startTime: slot.start,
               endTime: slot.end,
               subject: slot.subject,
-              room: slot.room || 'Salle de classe',
+              room: slot.room || 'Salle',
               classId: classId,
               schoolId: schoolId,
-              teacherId: null // Pour l'instant, on n'assigne pas de prof spécifique
+              teacherId: null
           });
       });
 
-      return await this.timetableRepo.save(events);
+      const saved = await this.timetableRepo.save(events);
+      this.logger.log(`${saved.length} cours sauvegardés avec succès.`);
+      return saved;
 
     } catch (error) {
-      this.logger.error("Erreur génération IA :", error);
-      throw new InternalServerErrorException("L'IA n'a pas pu générer l'emploi du temps. Vérifiez les quotas ou réessayez.");
+      this.logger.error("ERREUR CRITIQUE IA :", error);
+      // On renvoie l'erreur exacte pour que vous puissiez la voir dans la console navigateur
+      throw new InternalServerErrorException(error instanceof Error ? error.message : "Erreur inconnue IA");
     }
   }
 }
