@@ -60,12 +60,21 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
     }
   };
 
+  // 👇 FONCTION LOGIN MISE À JOUR
   const login = async (email: string, password: string) => { 
-    const response = await api.post('/auth/login', { email, password });
-    const { access_token } = response.data;
+    setIsLoading(true); // 1. ON ACTIVE LE CHARGEMENT DÈS LE CLIC
+    try {
+      const response = await api.post('/auth/login', { email, password });
+      const { access_token } = response.data;
 
-    localStorage.setItem('access_token', access_token);
-    await verifyToken(access_token);
+      localStorage.setItem('access_token', access_token);
+      await verifyToken(access_token);
+    } catch (error) {
+      console.error("Erreur Login:", error);
+      throw error; 
+    } finally {
+      setIsLoading(false); // 2. ON DÉSACTIVE À LA FIN (Réussite ou Échec)
+    }
   };
 
   const logout = () => {
