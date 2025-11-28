@@ -9,11 +9,11 @@ export class User {
   @Column({ unique: true })
   email: string;
 
-  @Column({ nullable: true }) 
-  password: string;
+  @Column({ nullable: true })
+  passwordHash: string; 
 
-  @Column({ nullable: true }) 
-  passwordHash: string;
+  @Column({ nullable: true }) // Gardé pour compatibilité
+  password: string;
 
   @Column()
   nom: string;
@@ -27,8 +27,14 @@ export class User {
   @Column({ nullable: true })
   photo: string;
 
-  // --- INFOS COMPLÉMENTAIRES ÉLÈVE ---
-  @Column({ nullable: true, type: 'date' }) // Date
+  // --- CHAMPS NOUVEAUX (Pour corriger les erreurs) ---
+  @Column({ nullable: true })
+  resetToken: string;
+
+  @Column({ nullable: true, type: 'timestamp' })
+  resetTokenExp: Date;
+
+  @Column({ nullable: true })
   dateNaissance: string;
 
   @Column({ nullable: true })
@@ -42,17 +48,14 @@ export class User {
 
   @Column({ nullable: true, type: 'text' })
   infosMedicales: string;
-  // ------------------------------------
+  // ---------------------------------------------------
 
   @ManyToOne(() => School, (school) => school.users, { nullable: true })
   @JoinColumn({ name: 'schoolId' })
   school: School;
 
   @Column({ nullable: true })
-  schoolId: number | null;
-
-  @Column({ nullable: true })
-  fcmToken: string;
+  schoolId: number;
 
   @Column({ nullable: true })
   classe: string;

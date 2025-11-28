@@ -1,5 +1,5 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
-import { User } from '../../users/entities/user.entity';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, UpdateDateColumn } from 'typeorm';
+import { Student } from '../../students/entities/student.entity';
 import { School } from '../../schools/entities/school.entity';
 
 @Entity()
@@ -7,27 +7,27 @@ export class Fee {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
-  amountDue: number; // Total à payer (ex: 150000)
+  // ✅ CORRECTION : Ajout de la colonne manquante
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  totalAmount: number; 
 
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
-  amountPaid: number; // Total déjà versé
+  amountPaid: number;
 
-  @Column({ type: 'date' })
-  dueDate: Date; // Date limite
+  @UpdateDateColumn()
+  updatedAt: Date;
 
-  @ManyToOne(() => User)
-  @JoinColumn({ name: 'studentId' })
-  student: User;
-  
   @Column()
   studentId: number;
 
-  // Liaison Multi-Tenant indispensable
+  @ManyToOne(() => Student)
+  @JoinColumn({ name: 'studentId' })
+  student: Student;
+
   @ManyToOne(() => School)
   @JoinColumn({ name: 'schoolId' })
   school: School;
 
-  @Column()
+  @Column({ nullable: true })
   schoolId: number;
 }

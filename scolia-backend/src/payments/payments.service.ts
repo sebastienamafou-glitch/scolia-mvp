@@ -48,7 +48,7 @@ export class PaymentsService {
   }
 
   // 4. Valider le paiement (Admin)
-  async validateTransaction(transactionId: number, schoolId: number, action: 'validate' | 'reject'): Promise<Transaction> {
+  async validateTransaction(transactionId: number, schoolId: number, adminId: number): Promise<Transaction> {
     const transaction = await this.transactionsRepository.findOne({ 
         where: { id: transactionId, school: { id: schoolId } },
         relations: ['student']
@@ -57,21 +57,17 @@ export class PaymentsService {
     if (!transaction) throw new NotFoundException("Transaction introuvable.");
     if (transaction.status !== 'Pending') throw new BadRequestException("Déjà traitée.");
 
-    if (action === 'reject') {
-        transaction.status = 'Rejected';
-        return this.transactionsRepository.save(transaction);
-    }
-
-    // Si validé, on met à jour le solde de l'élève
+    // Mise à jour du statut transaction
     transaction.status = 'Validated';
     await this.transactionsRepository.save(transaction);
 
+    // Mise à jour du solde élève
     const fee = await this.feesRepository.findOne({ 
         where: { studentId: transaction.studentId, school: { id: schoolId } } 
     });
 
     if (fee) {
-        // On convertit en Number pour éviter les concaténations de chaînes
+        // On convertit en Number pour éviter les problèmes d'addition de chaînes
         fee.amountPaid = Number(fee.amountPaid) + Number(transaction.amount);
         await this.feesRepository.save(fee);
     }
@@ -79,8 +75,8 @@ export class PaymentsService {
     return transaction;
   }
 
-  // 5. DÉFINIR LA SCOLARITÉ (ADMIN)
-  async setFee(studentId: number, amountDue: number, dueDate: string, schoolId: number): Promise<Fee> {
+  // 5. DÉFINIR LA SCOLARITÉ (Appelé par UsersService lors de la création d'un élève)
+  async setStudentTuition(studentId: number, totalAmount: number, schoolId: number): Promise<Fee> {
     let fee = await this.feesRepository.findOne({ 
         where: { studentId, school: { id: schoolId } } 
     });
@@ -89,15 +85,13 @@ export class PaymentsService {
         // Création si n'existe pas
         fee = this.feesRepository.create({
             studentId,
-            school: { id: schoolId } as any, // Cast as any si TypeORM est strict sur le type partiel
-            amountDue,
-            amountPaid: 0, // Départ à 0
-            dueDate: new Date(dueDate)
+            school: { id: schoolId },
+            totalAmount: totalAmount, // Assurez-vous que l'entité Fee a bien 'totalAmount'
+            amountPaid: 0,
         });
     } else {
-        // Mise à jour si existe (ex: augmentation ou correction)
-        fee.amountDue = amountDue;
-        fee.dueDate = new Date(dueDate);
+        // Mise à jour si existe
+        fee.totalAmount = totalAmount;
     }
 
     return this.feesRepository.save(fee);

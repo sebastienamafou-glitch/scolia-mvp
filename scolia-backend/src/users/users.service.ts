@@ -1,11 +1,10 @@
-// scolia-backend/src/users/users.service.ts
-
-import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like } from 'typeorm'; // 👈 Import Like ajouté
+import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import * as bcrypt from 'bcrypt';
 import { CreateUserDto } from './dto/create-user.dto';
+import { PaymentsService } from '../payments/payments.service';
 
 @Injectable()
 export class UsersService implements OnModuleInit {
@@ -14,13 +13,15 @@ export class UsersService implements OnModuleInit {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @Inject(forwardRef(() => PaymentsService))
+    private paymentsService: PaymentsService,
   ) {}
 
   async onModuleInit() {
     await this.seedUsers();
   }
 
-  // --- INITIALISATION ---
+  // --- 1. INITIALISATION (SEEDING) ---
   private async seedUsers() {
     const count = await this.usersRepository.count();
     if (count > 0) return;
@@ -29,110 +30,103 @@ export class UsersService implements OnModuleInit {
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash('password', saltRounds);
 
-    await this.usersRepository.save([{
+    const superAdmin: any = {
         email: 'superadmin@scolia.ci',
         passwordHash: hashedPassword,
-        role: 'Admin',
+        role: 'SuperAdmin',
         nom: 'Super',
         prenom: 'Admin',
         schoolId: null, 
-    }]);
-    this.logger.log('✅ Super Admin créé : superadmin@scolia.ci / password');
+    };
+
+    await this.usersRepository.save([superAdmin]);
+    this.logger.log('✅ Super Admin créé : superadmin@scolia.ci');
   }
 
-  // --- GÉNÉRATEUR DE MOT DE PASSE ALÉATOIRE ---
+  // --- 2. UTILITAIRES ---
   private generateRandomPassword(length: number = 8): string {
     const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#";
     let password = "";
     for (let i = 0; i < length; ++i) {
-      const randomIndex = Math.floor(Math.random() * charset.length);
-      password += charset[randomIndex];
+      password += charset[Math.floor(Math.random() * charset.length)];
     }
     return password;
   }
 
-  // --- NOUVEAU : UTILITAIRE DE NETTOYAGE ---
   private sanitizeString(str: string): string {
-    return str
-      .toLowerCase()
-      .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Enlève les accents (é -> e)
-      .replace(/[^a-z0-9]/g, ""); // Enlève tout ce qui n'est pas lettre ou chiffre
+    if (!str) return '';
+    return str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
   }
 
-  // --- NOUVEAU : GÉNÉRATEUR EMAIL INTELLIGENT (Prenom.Nom) ---
   async generateUniqueEmail(prenom: string, nom: string, domain: string = 'scolia.ci'): Promise<string> {
-    // 1. Nettoyage
     const cleanPrenom = this.sanitizeString(prenom);
     const cleanNom = this.sanitizeString(nom);
-    
     const baseEmail = `${cleanPrenom}.${cleanNom}`;
     let candidateEmail = `${baseEmail}@${domain}`;
     
-    // 2. Vérification d'existence
     let counter = 1;
-    let userExists = await this.usersRepository.findOne({ where: { email: candidateEmail } });
-
-    // 3. Boucle tant que l'email est pris
-    while (userExists) {
+    while (await this.usersRepository.findOne({ where: { email: candidateEmail } })) {
       candidateEmail = `${baseEmail}${counter}@${domain}`;
-      userExists = await this.usersRepository.findOne({ where: { email: candidateEmail } });
       counter++;
     }
-
     return candidateEmail;
   }
 
-  // --- CRÉATION UTILISATEUR (MISE À JOUR) ---
-  async create(createUserDto: CreateUserDto): Promise<User> {
+  // --- 3. CRÉATION D'UTILISATEUR ---
+  async create(createUserDto: any): Promise<User> {
     const saltRounds = 10;
     
-    // 1. Si pas de mot de passe fourni, on en génère un aléatoire
     const plainPassword = createUserDto.password || this.generateRandomPassword(8);
-    
-    // 2. Hashage
     const hashedPassword = await bcrypt.hash(plainPassword, saltRounds);
 
-    // 3. Génération email (Mise à jour pour utiliser la nouvelle fonction)
-    // Note : On passe (prenom, nom) car la nouvelle fonction génère prenom.nom
-    const generatedEmail = await this.generateUniqueEmail(createUserDto.prenom, createUserDto.nom);
+    let finalEmail = createUserDto.email;
+    if (!finalEmail) {
+        finalEmail = await this.generateUniqueEmail(createUserDto.prenom, createUserDto.nom);
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password, email, ...userData } = createUserDto; 
+    const { password, email, fraisScolarite, ...userData } = createUserDto; 
 
     const newUser = this.usersRepository.create({
       ...userData,
-      email: generatedEmail, 
+      email: finalEmail, 
       passwordHash: hashedPassword,
     });
 
-    const savedUser = await this.usersRepository.save(newUser);
+    // 💡 CORRECTION ICI : On utilise "as unknown as User" pour forcer TypeScript à accepter
+    const savedUser = (await this.usersRepository.save(newUser)) as unknown as User;
     
-    this.logger.log(`👤 Nouvel utilisateur créé : ${generatedEmail}`);
+    if (savedUser.role === 'Élève' && fraisScolarite) {
+        try {
+            await this.paymentsService.setStudentTuition(
+                savedUser.id, 
+                Number(fraisScolarite), 
+                savedUser.schoolId ?? 0 
+            );
+            this.logger.log(`💰 Frais définis pour ${savedUser.prenom}: ${fraisScolarite}`);
+        } catch (error) {
+            this.logger.error(`Erreur définition frais: ${error}`);
+        }
+    }
     
-    // 4. On attache le mot de passe en clair à l'objet retourné (pour le frontend)
+    this.logger.log(`👤 Nouvel utilisateur : ${finalEmail}`);
     (savedUser as any).plainPassword = plainPassword;
 
     return savedUser;
   }
 
-  // --- RESTE DES MÉTHODES (Inchangées) ---
-
-  async findAll(): Promise<User[]> {
-    return this.usersRepository.find();
-  }
+  // --- 4. AUTRES MÉTHODES ---
+  async findAll(): Promise<User[]> { return this.usersRepository.find(); }
 
   async findAllBySchool(schoolId: number): Promise<User[]> {
-    return this.usersRepository.find({
-        where: { school: { id: schoolId } },
-        order: { nom: 'ASC' }
-    });
+    return this.usersRepository.find({ where: { school: { id: schoolId } }, order: { nom: 'ASC' } });
   }
 
   async findOneByEmail(email: string): Promise<User | null> {
     return this.usersRepository.createQueryBuilder("user")
         .where("user.email = :email", { email })
         .addSelect("user.passwordHash")
-        .leftJoinAndSelect("user.school", "school") 
+        .leftJoinAndSelect("user.school", "school")
         .getOne();
   }
   
@@ -148,5 +142,9 @@ export class UsersService implements OnModuleInit {
     const saltRounds = 10;
     const newHash = await bcrypt.hash(plainPassword, saltRounds);
     await this.usersRepository.update(userId, { passwordHash: newHash });
+  }
+  
+  async updateResetToken(userId: number, token: string, exp: Date) {
+    return this.usersRepository.update(userId, { resetToken: token, resetTokenExp: exp });
   }
 }
