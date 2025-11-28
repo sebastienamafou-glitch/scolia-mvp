@@ -8,8 +8,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler'; // 👈 NOUVEL IMPORT
-import { APP_GUARD } from '@nestjs/core'; // Pour appliquer le guard globalement
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler'; 
+import { APP_GUARD } from '@nestjs/core'; 
 
 // --- 1. IMPORT DES ENTITÉS ---
 import { User } from './users/entities/user.entity';
@@ -44,30 +44,26 @@ import { AnalyticsModule } from './analytics/analytics.module';
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
         host: configService.get<string>('DB_HOST'),
-        
-        // 👇 CORRECTION 1 : Utiliser DB_PORT et non 5432 en dur
         port: configService.get<number>('DB_PORT') || 5432, 
-        
         username: configService.get<string>('DB_USER'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
         
-        // 👇 CORRECTION 2 : Configuration SSL obligatoire pour Render/Vercel vers une base de données cloud
+        // SSL obligatoire pour la production (Neon/Render)
         ssl: process.env.NODE_ENV === 'production' 
-             ? { rejectUnauthorized: false } // Permet la connexion sans certificat racine reconnu (standard sur cloud)
-             : false, // SSL désactivé en développement local
+             ? { rejectUnauthorized: false } 
+             : false, 
 
         entities: [User, Student, Class, Grade, Homework, Bulletin, News, School, Fee, Transaction, Competence, SkillEvaluation],
-        synchronize: true, 
+        synchronize: true, // ⚠️ À passer à false et utiliser les migrations une fois stable en prod
       }),
       inject: [ConfigService],
     }),
 
-    // ✅ AJOUT DU MODULE RATE LIMITING
+    // ✅ CONFIGURATION RATE LIMITING ADAPTÉE À LA PRODUCTION
     ThrottlerModule.forRoot([{
-        // Limite globale par défaut (ex: 10 requêtes par 60 secondes par IP)
-        ttl: 60000, // Durée de vie (Time To Live) de la limitation : 60 secondes
-        limit: 10,  // Nombre maximum de requêtes autorisées
+        ttl: 60000, // 60 secondes
+        limit: 100,  // 100 requêtes par minute (Suffisant pour un usage normal, bloquant pour les bots)
     }]),
 
     AuthModule,
@@ -86,7 +82,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
   controllers: [AppController],
   providers: [
     AppService,
-    // ✅ Appliquer ThrottlerGuard globalement
+    // Appliquer le Guard de Rate Limiting globalement
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,

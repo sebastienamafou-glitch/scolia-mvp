@@ -4,30 +4,31 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
+import { NestExpressApplication } from '@nestjs/platform-express';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  // ✅ 1. SÉCURITÉ DES HEADERS HTTP (Anti-XSS, anti-Clickjacking)
+  // Configuration Proxy pour Render
+  app.set('trust proxy', 1); 
+
   app.use(helmet()); 
 
-  // 2. Configuration du Pipe de Validation GLOBAL
   app.useGlobalPipes(new ValidationPipe({
-    whitelist: true, // Ne garde que les propriétés définies dans le DTO (sécurité)
-    forbidNonWhitelisted: true, // Rejette les requêtes contenant des champs inconnus
+    whitelist: true, 
+    forbidNonWhitelisted: true, 
     transform: true,
-    disableErrorMessages: false, 
+    disableErrorMessages: process.env.NODE_ENV === 'production', 
   }));
 
-  // 3. ✅ CONFIGURATION CORS STRICTE
   const frontendDomains = [
-      'http://localhost:3000', // Pour le développement local
-      'https://scolia.vercel.app', // L'URL de production Vercel
-      process.env.FRONTEND_URL, // L'URL dynamique (si vous en avez une)
+      'http://localhost:3000', 
+      'https://scolia.vercel.app', 
+      process.env.FRONTEND_URL, 
   ];
 
-  // Filtre les entrées nulles ou vides pour garantir une liste blanche stricte
-  const whitelist = frontendDomains.filter(url => url && url.length > 0); 
+  // 👇 CORRECTION ICI : On utilise "as string[]" pour garantir le type à TypeScript
+  const whitelist = frontendDomains.filter(url => url && url.length > 0) as string[];
 
   app.enableCors({
     origin: whitelist, 
@@ -35,7 +36,6 @@ async function bootstrap() {
     credentials: true,
   });
 
-  // Écouter sur toutes les interfaces réseau (Render/Neon)
   const port = process.env.PORT || 3000;
   await app.listen(port, '0.0.0.0');
   
