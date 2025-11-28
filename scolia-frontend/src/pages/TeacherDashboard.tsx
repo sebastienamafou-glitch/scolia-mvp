@@ -4,18 +4,21 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import { Logo } from '../components/Logo';
-import { Link } from 'react-router-dom'; // 👈 IMPORT AJOUTÉ POUR LE LIEN
+import { Link } from 'react-router-dom';
 
 // Imports des modules
 import { NoteEntry, AttendanceEntry } from '../components/TeacherEntries';
 import { BulletinEditor } from '../components/BulletinEditor';
 import { SchoolNews } from '../components/SchoolNews';
 import { SkillsEvaluator } from '../components/SkillsEvaluator';
+// 👇 AJOUT IMPORT VIDEO
+import { VideoClassroom } from '../components/VideoClassroom';
 
 const TeacherDashboard: React.FC = () => {
     const { user, logout } = useAuth();
     
-    const [activeTab, setActiveTab] = useState<'appel' | 'notes' | 'bulletins' | 'skills'>('appel');
+    // 👇 AJOUT 'visio' dans les types possibles
+    const [activeTab, setActiveTab] = useState<'appel' | 'notes' | 'bulletins' | 'skills' | 'visio'>('appel');
 
     return (
         <div style={{ backgroundColor: '#F4F6F8', minHeight: '100vh' }}>
@@ -30,9 +33,8 @@ const TeacherDashboard: React.FC = () => {
                     </div>
                 </div>
 
-                {/* 👈 NOUVEAU BLOC BOUTONS (AIDE + DÉCONNEXION) */}
+                {/* BOUTONS (AIDE + DÉCONNEXION) */}
                 <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-                    {/* BOUTON AIDE */}
                     <Link 
                         to="/help" 
                         style={{ 
@@ -107,6 +109,20 @@ const TeacherDashboard: React.FC = () => {
                     >
                         🌟 Compétences
                     </button>
+                    {/* 👇 NOUVEAU BOUTON VISIO */}
+                    <button 
+                        onClick={() => setActiveTab('visio')}
+                        style={{
+                            padding: '12px 25px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold',
+                            backgroundColor: activeTab === 'visio' ? '#E53935' : 'white', // Rouge Vidéo
+                            color: activeTab === 'visio' ? 'white' : '#666',
+                            boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
+                            whiteSpace: 'nowrap',
+                            display: 'flex', alignItems: 'center', gap: '8px'
+                        }}
+                    >
+                        🎥 Classe Virtuelle
+                    </button>
                 </div>
 
                 {/* CONTENU DYNAMIQUE */}
@@ -115,6 +131,22 @@ const TeacherDashboard: React.FC = () => {
                     {activeTab === 'notes' && <NoteEntry />}
                     {activeTab === 'bulletins' && <BulletinEditor />}
                     {activeTab === 'skills' && <SkillsManagerWrapper />} 
+                    
+                    {/* 👇 CONTENU VISIO */}
+                    {activeTab === 'visio' && user && (
+                        <div style={{ marginTop: '20px', backgroundColor: 'white', padding: '20px', borderRadius: '10px' }}>
+                            <h2 style={{ color: '#0A2240', marginTop: 0, marginBottom: '10px' }}>Salle de cours en direct</h2>
+                            <p style={{ color: '#666', marginBottom: '20px' }}>
+                                Vous allez rejoindre la salle en tant que <strong>{user.prenom} {user.nom}</strong>.
+                            </p>
+                            
+                            {/* Nom de salle unique basé sur l'ID du prof pour l'instant */}
+                            <VideoClassroom 
+                                user={{ nom: user.nom, prenom: user.prenom, email: user.email }}
+                                roomName={`Scolia-Live-Prof-${user.id}`} 
+                            />
+                        </div>
+                    )}
                 </div>
 
             </div>
@@ -159,6 +191,7 @@ const SkillsManagerWrapper = () => {
             </div>
 
             {selectedClassId ? (
+                // Correction du type (string -> number si nécessaire, ou string si SkillsEvaluator attend string)
                 <SkillsEvaluator classId={selectedClassId} />
             ) : (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#888', fontStyle: 'italic' }}>

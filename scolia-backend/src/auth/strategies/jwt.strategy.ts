@@ -1,7 +1,8 @@
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PassportStrategy } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
-import { jwtConstants } from '../constants'; // Assurez-vous que le chemin est bon
+// Assurez-vous que ce chemin vers constants est correct pour votre projet
+import { jwtConstants } from '../constants'; 
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -9,17 +10,16 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: jwtConstants.secret, // Doit être la même clé que dans AuthModule
+      secretOrKey: jwtConstants.secret, // Doit correspondre à la clé de signature
     });
   }
 
-  // Cette méthode s'exécute si le token est valide (signature OK)
+  // ✅ CORRECTION : Validation "Stateless"
+  // On ne fait pas d'appel à la base de données ici. 
+  // Si la signature du token est bonne, on accepte le payload.
   async validate(payload: any) {
-    // On renvoie directement les infos contenues dans le token
-    // Elles seront accessibles via req.user dans les contrôleurs
     return { 
-        userId: payload.sub, // L'ID utilisateur
-        sub: payload.sub,    // Alias utile
+        userId: payload.sub, 
         email: payload.email, 
         role: payload.role,
         schoolId: payload.schoolId 
