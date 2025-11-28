@@ -122,13 +122,14 @@ const TeacherDashboard: React.FC = () => {
                     >
                         🎥 Classe Virtuelle
                     </button>
-                    {/* ✅ NOUVEAU BOUTON AJOUTÉ */}
+                    {/* ✅ ALERTE */}
                     <button 
                         onClick={() => setActiveTab('alert')}
                         style={{
                             padding: '12px 25px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold',
-                            backgroundColor: activeTab === 'alert' ? '#0A2240' : 'white',
-                            color: activeTab === 'alert' ? 'white' : '#dc3545', // Rouge pour alerte
+                            // 💡 CORRECTION STYLISTIQUE : Rouge lorsque ACTIF, gris neutre lorsqu'inactif
+                            backgroundColor: activeTab === 'alert' ? '#dc3545' : 'white', 
+                            color: activeTab === 'alert' ? 'white' : '#666', 
                             boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
                             whiteSpace: 'nowrap'
                         }}
@@ -152,7 +153,6 @@ const TeacherDashboard: React.FC = () => {
                                 Vous allez rejoindre la salle en tant que <strong>{user.prenom} {user.nom}</strong>.
                             </p>
                             
-                            {/* Nom de salle unique basé sur l'ID du prof pour l'instant */}
                             <VideoClassroom 
                                 user={{ nom: user.nom, prenom: user.prenom, email: user.email }}
                                 roomName={`Scolia-Live-Prof-${user.id}`} 
@@ -160,7 +160,7 @@ const TeacherDashboard: React.FC = () => {
                         </div>
                     )}
 
-                    {/* ✅ NOUVEAU CONTENU AJOUTÉ */}
+                    {/* ✅ CONTENU ALERTE */}
                     {activeTab === 'alert' && <TeacherAlertForm />}
                 </div>
 
@@ -206,7 +206,6 @@ const SkillsManagerWrapper = () => {
             </div>
 
             {selectedClassId ? (
-                // Correction du type (string -> number si nécessaire, ou string si SkillsEvaluator attend string)
                 <SkillsEvaluator classId={selectedClassId} />
             ) : (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#888', fontStyle: 'italic' }}>
