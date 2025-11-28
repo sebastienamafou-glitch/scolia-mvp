@@ -50,9 +50,9 @@ const AdminDashboard: React.FC = () => {
   const [itemsPerPage] = useState(10);
   const [showCreateForm, setShowCreateForm] = useState(false);
 
-  // État initial du formulaire utilisateur
+  // ❌ CORRIGÉ : L'email est retiré de l'état initial
   const [newUser, setNewUser] = useState({
-    email: '', password: '', role: 'Enseignant', 
+    password: '', role: 'Enseignant', 
     nom: '', prenom: '', classe: '', parentId: '', photo: '',
     dateNaissance: '',
     adresse: '',
@@ -104,20 +104,20 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  // 👇 FONCTION POUR L'IMPORT CSV (AJOUTÉE)
+  // FONCTION POUR L'IMPORT CSV
   const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const formData = new FormData();
-    formData.append('file', file); // 'file' doit correspondre au champ attendu par l'interceptor Multer
+    formData.append('file', file);
 
     try {
       const res = await api.post('/import/users', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       alert(`✅ Import réussi ! ${res.data.message || ''}`);
-      fetchUsers(); // Rafraîchit la liste
+      fetchUsers();
     } catch (error) {
       console.error(error);
       alert("Erreur serveur lors de l'importation. Vérifiez le format du fichier.");
@@ -181,7 +181,7 @@ const AdminDashboard: React.FC = () => {
       
       // Réinitialisation du formulaire
       setNewUser({ 
-          email: '', password: '', role: 'Enseignant', nom: '', prenom: '', 
+          password: '', role: 'Enseignant', nom: '', prenom: '', 
           classe: '', parentId: '', photo: '', dateNaissance: '', adresse: '',
           contactUrgenceNom: '', contactUrgenceTel: '', infosMedicales: ''
       });
@@ -311,7 +311,7 @@ const AdminDashboard: React.FC = () => {
                             />
                         </div>
                         
-                        {/* 👇 NOUVEAU : BOUTON IMPORT CSV */}
+                        {/* BOUTON IMPORT CSV */}
                         <input type="file" accept=".csv" onChange={handleFileImport} style={{ display: 'none' }} id="csv-upload" />
                         <label 
                             htmlFor="csv-upload" 
@@ -387,7 +387,7 @@ const AdminDashboard: React.FC = () => {
                                 </select>
                                 <input type="text" placeholder="Nom" required value={newUser.nom} onChange={e => setNewUser({...newUser, nom: e.target.value})} style={inputStyle} />
                                 <input type="text" placeholder="Prénom" required value={newUser.prenom} onChange={e => setNewUser({...newUser, prenom: e.target.value})} style={inputStyle} />
-                                <input type="email" placeholder="Email" required value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} style={inputStyle} />
+                                {/* ❌ CORRIGÉ : L'input Email a été retiré */}
                                 <input type="password" placeholder="Mot de passe (laisser vide pour auto)" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} style={inputStyle} />
                                 <input type="text" placeholder="URL Photo (opt)" value={newUser.photo} onChange={e => setNewUser({...newUser, photo: e.target.value})} style={inputStyle} />
                                 

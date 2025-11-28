@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit, Logger, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger, Inject, forwardRef, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
@@ -146,5 +146,27 @@ export class UsersService implements OnModuleInit {
   
   async updateResetToken(userId: number, token: string, exp: Date) {
     return this.usersRepository.update(userId, { resetToken: token, resetTokenExp: exp });
+  }
+  
+  // ✅ NOUVELLE MÉTHODE : Mettre à jour les préférences de notification
+  async updateNotificationPreferences(userId: number, prefs: any) {
+    // Note : Le dépôt est nommé 'usersRepository' dans ce fichier
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user) {
+        throw new NotFoundException('Utilisateur non trouvé.');
+    }
+
+    // Le backend ne met à jour que les champs définis dans l'entité
+    const dataToUpdate: any = {
+        notifGradesEnabled: prefs.notifGradesEnabled,
+        notifAbsencesEnabled: prefs.notifAbsencesEnabled,
+        notifFinanceEnabled: prefs.notifFinanceEnabled,
+        // Convertit l'objet JS { start, end } en chaîne JSON pour le stockage
+        notifQuietHours: prefs.notifQuietHours ? JSON.stringify(prefs.notifQuietHours) : null,
+    };
+
+    await this.usersRepository.update(userId, dataToUpdate);
+    // Retourne l'utilisateur mis à jour (sans le mot de passe hashé)
+    return this.usersRepository.findOne({ where: { id: userId } });
   }
 }

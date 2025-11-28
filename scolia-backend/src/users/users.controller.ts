@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Patch, Body, UseGuards, Request } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -9,30 +9,23 @@ import { Roles } from '../auth/roles.decorator';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  // --- 1. RÉCUPÉRATION DES UTILISATEURS (Sécurisée Multi-Tenant) ---
-  @Get()
-  findAll(@Request() req) {
-    const mySchoolId = req.user.schoolId; 
-    
-    // Si c'est le SuperAdmin (schoolId est null), il voit tout
-    if (!mySchoolId) {
-        return this.usersService.findAll();
-    }
-
-    // Sinon, on ne renvoie QUE les utilisateurs de l'école du demandeur
-    return this.usersService.findAllBySchool(mySchoolId);
+  // Route existante : GET /users/me
+  @Roles('Parent', 'Élève', 'Enseignant', 'Admin', 'SuperAdmin')
+  @Get('me')
+  getProfile(@Request() req) {
+    // Retourne le payload du JWT, contenant les informations de base de l'utilisateur
+    return req.user; 
   }
 
-  // --- 2. CRÉATION D'UTILISATEUR (Forçage de l'École) ---
-  @Roles('Admin')
-  @Post()
-  create(@Request() req, @Body() createUserDto: any) {
-    const mySchoolId = req.user.schoolId;
+  // ✅ ROUTE : Mise à jour des préférences de notification
+  @Roles('Parent', 'Élève', 'Enseignant', 'Admin', 'SuperAdmin')
+  @Patch('preferences')
+  async updatePreferences(@Request() req, @Body() body: any) {
+    const userId = req.user.sub; // ID de l'utilisateur connecté
     
-    // On force l'ID de l'école pour empêcher un Admin de créer un user ailleurs
-    return this.usersService.create({
-        ...createUserDto,
-        schoolId: mySchoolId 
-    });
+    // Le service gérera la logique de mise à jour dans la base de données
+    return this.usersService.updateNotificationPreferences(userId, body);
   }
+
+  // ... autres routes existantes ...
 }

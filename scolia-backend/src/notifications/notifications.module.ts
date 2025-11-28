@@ -1,13 +1,15 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
-import { User } from '../users/entities/user.entity';
+import { NotificationsController } from './notifications.controller';
+import { User } from '../users/entities/user.entity'; 
+import { Class } from '../classes/entities/class.entity'; 
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User])],
+  // Importe les entités User et Class pour que le service puisse les manipuler
+  imports: [TypeOrmModule.forFeature([User, Class])], 
   controllers: [NotificationsController],
   providers: [NotificationsService],
-  exports: [NotificationsService], // Important pour l'utiliser dans GradesModule
+  exports: [NotificationsService], 
 })
 export class NotificationsModule {}

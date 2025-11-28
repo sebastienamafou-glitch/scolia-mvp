@@ -54,6 +54,21 @@ export class User {
   infosMedicales: string;
   // ---------------------------------------------------
 
+  // ✅ CONTRÔLE DES NOTIFICATIONS (Opt-out par catégorie)
+  @Column({ default: true }) // Par défaut, activé
+  notifGradesEnabled: boolean;
+
+  @Column({ default: true })
+  notifAbsencesEnabled: boolean;
+
+  @Column({ default: true })
+  notifFinanceEnabled: boolean;
+
+  // ✅ PÉRIODE DE SILENCE (Gestion du "Ne pas déranger")
+  @Column({ type: 'jsonb', nullable: true }) // Stocke { start: "22:00", end: "07:00" } sous forme de chaîne JSON
+  notifQuietHours: string;  
+  
+  // --- RELATIONS ---
   @ManyToOne(() => School, (school) => school.users, { nullable: true })
   @JoinColumn({ name: 'schoolId' })
   school: School;

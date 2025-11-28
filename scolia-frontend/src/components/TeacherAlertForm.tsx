@@ -12,7 +12,7 @@ import { BulletinEditor } from '../components/BulletinEditor';
 import { SchoolNews } from '../components/SchoolNews';
 import { SkillsEvaluator } from '../components/SkillsEvaluator';
 import { VideoClassroom } from '../components/VideoClassroom';
-import { TeacherAlertForm } from '../components/TeacherAlertForm'; // 👈 NOUVEL IMPORT
+import TeacherAlertForm from '../components/TeacherAlertForm';
 
 const TeacherDashboard: React.FC = () => {
     const { user, logout } = useAuth();
