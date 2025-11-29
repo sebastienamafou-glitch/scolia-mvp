@@ -2,7 +2,7 @@
 
 import { Injectable, OnModuleInit, Logger, Inject, forwardRef, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Not } from 'typeorm'; // Added 'Not' for the query filter
 import { User } from './entities/user.entity';
 import * as bcrypt from 'bcrypt';
 import { PaymentsService } from '../payments/payments.service';
@@ -129,8 +129,16 @@ export class UsersService implements OnModuleInit {
   // --- LECTURE ---
   async findAll(): Promise<User[]> { return this.usersRepository.find(); }
 
+  // ✅ FIX: Correction Visibilité SuperAdmin
+  // On s'assure que même si un SuperAdmin a un schoolId (erreur), il n'apparait pas dans les listes scolaires
   async findAllBySchool(schoolId: number): Promise<User[]> {
-    return this.usersRepository.find({ where: { school: { id: schoolId } }, order: { nom: 'ASC' } });
+    return this.usersRepository.find({ 
+        where: { 
+            school: { id: schoolId },
+            role: Not('SuperAdmin') // Exclure explicitement le SuperAdmin
+        }, 
+        order: { nom: 'ASC' } 
+    });
   }
 
   async findOneByEmail(email: string): Promise<User | null> {

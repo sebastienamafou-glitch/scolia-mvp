@@ -39,6 +39,12 @@ export class UsersController {
     // Cas 1: Admin d'école -> On force son école (Sécurité)
     if (creatorRole === 'Admin') {
         if (!creatorSchoolId) throw new ForbiddenException("Erreur critique: Admin sans école.");
+        
+        // 👇 SÉCURITÉ AJOUTÉE : Interdire la création de SuperAdmin par un Admin
+        if (createUserDto.role === 'SuperAdmin') {
+            throw new ForbiddenException("Vous ne pouvez pas créer de SuperAdmin.");
+        }
+
         return this.usersService.create({ ...createUserDto, schoolId: creatorSchoolId });
     }
 
