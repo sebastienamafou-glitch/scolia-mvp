@@ -1,74 +1,94 @@
 // scolia-backend/src/import/import.service.ts
 
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { UsersService } from '../users/users.service';
+import { Class } from '../classes/entities/class.entity';
 import { parse } from 'csv-parse';
-import { CreateUserDto } from '../users/dto/create-user.dto';
 
-// Définition des champs CSV attendus
 interface CsvUserRow {
     nom: string;
     prenom: string;
     email: string;
-    role: 'Admin' | 'Enseignant' | 'Parent' | 'Élève';
+    role: string;
     password?: string;
     classe?: string;
-    parentId?: string; // string car vient du CSV
-    fraisScolarite?: string; // string car vient du CSV
+    parentId?: string;
+    fraisScolarite?: string;
 }
 
 @Injectable()
 export class ImportService {
-  constructor(private usersService: UsersService) {}
+  constructor(
+    private usersService: UsersService,
+    @InjectRepository(Class)
+    private classRepo: Repository<Class>,
+  ) {}
 
-  async parseAndImportUsers(file: Express.Multer.File, schoolId: number): Promise<{ successCount: number, errorCount: number, errors: string[] }> {
+  // On utilise 'any' pour le fichier pour éviter les erreurs de typage si @types/multer manque
+  async parseAndImportUsers(file: any, schoolId: number) {
     const rawData = file.buffer.toString('utf8');
     
-    // 💡 CORRECTION : La Promise résout maintenant explicitement en CsvUserRow[]
-    const records: CsvUserRow[] = await new Promise<CsvUserRow[]>((resolve, reject) => {
+    // 1. Parsing du CSV
+    const records: CsvUserRow[] = await new Promise((resolve, reject) => {
         parse(rawData, {
             columns: true,
             skip_empty_lines: true,
-            trim: true
-        }, (err, records: any) => { // 'records' est de type any ici
+            trim: true,
+            delimiter: [',', ';']
+        }, (err, data) => {
             if (err) return reject(err);
-            // On résout la promise avec les types corrects
-            resolve(records as CsvUserRow[]); 
+            // 💡 CORRECTION 1 : On force le typage ici pour rassurer TypeScript
+            resolve(data as CsvUserRow[]);
         });
     });
+
+    // 2. PRÉ-CHARGEMENT DES CLASSES
+    const schoolClasses = await this.classRepo.find({ where: { school: { id: schoolId } } });
+    const classMap = new Map<string, number>();
+    schoolClasses.forEach(c => classMap.set(c.name.toLowerCase().trim(), c.id));
 
     let successCount = 0;
     let errorCount = 0;
     const errors: string[] = [];
 
-    // Traitement ligne par ligne
+    // 3. Traitement
     for (const record of records) {
         try {
-            // Création de l'objet DTO
-            const userData: CreateUserDto = {
+            // 💡 CORRECTION 2 : On type explicitement la variable pour accepter number ou null
+            let foundClassId: number | null = null;
+
+            if (record.classe) {
+                const className = record.classe.toLowerCase().trim();
+                if (classMap.has(className)) {
+                    // Le '!' dit à TS qu'on est sûr que ce n'est pas undefined car on a vérifié avec .has()
+                    foundClassId = classMap.get(className)!;
+                }
+            }
+
+            // Préparation du DTO pour UsersService
+            const userData = {
                 nom: record.nom,
                 prenom: record.prenom,
                 email: record.email,
                 role: record.role,
                 password: record.password,
-                classe: record.classe,
-                // On s'assure que les champs numériques sont bien des nombres ou null
+                
+                classId: foundClassId, 
+                
                 parentId: record.parentId ? Number(record.parentId) : undefined,
-                // On utilise Number(string) pour convertir les montants
                 fraisScolarite: record.fraisScolarite ? Number(record.fraisScolarite) : undefined,
+                schoolId: schoolId,
             };
 
-            // Appel au service de création existant 
-            await this.usersService.create({ 
-                ...userData,
-                schoolId: schoolId,
-                email: record.email || undefined // Laisse le service générer si email est vide
-            } as any); 
-
+            await this.usersService.create(userData);
             successCount++;
+
         } catch (e) {
             errorCount++;
-            errors.push(`Erreur ligne ${successCount + errorCount}: ${record.nom} ${record.prenom} - ${e.message}`);
+            const message = e instanceof Error ? e.message : 'Erreur inconnue';
+            errors.push(`Ligne ${record.nom} ${record.prenom} : ${message}`);
         }
     }
 

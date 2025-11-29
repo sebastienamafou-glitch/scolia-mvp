@@ -10,7 +10,6 @@ import { useReactToPrint } from 'react-to-print';
 import { requestForToken } from '../firebase-config';
 import { FaLock } from 'react-icons/fa'; 
 import { Footer } from '../components/Footer';
-// 👇 AJOUT IMPORT CARTE
 import { DigitalIdCard } from '../components/DigitalIdCard';
 
 // --- Types ---

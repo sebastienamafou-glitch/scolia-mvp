@@ -1,3 +1,5 @@
+// scolia-backend/src/news/news.service.ts
+
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -10,20 +12,22 @@ export class NewsService {
     private newsRepo: Repository<News>,
   ) {}
 
-  // Créer une annonce (Admin seulement)
   create(data: Partial<News>) {
+    // data contient maintenant { ..., schoolId: 12 }
     return this.newsRepo.save(data);
   }
 
-  // Récupérer les annonces pertinentes pour un rôle donné
-  async findForRole(userRole: string): Promise<News[]> {
+  // ✅ FILTRAGE MULTI-TENANT
+  async findForRole(userRole: string, schoolId: number): Promise<News[]> {
     return this.newsRepo.find({
       where: [
-        { targetRole: 'All' }, // Tout le monde voit 'All'
-        { targetRole: userRole as any } // + les messages spécifiques au rôle
+        // Cas 1 : Message pour tout le monde DANS CETTE ÉCOLE
+        { targetRole: 'All', school: { id: schoolId } }, 
+        // Cas 2 : Message pour mon rôle DANS CETTE ÉCOLE
+        { targetRole: userRole as any, school: { id: schoolId } } 
       ],
-      order: { createdAt: 'DESC' }, // Les plus récentes en premier
-      take: 10 // On limite aux 10 dernières pour ne pas surcharger
+      order: { createdAt: 'DESC' },
+      take: 20 // J'ai augmenté un peu la limite
     });
   }
 }

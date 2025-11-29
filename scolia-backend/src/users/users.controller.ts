@@ -1,7 +1,9 @@
+// scolia-backend/src/users/users.controller.ts
+
 import { Controller, Get, Patch, Body, Post, Request, UseGuards, ForbiddenException } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 
@@ -10,40 +12,42 @@ import { Roles } from '../auth/roles.decorator';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  // --- 1. RECUPERER LA LISTE (C'était le morceau manquant !) ---
   @Roles('Admin', 'SuperAdmin')
   @Get()
   findAll(@Request() req) {
     const mySchoolId = req.user.schoolId;
-    
-    // Si SuperAdmin (pas d'école), il voit tout
+    // Si SuperAdmin (pas d'école liée), il voit tout. Sinon, filtre par école.
     if (!mySchoolId) {
         return this.usersService.findAll();
     }
-    // Sinon l'Admin ne voit que son école
     return this.usersService.findAllBySchool(mySchoolId);
   }
 
-  // --- 2. PROFIL UTILISATEUR CONNECTÉ ---
   @Roles('Parent', 'Élève', 'Enseignant', 'Admin', 'SuperAdmin')
   @Get('me')
   getProfile(@Request() req) {
     return req.user; 
   }
   
-  // --- 3. CRÉATION UTILISATEUR ---
+  // ✅ CORRECTION ROBUSTE : Gestion intelligente du SchoolId
   @Post() 
-  @Roles('Admin') 
+  @Roles('Admin', 'SuperAdmin') // SuperAdmin autorisé aussi
   async create(@Request() req, @Body() createUserDto: CreateUserDto) {
-    const schoolId = req.user.schoolId;
-    if (!schoolId) {
-        throw new ForbiddenException("Opération réservée à un administrateur d'école.");
+    const creatorSchoolId = req.user.schoolId;
+    const creatorRole = req.user.role;
+
+    // Cas 1: Admin d'école -> On force son école (Sécurité)
+    if (creatorRole === 'Admin') {
+        if (!creatorSchoolId) throw new ForbiddenException("Erreur critique: Admin sans école.");
+        return this.usersService.create({ ...createUserDto, schoolId: creatorSchoolId });
     }
-    // Injection du schoolId de l'admin connecté
-    return this.usersService.create({ ...createUserDto, schoolId: schoolId });
+
+    // Cas 2: SuperAdmin -> On utilise l'ID fourni dans le formulaire (ou null)
+    if (creatorRole === 'SuperAdmin') {
+        return this.usersService.create(createUserDto);
+    }
   }
 
-  // --- 4. PRÉFÉRENCES NOTIFICATIONS ---
   @Roles('Parent', 'Élève', 'Enseignant', 'Admin', 'SuperAdmin')
   @Patch('preferences')
   async updatePreferences(@Request() req, @Body() body: any) {

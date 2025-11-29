@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
+import toast, { Toaster } from 'react-hot-toast';
 
 // --- Types partagés ---
 interface Student {
@@ -25,7 +26,6 @@ export const AttendanceEntry: React.FC = () => {
   
   const [attendanceData, setAttendanceData] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
 
   // 1. Charger les classes au montage
   useEffect(() => {
@@ -35,6 +35,7 @@ export const AttendanceEntry: React.FC = () => {
             setClasses(res.data);
         } catch (err) {
             console.error("Impossible de charger les classes", err);
+            toast.error("Impossible de charger les classes.");
         }
     };
     fetchClasses();
@@ -57,6 +58,7 @@ export const AttendanceEntry: React.FC = () => {
 
         } catch (err) {
             console.error("Erreur chargement élèves", err);
+            toast.error("Erreur lors du chargement des élèves.");
         } finally {
             setLoading(false);
         }
@@ -69,7 +71,10 @@ export const AttendanceEntry: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-    if (!selectedClassId) return alert("Veuillez sélectionner une classe.");
+    if (!selectedClassId) {
+        toast.error("Veuillez sélectionner une classe.");
+        return;
+    }
     
     setLoading(true);
     try {
@@ -84,11 +89,11 @@ export const AttendanceEntry: React.FC = () => {
 
       await api.post('/attendance/bulk', payload);
       
-      setSuccessMessage('✅ Appel enregistré avec succès !');
-      setTimeout(() => setSuccessMessage(''), 3000);
+      toast.success('✅ Appel enregistré avec succès !');
+      
     } catch (error) {
       console.error(error);
-      alert("Erreur lors de l'envoi.");
+      toast.error("Erreur lors de l'envoi des données.");
     } finally {
       setLoading(false);
     }
@@ -96,9 +101,8 @@ export const AttendanceEntry: React.FC = () => {
 
   return (
     <div style={{ maxWidth: '700px', margin: '0 auto 40px auto', padding: '25px', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
+      <Toaster position="top-center" />
       <h2 style={{ color: '#0A2240', borderBottom: '2px solid #F77F00', paddingBottom: '10px' }}>🔔 Faire l'Appel</h2>
-      
-      {successMessage && <div style={{ padding: '10px', backgroundColor: '#D4EDDA', color: '#155724', marginBottom: '15px', borderRadius: '5px' }}>{successMessage}</div>}
       
       {/* SÉLECTION CLASSE */}
       <div style={{ marginBottom: '20px' }}>
@@ -164,7 +168,6 @@ export const NoteEntry: React.FC = () => {
     const [noteSur, setNoteSur] = useState(20);
     
     const [loading, setLoading] = useState(false);
-    const [successMessage, setSuccessMessage] = useState('');
 
     // 1. Charger la liste des classes au démarrage
     useEffect(() => {
@@ -174,6 +177,7 @@ export const NoteEntry: React.FC = () => {
                 setClasses(res.data);
             } catch (err) {
                 console.error("Impossible de charger les classes", err);
+                toast.error("Impossible de charger les classes.");
             }
         };
         fetchClasses();
@@ -191,6 +195,7 @@ export const NoteEntry: React.FC = () => {
                 setGrades({}); // Reset des notes si on change de classe
             } catch (err) {
                 console.error("Erreur chargement élèves", err);
+                toast.error("Erreur lors du chargement des élèves.");
             } finally {
                 setLoading(false);
             }
@@ -200,13 +205,29 @@ export const NoteEntry: React.FC = () => {
 
 
     const handleGradeChange = (studentId: number, value: string) => {
-        if (Number(value) > noteSur) return; 
         setGrades(prev => ({ ...prev, [studentId]: value }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedClassId || !titre) return alert("Veuillez remplir tous les champs.");
+        
+        if (!selectedClassId || !titre) {
+             toast.error("Veuillez remplir tous les champs obligatoires.");
+             return;
+        }
+        
+        // 🚨 VALIDER ICI avant l'envoi
+        const invalidNotes = students.some(student => {
+            const note = Number(grades[student.id]);
+            // On considère les champs vides (NaN) comme valides (omis du payload)
+            if (isNaN(note) || grades[student.id] === '') return false; 
+            return note < 0 || note > noteSur;
+        });
+        
+        if (invalidNotes) {
+            toast.error(`Veuillez corriger les notes invalides (entre 0 et ${noteSur}).`);
+            return;
+        }
 
         setLoading(true);
         try {
@@ -214,10 +235,10 @@ export const NoteEntry: React.FC = () => {
             const notesPayload = Object.entries(grades).map(([studentId, noteVal]) => ({
                 studentId: Number(studentId),
                 noteValue: Number(noteVal)
-            })).filter(n => n.noteValue !== undefined && !isNaN(n.noteValue));
+            })).filter(n => n.noteValue !== undefined && !isNaN(n.noteValue) && n.noteValue >= 0 && n.noteValue <= noteSur);
 
             const payload = {
-                classId: Number(selectedClassId), // Ajout important
+                classId: Number(selectedClassId),
                 notes: notesPayload, 
                 matiere: matiere,
                 titreEvaluation: titre,
@@ -226,14 +247,13 @@ export const NoteEntry: React.FC = () => {
 
             await api.post('/grades', payload);
             
-            setSuccessMessage(`✅ Notes enregistrées pour ${notesPayload.length} élèves !`);
+            toast.success(`✅ Notes enregistrées pour ${notesPayload.length} élèves !`);
             setGrades({});
             setTitre('');
-            setTimeout(() => setSuccessMessage(''), 4000);
 
         } catch (error) {
             console.error(error);
-            alert("Erreur lors de l'enregistrement.");
+            toast.error("Erreur lors de l'enregistrement des notes.");
         } finally {
             setLoading(false);
         }
@@ -241,15 +261,10 @@ export const NoteEntry: React.FC = () => {
 
     return (
         <div style={{ maxWidth: '700px', margin: '0 auto', padding: '25px', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
+            <Toaster position="top-center" />
             <h2 style={{ color: '#0A2240', borderBottom: '2px solid #008F39', paddingBottom: '10px', marginBottom: '20px' }}>
                 📝 Saisir des Notes
             </h2>
-
-            {successMessage && (
-                <div style={{ padding: '15px', backgroundColor: '#D4EDDA', color: '#155724', borderRadius: '5px', marginBottom: '20px', border: '1px solid #C3E6CB' }}>
-                    {successMessage}
-                </div>
-            )}
 
             <form onSubmit={handleSubmit}>
                 {/* SÉLECTION DE LA CLASSE */}
@@ -318,7 +333,11 @@ export const NoteEntry: React.FC = () => {
                         <h3 style={{ color: '#0A2240', fontSize: '1.1rem', marginBottom: '15px', borderBottom: '1px solid #eee', paddingBottom: '5px' }}>Grille de notation</h3>
                         
                         <div style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '5px' }}>
-                            {students.map(student => (
+                            {students.map(student => {
+                                const currentNote = grades[student.id] ? Number(grades[student.id]) : 0;
+                                const isInvalid = (grades[student.id] !== '' && (currentNote > noteSur || currentNote < 0));
+
+                                return (
                                 <div key={student.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 10px', borderBottom: '1px solid #f0f0f0', backgroundColor: 'white' }}>
                                     <div style={{ color: '#333', display: 'flex', alignItems: 'center', gap: '10px' }}>
                                         {/* Avatar simple */}
@@ -331,8 +350,6 @@ export const NoteEntry: React.FC = () => {
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                         <input 
                                             type="number" 
-                                            min="0" 
-                                            max={noteSur}
                                             placeholder="-"
                                             value={grades[student.id] || ''}
                                             onChange={(e) => handleGradeChange(student.id, e.target.value)}
@@ -341,16 +358,17 @@ export const NoteEntry: React.FC = () => {
                                                 padding: '10px', 
                                                 textAlign: 'center', 
                                                 borderRadius: '6px', 
-                                                border: '1px solid #ccc',
+                                                border: isInvalid ? '2px solid #D32F2F' : '1px solid #ccc',
+                                                backgroundColor: isInvalid ? '#FFEBEE' : 'white',
                                                 fontWeight: 'bold',
-                                                color: '#0A2240',
+                                                color: isInvalid ? '#D32F2F' : '#0A2240',
                                                 fontSize: '1rem'
                                             }}
                                         />
                                         <span style={{ color: '#999', fontSize: '0.9rem', minWidth: '30px' }}>/ {noteSur}</span>
                                     </div>
                                 </div>
-                            ))}
+                            );})}
                         </div>
 
                         <button 

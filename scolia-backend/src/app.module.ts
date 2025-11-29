@@ -56,7 +56,7 @@ import { TimetableModule } from './timetable/timetable.module';
              : false, 
 
         entities: [User, Student, Class, Grade, Homework, Bulletin, News, School, Fee, Transaction, Competence, SkillEvaluation],
-        synchronize: true, // ⚠️ À passer à false et utiliser les migrations une fois stable en prod
+        synchronize: false, // ⚠️ À passer à false et utiliser les migrations une fois stable en prod
       }),
       inject: [ConfigService],
     }),

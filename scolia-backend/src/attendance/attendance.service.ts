@@ -1,22 +1,44 @@
 // scolia-backend/src/attendance/attendance.service.ts
 
 import { Injectable, Logger } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Attendance } from './entities/attendance.entity'; // 👈 Import de la nouvelle entité
 
 @Injectable()
 export class AttendanceService {
   private readonly logger = new Logger(AttendanceService.name);
 
-  // Simule l'enregistrement d'un appel pour une matière et une classe
-  async saveAttendance(teacherId: number, classId: string, records: any[]): Promise<any> {
-    const absences = records.filter(r => r.status === 'Absent' || r.status === 'Retard').length;
-    this.logger.log(`Appel enregistré par Enseignant ${teacherId}. Absences: ${absences}`);
+  constructor(
+    @InjectRepository(Attendance)
+    private attendanceRepo: Repository<Attendance>,
+  ) {}
 
-    // Le code réel enregistrerait les absences dans la BDD et enverrait des notifications push.
-    return {
-      success: true,
-      classId: classId,
-      absentCount: absences,
-      teacherId: teacherId,
-    };
+  async saveAttendance(teacherId: number, classId: string, records: any[]): Promise<any> {
+    // Transformation des données pour la BDD
+    const entities = records.map(record => {
+        return this.attendanceRepo.create({
+            classId: Number(classId),
+            studentId: record.studentId,
+            status: record.status,
+            date: new Date() // Date du jour
+        });
+    });
+
+    // Sauvegarde en une seule fois (Bulk)
+    await this.attendanceRepo.save(entities);
+
+    const absences = records.filter(r => r.status !== 'Présent').length;
+    this.logger.log(`Appel enregistré. ${absences} absences signalées.`);
+
+    return { success: true, count: entities.length };
+  }
+  
+  // Implémentation de la lecture pour les parents
+  async findByStudent(studentId: number) {
+      return this.attendanceRepo.find({
+          where: { studentId },
+          order: { date: 'DESC' }
+      });
   }
 }

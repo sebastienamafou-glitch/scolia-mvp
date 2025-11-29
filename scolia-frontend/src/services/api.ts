@@ -2,9 +2,8 @@
 
 import axios from 'axios';
 
-// On détermine l'URL de base selon si on est en local ou en production
-// Si vous testez en local, assurez-vous que c'est localhost:3000
-const API_URL = 'https://scolia-backend-nfqc.onrender.com'; 
+// Utilise la variable d'environnement VITE_API_URL, ou localhost par défaut si elle n'existe pas
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 const api = axios.create({
   baseURL: API_URL,

@@ -1,5 +1,8 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
+// scolia-backend/src/users/entities/user.entity.ts
+
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { School } from '../../schools/entities/school.entity';
+import { Class } from '../../classes/entities/class.entity'; // 👈 Import de la Classe
 
 @Entity()
 export class User {
@@ -9,15 +12,14 @@ export class User {
   @Column({ unique: true })
   email: string;
 
-  // ✅ AJOUT POUR CORRIGER L'ERREUR DE NOTIFICATION
   @Column({ nullable: true })
   fcmToken: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, select: false }) // Select: false pour ne pas renvoyer le hash par défaut
   passwordHash: string; 
 
-  @Column({ nullable: true }) // Gardé pour compatibilité
-  password: string;
+  @Column({ nullable: true })
+  password: string; // Temporaire pour l'affichage à la création
 
   @Column()
   nom: string;
@@ -31,13 +33,14 @@ export class User {
   @Column({ nullable: true })
   photo: string;
 
-  // --- CHAMPS NOUVEAUX (Pour corriger les erreurs) ---
+  // --- CHAMPS RESET PASSWORD ---
   @Column({ nullable: true })
   resetToken: string;
 
   @Column({ nullable: true, type: 'timestamp' })
   resetTokenExp: Date;
 
+  // --- PROFILS ÉLÈVE (Infos détaillées) ---
   @Column({ nullable: true })
   dateNaissance: string;
 
@@ -52,10 +55,9 @@ export class User {
 
   @Column({ nullable: true, type: 'text' })
   infosMedicales: string;
-  // ---------------------------------------------------
 
-  // ✅ CONTRÔLE DES NOTIFICATIONS (Opt-out par catégorie)
-  @Column({ default: true }) // Par défaut, activé
+  // --- PRÉFÉRENCES NOTIFICATIONS ---
+  @Column({ default: true })
   notifGradesEnabled: boolean;
 
   @Column({ default: true })
@@ -64,11 +66,14 @@ export class User {
   @Column({ default: true })
   notifFinanceEnabled: boolean;
 
-  // ✅ PÉRIODE DE SILENCE (Gestion du "Ne pas déranger")
-  @Column({ type: 'jsonb', nullable: true }) // Stocke { start: "22:00", end: "07:00" } sous forme de chaîne JSON
+  @Column({ type: 'jsonb', nullable: true })
   notifQuietHours: string;  
   
-  // --- RELATIONS ---
+  // =========================================================
+  // RELATIONS STRUCTURELLES (LA CORRECTION V2)
+  // =========================================================
+
+  // 1. L'École (Multi-Tenant)
   @ManyToOne(() => School, (school) => school.users, { nullable: true })
   @JoinColumn({ name: 'schoolId' })
   school: School;
@@ -76,9 +81,16 @@ export class User {
   @Column({ nullable: true })
   schoolId: number;
 
-  @Column({ nullable: true })
-  classe: string;
+  // 2. La Classe (Architecture Propre)
+  // Remplace l'ancien champ texte 'classe'
+  @ManyToOne(() => Class, (classe) => classe.students, { nullable: true })
+  @JoinColumn({ name: 'classId' })
+  class: Class;
 
+  @Column({ nullable: true })
+  classId: number;
+
+  // 3. Le Parent (Lien Familial)
   @Column({ nullable: true })
   parentId: number;
 }

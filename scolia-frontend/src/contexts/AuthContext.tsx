@@ -46,9 +46,7 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
       // 1. On configure axios globalement pour les futures requêtes
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
-      // 2. ⚡ CORRECTION CRITIQUE (Fixe l'erreur 401) ⚡
-      // On force l'envoi du token DANS cette requête spécifique.
-      // Cela contourne les délais de mise à jour des intercepteurs/defaults.
+      // 2. On envoie le token dans cette requête spécifique pour garantir l'actualité
       const response = await api.get('/auth/me', {
         headers: { Authorization: `Bearer ${token}` } 
       }); 
@@ -58,16 +56,18 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
       setUser(userData);           
       setUserRole(userData.role as Role);
       setIsAuthenticated(true);
-    } catch (error) {
+    } catch (error: any) { // Typage any pour accéder facilement à error.response
       console.error('Token verification failed:', error);
       
-      // Nettoyage complet en cas d'échec
-      localStorage.removeItem('access_token');
-      delete api.defaults.headers.common['Authorization'];
-      
-      setIsAuthenticated(false);
-      setUser(null);
-      setUserRole(null);
+      // 👇 CONDITION DE SÉCURITÉ : Déconnecter uniquement si le token est invalide/expiré (401) ou non autorisé (403)
+      if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+          localStorage.removeItem('access_token');
+          delete api.defaults.headers.common['Authorization'];
+          setIsAuthenticated(false);
+          setUser(null);
+          setUserRole(null);
+      }
+      // Si c'est une erreur 500 ou réseau, on ne fait rien (on garde la session active localement)
     } finally {
       setIsLoading(false);
     }
@@ -79,7 +79,6 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
       const response = await api.post('/auth/login', { email, password });
       
       // 👇 ROBUSTESSE : On cherche le token sous plusieurs noms possibles
-      // Le backend peut renvoyer 'access_token' ou 'accessToken'
       const token = response.data.access_token || response.data.accessToken || response.data.token;
 
       if (!token) {

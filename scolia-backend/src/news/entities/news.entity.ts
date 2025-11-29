@@ -1,4 +1,7 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn } from 'typeorm';
+// scolia-backend/src/news/entities/news.entity.ts
+
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { School } from '../../schools/entities/school.entity'; // 👈 Import
 
 export type TargetAudience = 'All' | 'Enseignant' | 'Parent' | 'Élève';
 
@@ -13,13 +16,20 @@ export class News {
   @Column('text')
   content: string;
 
-  // Qui doit voir ce message ?
   @Column({ default: 'All' })
   targetRole: TargetAudience;
 
   @Column({ default: false })
-  isUrgent: boolean; // Pour afficher en rouge si important
+  isUrgent: boolean;
 
   @CreateDateColumn()
   createdAt: Date;
+
+  // ✅ SÉCURITÉ : Liaison avec l'école
+  @ManyToOne(() => School)
+  @JoinColumn({ name: 'schoolId' })
+  school: School;
+
+  @Column()
+  schoolId: number;
 }

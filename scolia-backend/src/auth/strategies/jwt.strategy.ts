@@ -2,21 +2,29 @@
 
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PassportStrategy } from '@nestjs/passport';
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config'; // 👈 Import du ConfigService
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor() {
+  constructor(private readonly configService: ConfigService) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      // 👇 CORRECTION MAJEURE ICI : Doit être IDENTIQUE à auth.module.ts
-      secretOrKey: process.env.JWT_SECRET || 'secret_de_secours_pour_dev_local',
+      // 👇 CORRECTION : Utilisez getOrThrow pour garantir une string
+      // Si votre version de NestJS est ancienne, utilisez : configService.get<string>('JWT_SECRET')!
+      secretOrKey: configService.getOrThrow<string>('JWT_SECRET'),
     });
   }
 
   async validate(payload: any) {
-    // Si on arrive ici, c'est que la signature est VALIDE (401 résolu)
+    // Cette méthode n'est appelée que si le token est validé (signature OK)
+    // On retourne un objet utilisateur "allégé" qui sera injecté dans request.user
+    
+    if (!payload) {
+      throw new UnauthorizedException();
+    }
+
     return { 
         userId: payload.sub, 
         email: payload.email, 

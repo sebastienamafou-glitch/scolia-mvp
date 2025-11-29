@@ -1,32 +1,37 @@
 // scolia-backend/src/auth/auth.module.ts
 
 import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config'; // 👈 Import essentiel
+import { PassportModule } from '@nestjs/passport';
+import { JwtModule } from '@nestjs/jwt';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { UsersModule } from '../users/users.module';
-import { PassportModule } from '@nestjs/passport';
-import { JwtModule } from '@nestjs/jwt';
-import { JwtStrategy } from './strategies/jwt.strategy'; 
-import { LocalStrategy } from './strategies/local.strategy'; // Assurez-vous d'importer LocalStrategy aussi
+import { JwtStrategy } from './strategies/jwt.strategy';
+import { LocalStrategy } from './strategies/local.strategy';
 import { MailService } from '../mail/mail.service';
-import { ConfigModule } from '@nestjs/config'; // Optionnel mais recommandé
 
 @Module({
   imports: [
     UsersModule,
     PassportModule,
-    ConfigModule.forRoot(), // Pour lire le .env localement
-    JwtModule.register({
-      // 👇 CORRECTION MAJEURE ICI : On utilise la variable d'environnement
-      secret: process.env.JWT_SECRET || 'secret_de_secours_pour_dev_local', 
-      signOptions: { expiresIn: '1d' }, // J'ai mis 1 jour (1d) au lieu de 60m pour plus de confort
+    // Configuration asynchrone du JWT pour garantir le chargement du .env
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET'),
+        signOptions: { 
+          expiresIn: '1d' // Durée de validité du token (1 jour)
+        },
+      }),
     }),
   ],
   controllers: [AuthController],
   providers: [
-    AuthService, 
-    LocalStrategy, // Ajoutez LocalStrategy ici si elle manquait
-    JwtStrategy, 
+    AuthService,
+    LocalStrategy,
+    JwtStrategy,
     MailService
   ],
   exports: [AuthService],

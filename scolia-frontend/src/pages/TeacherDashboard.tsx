@@ -12,12 +12,19 @@ import { BulletinEditor } from '../components/BulletinEditor';
 import { SchoolNews } from '../components/SchoolNews';
 import { SkillsEvaluator } from '../components/SkillsEvaluator';
 import { VideoClassroom } from '../components/VideoClassroom';
-import { TeacherAlertForm } from '../components/TeacherAlertForm'; // 👈 NOUVEL IMPORT
+import { TeacherAlertForm } from '../components/TeacherAlertForm';
+
+// 👇 FONCTION UTILITAIRE : Génère une clé unique basée sur la date (YYYYMMDD)
+// Cela permet de changer l'URL de la salle de classe chaque jour automatiquement.
+const generateDailyHash = () => {
+    const date = new Date();
+    return `${date.getFullYear()}${(date.getMonth() + 1).toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}`;
+};
 
 const TeacherDashboard: React.FC = () => {
     const { user, logout } = useAuth();
     
-    // Mise à jour des onglets possibles
+    // États
     const [activeTab, setActiveTab] = useState<'appel' | 'notes' | 'bulletins' | 'skills' | 'visio' | 'alert'>('appel');
 
     return (
@@ -61,59 +68,33 @@ const TeacherDashboard: React.FC = () => {
                 
                 {/* BARRE DE NAVIGATION (ONGLETS) */}
                 <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', overflowX: 'auto', paddingBottom: '5px' }}>
-                    <button 
-                        onClick={() => setActiveTab('appel')}
-                        style={{
-                            padding: '12px 25px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold',
-                            backgroundColor: activeTab === 'appel' ? '#0A2240' : 'white',
-                            color: activeTab === 'appel' ? 'white' : '#666',
-                            boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
-                            whiteSpace: 'nowrap'
-                        }}
-                    >
-                        🔔 Faire l'Appel
-                    </button>
-                    <button 
-                        onClick={() => setActiveTab('notes')}
-                        style={{
-                            padding: '12px 25px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold',
-                            backgroundColor: activeTab === 'notes' ? '#0A2240' : 'white',
-                            color: activeTab === 'notes' ? 'white' : '#666',
-                            boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
-                            whiteSpace: 'nowrap'
-                        }}
-                    >
-                        📝 Saisir des Notes
-                    </button>
-                    <button 
-                        onClick={() => setActiveTab('bulletins')}
-                        style={{
-                            padding: '12px 25px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold',
-                            backgroundColor: activeTab === 'bulletins' ? '#0A2240' : 'white',
-                            color: activeTab === 'bulletins' ? 'white' : '#666',
-                            boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
-                            whiteSpace: 'nowrap'
-                        }}
-                    >
-                        🎓 Conseils de Classe
-                    </button>
-                    <button 
-                        onClick={() => setActiveTab('skills')}
-                        style={{
-                            padding: '12px 25px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold',
-                            backgroundColor: activeTab === 'skills' ? '#0A2240' : 'white',
-                            color: activeTab === 'skills' ? 'white' : '#666',
-                            boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
-                            whiteSpace: 'nowrap'
-                        }}
-                    >
-                        🌟 Compétences
-                    </button>
+                    <TabButton 
+                        label="🔔 Faire l'Appel" 
+                        isActive={activeTab === 'appel'} 
+                        onClick={() => setActiveTab('appel')} 
+                    />
+                    <TabButton 
+                        label="📝 Saisir des Notes" 
+                        isActive={activeTab === 'notes'} 
+                        onClick={() => setActiveTab('notes')} 
+                    />
+                    <TabButton 
+                        label="🎓 Conseils de Classe" 
+                        isActive={activeTab === 'bulletins'} 
+                        onClick={() => setActiveTab('bulletins')} 
+                    />
+                    <TabButton 
+                        label="🌟 Compétences" 
+                        isActive={activeTab === 'skills'} 
+                        onClick={() => setActiveTab('skills')} 
+                    />
+                    
+                    {/* Onglet Visio (Rouge pour se démarquer) */}
                     <button 
                         onClick={() => setActiveTab('visio')}
                         style={{
                             padding: '12px 25px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold',
-                            backgroundColor: activeTab === 'visio' ? '#E53935' : 'white', // Rouge Vidéo
+                            backgroundColor: activeTab === 'visio' ? '#E53935' : 'white', 
                             color: activeTab === 'visio' ? 'white' : '#666',
                             boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
                             whiteSpace: 'nowrap',
@@ -122,45 +103,40 @@ const TeacherDashboard: React.FC = () => {
                     >
                         🎥 Classe Virtuelle
                     </button>
-                    {/* ✅ ALERTE */}
-                    <button 
-                        onClick={() => setActiveTab('alert')}
-                        style={{
-                            padding: '12px 25px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold',
-                            // 💡 CORRECTION STYLISTIQUE : Rouge lorsque ACTIF, gris neutre lorsqu'inactif
-                            backgroundColor: activeTab === 'alert' ? '#dc3545' : 'white', 
-                            color: activeTab === 'alert' ? 'white' : '#666', 
-                            boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
-                            whiteSpace: 'nowrap'
-                        }}
-                    >
-                        ⚠️ Déclarer Absence
-                    </button>
+
+                    <TabButton 
+                        label="⚠️ Déclarer Absence" 
+                        isActive={activeTab === 'alert'} 
+                        onClick={() => setActiveTab('alert')} 
+                        colorOverride="#dc3545" // Rouge
+                    />
                 </div>
 
                 {/* CONTENU DYNAMIQUE */}
-                <div>
+                <div style={{ paddingBottom: '50px' }}>
+                    
+                    {/* CONTENU VISIO (Toujours monté pour garder la connexion, caché via CSS si inactif) */}
+                    <div style={{ display: activeTab === 'visio' ? 'block' : 'none' }}>
+                        {user ? (
+                            <div style={{ marginTop: '20px', backgroundColor: 'white', padding: '20px', borderRadius: '10px' }}>
+                                <h2 style={{ color: '#0A2240', marginTop: 0, marginBottom: '10px' }}>Salle de cours en direct</h2>
+                                <p style={{ color: '#666', marginBottom: '20px' }}>
+                                    Cette salle est sécurisée et le lien change automatiquement chaque jour.
+                                </p>
+                                <VideoClassroom 
+                                    user={{ nom: user.nom, prenom: user.prenom, email: user.email }}
+                                    // Room unique : Scolia + ID Ecole + ID Prof + Date
+                                    roomName={`Scolia-Secure-${user.schoolId || '0'}-${user.id}-${generateDailyHash()}`}
+                                />
+                            </div>
+                        ) : <p>Chargement du profil...</p>}
+                    </div>
+
+                    {/* LES AUTRES ONGLETS (Ceux-ci peuvent être démontés sans risque) */}
                     {activeTab === 'appel' && <AttendanceEntry />}
                     {activeTab === 'notes' && <NoteEntry />}
                     {activeTab === 'bulletins' && <BulletinEditor />}
                     {activeTab === 'skills' && <SkillsManagerWrapper />} 
-                    
-                    {/* CONTENU VISIO */}
-                    {activeTab === 'visio' && user && (
-                        <div style={{ marginTop: '20px', backgroundColor: 'white', padding: '20px', borderRadius: '10px' }}>
-                            <h2 style={{ color: '#0A2240', marginTop: 0, marginBottom: '10px' }}>Salle de cours en direct</h2>
-                            <p style={{ color: '#666', marginBottom: '20px' }}>
-                                Vous allez rejoindre la salle en tant que <strong>{user.prenom} {user.nom}</strong>.
-                            </p>
-                            
-                            <VideoClassroom 
-                                user={{ nom: user.nom, prenom: user.prenom, email: user.email }}
-                                roomName={`Scolia-Live-Prof-${user.id}`} 
-                            />
-                        </div>
-                    )}
-
-                    {/* ✅ CONTENU ALERTE */}
                     {activeTab === 'alert' && <TeacherAlertForm />}
                 </div>
 
@@ -169,7 +145,33 @@ const TeacherDashboard: React.FC = () => {
     );
 };
 
-// --- SOUS-COMPOSANT LOCAL POUR GÉRER LA SÉLECTION DE CLASSE ---
+// --- Petits composants Helper pour alléger le code ---
+
+const TabButton = ({ label, isActive, onClick, colorOverride }: any) => {
+    // Si une couleur override est fournie et que l'onglet est actif, on l'utilise
+    const bgColor = isActive ? (colorOverride || '#0A2240') : 'white';
+    
+    return (
+        <button 
+            onClick={onClick}
+            style={{
+                padding: '12px 25px', 
+                borderRadius: '8px', 
+                border: 'none', 
+                cursor: 'pointer', 
+                fontSize: '1rem', 
+                fontWeight: 'bold',
+                backgroundColor: bgColor,
+                color: isActive ? 'white' : '#666',
+                boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
+                whiteSpace: 'nowrap'
+            }}
+        >
+            {label}
+        </button>
+    );
+};
+
 const SkillsManagerWrapper = () => {
     const [classes, setClasses] = useState<any[]>([]);
     const [selectedClassId, setSelectedClassId] = useState('');
@@ -208,8 +210,8 @@ const SkillsManagerWrapper = () => {
             {selectedClassId ? (
                 <SkillsEvaluator classId={selectedClassId} />
             ) : (
-                <div style={{ textAlign: 'center', padding: '40px', color: '#888', fontStyle: 'italic' }}>
-                    Veuillez sélectionner une classe ci-dessus pour commencer l'évaluation.
+                <div style={{ textAlign: 'center', padding: '40px', color: '#888', fontStyle: 'italic', backgroundColor: 'white', borderRadius: '8px' }}>
+                    👆 Veuillez sélectionner une classe ci-dessus pour commencer l'évaluation.
                 </div>
             )}
         </div>

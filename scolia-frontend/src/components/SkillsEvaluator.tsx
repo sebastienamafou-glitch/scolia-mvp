@@ -50,23 +50,29 @@ export const SkillsEvaluator: React.FC<SkillsEvaluatorProps> = ({ classId }) => 
     setRatings(prev => ({ ...prev, [competenceId]: level }));
   };
 
+  // NOUVELLE LOGIQUE : Envoi en bloc (Bulk Insert)
   const handleSubmit = async () => {
     if (!selectedStudentId) return;
     setLoading(true);
     try {
-        // On envoie les notes une par une (pour simplifier) ou en bulk
-        const promises = Object.entries(ratings).map(([compId, level]) => 
-            api.post('/skills/evaluate', {
-                studentId: Number(selectedStudentId),
-                competenceId: Number(compId),
-                level
-            })
-        );
-        await Promise.all(promises);
+        // Transformation des données en tableau
+        const evaluations = Object.entries(ratings).map(([compId, level]) => ({
+            competenceId: Number(compId),
+            level: level
+        }));
+
+        // UNE SEULE REQUÊTE ROBUSTE (Bulk Insert)
+        await api.post('/skills/evaluate/bulk', {
+            studentId: Number(selectedStudentId),
+            evaluations: evaluations
+        });
+
         alert("✅ Compétences enregistrées !");
         setRatings({}); // Reset
     } catch (error) {
-        alert("Erreur lors de l'enregistrement.");
+        // Gérer les erreurs (par exemple, si la route backend n'existe pas encore)
+        console.error("Erreur lors de l'enregistrement des compétences:", error);
+        alert("Erreur lors de l'enregistrement. Vérifiez que la route backend /skills/evaluate/bulk est prête.");
     } finally {
         setLoading(false);
     }

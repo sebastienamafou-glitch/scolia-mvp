@@ -47,6 +47,7 @@ const LoginPage: React.FC = () => {
       {/* --- PARTIE GAUCHE : VISUEL (Caché sur mobile) --- */}
       <div style={{ 
           flex: 1.2, // Légèrement plus large pour l'impact visuel
+          backgroundColor: '#0A2240', // Fallback couleur bleu scolia si l'image ne charge pas
           backgroundImage: 'url("https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=2070&auto=format&fit=crop")', 
           backgroundSize: 'cover', 
           backgroundPosition: 'center',

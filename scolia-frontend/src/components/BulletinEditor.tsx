@@ -47,8 +47,17 @@ export const BulletinEditor: React.FC = () => {
 
   // 2. Charger les élèves quand la classe change
   useEffect(() => {
-    if (!selectedClassId) return;
-    setStudents([]);
+    if (!selectedClassId) {
+        setStudents([]);
+        return;
+    }
+    
+    // 👇 AJOUT : Réinitialisation propre lors du changement de classe
+    setSelectedStudentId('');  // Réinitialise la sélection de l'élève
+    setBulletin(null);         // Vide le bulletin affiché
+    setAppreciation('');       // Vide l'appréciation
+    // ------------------
+
     api.get(`/students/class/${selectedClassId}`)
        .then(res => setStudents(res.data))
        .catch(console.error);
@@ -108,7 +117,8 @@ export const BulletinEditor: React.FC = () => {
         </div>
         <div>
             <label style={{display: 'block', fontWeight: 'bold', marginBottom: '5px'}}>2. Élève</label>
-            <select style={{width: '100%', padding: '8px'}} onChange={e => setSelectedStudentId(e.target.value)} disabled={!selectedClassId}>
+            {/* L'attribut 'value' assure que la sélection est mise à jour lorsque selectedStudentId est réinitialisé */}
+            <select style={{width: '100%', padding: '8px'}} value={selectedStudentId} onChange={e => setSelectedStudentId(e.target.value)} disabled={!selectedClassId}>
                 <option value="">-- Choisir l'élève --</option>
                 {students.map(s => <option key={s.id} value={s.id}>{s.nom} {s.prenom}</option>)}
             </select>

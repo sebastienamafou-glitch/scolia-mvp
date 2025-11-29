@@ -16,35 +16,42 @@ export class AnalyticsService {
   ) {}
 
   async getRiskReport(schoolId: number) {
-    // 1. Récupérer tous les élèves de l'école avec leurs données
+    // 1. Récupérer tous les élèves de l'école avec leurs notes
     const students = await this.studentRepo.find({ 
         where: { class: { school: { id: schoolId } } },
         relations: ['grades', 'class', 'parent'] 
     });
 
-    // 👇 FIX 1 : Typage explicite de l'array pour éviter l'erreur 'never[]'
+    // 2. OPTIMISATION : Récupérer tous les frais de l'école en UNE SEULE requête
+    const allFees = await this.feeRepo.find({ where: { school: { id: schoolId } } });
+    
+    // Création d'un dictionnaire pour un accès instantané (O(1)) par ID élève
+    const feesMap = new Map<number, Fee>();
+    allFees.forEach(fee => feesMap.set(fee.studentId, fee));
+
     const atRiskList: any[] = [];
 
     for (const student of students) {
       let riskScore = 0;
       const reasons: string[] = [];
 
-      // --- ANALYSE FINANCIÈRE ---
-      const fee = await this.feeRepo.findOne({ where: { studentId: student.id } });
-      // Note: Utilise totalAmount (variable locale) pour la logique
-      if (fee && fee.totalAmount > 0) { 
-          const percentPaid = (Number(fee.amountPaid) / Number(fee.totalAmount)) * 100;
+      // --- ANALYSE FINANCIÈRE (Instantanée grâce à la Map) ---
+      const fee = feesMap.get(student.id);
+      
+      if (fee && Number(fee.totalAmount) > 0) { 
+          const paid = Number(fee.amountPaid);
+          const total = Number(fee.totalAmount);
+          const percentPaid = (paid / total) * 100;
           
-          // Si on a payé moins de 30% de la scolarité (seuil d'alerte arbitraire)
+          // Seuil d'alerte : moins de 30% payé
           if (percentPaid < 30) {
               riskScore += 1;
-              reasons.push('💸 Retard Paiement Critique');
+              reasons.push(`💸 Retard Paiement (${percentPaid.toFixed(0)}%)`);
           }
       }
 
       // --- ANALYSE PÉDAGOGIQUE ---
       if (student.grades && student.grades.length > 0) {
-          // Moyenne simple (somme / nombre)
           const sum = student.grades.reduce((a, b) => a + Number(b.value), 0);
           const avg = sum / student.grades.length;
           
@@ -61,19 +68,15 @@ export class AnalyticsService {
               nom: student.nom,
               prenom: student.prenom,
               classe: student.class?.name || 'Sans classe',
-              
-              // 👇 FIX 2 : On utilise le casting (as any) pour l'accès à 'photo'
-              // Le temps que le champ soit ajouté à l'entité Student
               photo: (student as any).photo || '', 
-              
-              parentPhone: student.parent?.email, 
+              parentPhone: student.parent?.email, // Ou tel si dispo
               riskLevel: riskScore >= 2 ? 'HIGH' : 'MEDIUM',
               reasons: reasons
           });
       }
     }
 
-    // On trie : les cas les plus graves (HIGH) en premier
+    // Tri par gravité
     return atRiskList.sort((a, b) => (a.riskLevel === 'HIGH' ? -1 : 1));
   }
 }

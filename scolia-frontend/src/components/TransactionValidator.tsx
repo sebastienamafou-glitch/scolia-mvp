@@ -48,9 +48,17 @@ export const TransactionValidator: React.FC = () => {
             await api.patch(`/payments/validate/${id}`, { action }); 
             
             setStatusMessage(`Transaction ${id} ${action === 'validate' ? 'validée' : 'rejetée'} !`);
-            fetchTransactions(); // Rafraîchir la liste
+            
+            // ✅ AMÉLIORATION OPTIMISTIC UI : Suppression locale immédiate
+            setPendingTransactions(prev => prev.filter(t => t.id !== id));
+            
+            // Laisser un délai pour que le message de succès s'affiche, puis recharger si nécessaire.
+            // Le fetchTransactions() immédiat n'est plus nécessaire.
+            
         } catch (e) {
+            // En cas d'échec de l'API, on doit recharger pour remettre l'élément dans la liste
             setStatusMessage("Opération échouée. Vérifiez le solde de l'élève ou le serveur.");
+            fetchTransactions(); 
         }
     };
 
@@ -80,7 +88,7 @@ export const TransactionValidator: React.FC = () => {
                         <tbody>
                             {pendingTransactions.map(t => (
                                 <tr key={t.id} style={{ borderBottom: '1px solid #eee' }}>
-                                    <td style={{ padding: '10px' }}>{t.student.prenom} **{t.student.nom}**</td>
+                                    <td style={{ padding: '10px' }}>{t.student.prenom} <strong>{t.student.nom}</strong></td>
                                     <td style={{ padding: '10px', fontWeight: 'bold' }}>{t.amount.toLocaleString('fr-FR')} FCFA</td>
                                     <td style={{ padding: '10px', fontSize: '0.9rem' }}>{t.mobileMoneyReference}</td>
                                     <td style={{ padding: '10px' }}>

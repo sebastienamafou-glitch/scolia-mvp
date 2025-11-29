@@ -16,6 +16,18 @@ interface TimetableSlot {
   room?: string;
 }
 
+// Helper pour nettoyer les strings (minuscule et sans espaces début/fin)
+const normalize = (str: string) => str.toLowerCase().trim();
+
+// Mapping si le backend renvoie de l'anglais et l'UI utilise le français
+const dayMapping: Record<string, string> = {
+    'monday': 'lundi',
+    'tuesday': 'mardi',
+    'wednesday': 'mercredi',
+    'thursday': 'jeudi',
+    'friday': 'vendredi'
+};
+
 export const TimetableManager: React.FC = () => {
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [selectedClassId, setSelectedClassId] = useState<string>('');
@@ -119,7 +131,12 @@ export const TimetableManager: React.FC = () => {
                             </div>
                             <div style={{ padding: '5px', minHeight: '150px' }}>
                                 {schedule
-                                    .filter(s => s.dayOfWeek === day)
+                                    .filter(s => {
+                                        const apiDay = normalize(s.dayOfWeek);
+                                        const uiDay = normalize(day);
+                                        // On compare soit directement, soit via le mapping
+                                        return apiDay === uiDay || dayMapping[apiDay] === uiDay;
+                                    })
                                     .sort((a, b) => a.startTime.localeCompare(b.startTime))
                                     .map(slot => (
                                         <div key={slot.id} style={{ backgroundColor: '#E3F2FD', padding: '8px', borderRadius: '4px', marginBottom: '5px', fontSize: '0.85rem' }}>
@@ -130,7 +147,13 @@ export const TimetableManager: React.FC = () => {
                                             <div style={{ fontSize: '0.75rem', color: '#888' }}>{slot.room}</div>
                                         </div>
                                     ))}
-                                {schedule.filter(s => s.dayOfWeek === day).length === 0 && (
+                                {schedule
+                                    .filter(s => {
+                                        const apiDay = normalize(s.dayOfWeek);
+                                        const uiDay = normalize(day);
+                                        return apiDay === uiDay || dayMapping[apiDay] === uiDay;
+                                    })
+                                    .length === 0 && (
                                     <div style={{ textAlign: 'center', color: '#ccc', marginTop: '20px', fontSize: '0.8rem' }}>Aucun cours</div>
                                 )}
                             </div>

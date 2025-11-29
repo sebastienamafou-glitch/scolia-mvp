@@ -2,44 +2,50 @@
 
 import { Injectable } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class MailService {
-  private transporter;
+  private transporter: any;
 
-  constructor() {
-    // ⚠️ Configure ici tes vrais accès (Gmail, Outlook, etc.)
+  constructor(private configService: ConfigService) {
     this.transporter = nodemailer.createTransport({
-      service: 'gmail', 
+      host: this.configService.get<string>('MAIL_HOST'),
+      port: this.configService.get<number>('MAIL_PORT'),
+      secure: this.configService.get<number>('MAIL_PORT') === 465, // True pour 465, False pour les autres
       auth: {
-        user: 'ton_email@gmail.com', // Remplace ceci
-        pass: 'ton_mot_de_passe_app', // Remplace ceci
+        user: this.configService.get<string>('MAIL_USER'),
+        pass: this.configService.get<string>('MAIL_PASSWORD'),
       },
     });
   }
 
   async sendResetPasswordEmail(to: string, token: string) {
-    // Lien vers le Frontend pour réinitialiser
-    const resetLink = `http://localhost:5173/reset-password?token=${token}`;
+    // On récupère l'URL frontend depuis le .env (ou localhost par défaut)
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:5173';
+    const resetLink = `${frontendUrl}/reset-password?token=${token}`;
+    const fromSender = this.configService.get<string>('MAIL_FROM') || '"Scolia" <no-reply@scolia.ci>';
 
     const mailOptions = {
-      from: '"Support Scolia" <no-reply@scolia.ci>',
+      from: fromSender,
       to: to,
-      subject: 'Réinitialisation de votre mot de passe - Scolia',
+      subject: 'Réinitialisation de mot de passe - Scolia',
       html: `
-        <h3>Bonjour,</h3>
-        <p>Vous avez demandé la réinitialisation de votre mot de passe.</p>
-        <p>Cliquez sur le lien ci-dessous pour en créer un nouveau :</p>
-        <a href="${resetLink}">Réinitialiser mon mot de passe</a>
-        <p>Ce lien est valide pendant 15 minutes.</p>
+        <div style="font-family: Arial, sans-serif; color: #333;">
+            <h2 style="color: #0A2240;">Bonjour,</h2>
+            <p>Une demande de réinitialisation de mot de passe a été effectuée pour votre compte <strong>${to}</strong>.</p>
+            <p>Cliquez sur le bouton ci-dessous pour définir un nouveau mot de passe :</p>
+            <a href="${resetLink}" style="background-color: #F77F00; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Réinitialiser mon mot de passe</a>
+            <p style="margin-top: 20px; font-size: 0.9em; color: #666;">Ce lien est valide pendant 15 minutes.</p>
+        </div>
       `,
     };
 
     try {
         await this.transporter.sendMail(mailOptions);
-        console.log(`Email envoyé à ${to}`);
+        console.log(`📧 Email envoyé à ${to}`);
     } catch (error) {
-        console.error("Erreur envoi email:", error);
+        console.error("❌ Erreur envoi email:", error);
     }
   }
 }
