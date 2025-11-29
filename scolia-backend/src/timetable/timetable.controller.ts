@@ -9,12 +9,10 @@ import { Roles } from '../auth/roles.decorator';
 export class TimetableController {
   constructor(private readonly timetableService: TimetableService) {}
 
-  // Générer (Admin uniquement)
   @Roles('Admin')
   @Post('generate/:classId')
   async generate(@Request() req, @Param('classId') classId: string, @Body() constraints: any) {
-    // Vérification de sécurité Multi-Tenant
-    if (!req.user.schoolId) throw new ForbiddenException("Accès refusé : École non identifiée.");
+    if (!req.user.schoolId) throw new ForbiddenException("Accès refusé.");
     
     return this.timetableService.generateWithAI(
         Number(classId), 
@@ -23,9 +21,13 @@ export class TimetableController {
     );
   }
 
-  // Consulter (Tout le monde : Élève, Prof, Parent, Admin)
+  // Consulter (Tout le monde)
   @Get('class/:classId')
-  async getByClass(@Param('classId') classId: string) {
-    return this.timetableService.findByClass(Number(classId));
+  async getByClass(@Request() req, @Param('classId') classId: string) {
+    const schoolId = req.user.schoolId;
+    if (!schoolId) throw new ForbiddenException("Accès refusé.");
+
+    // ✅ CORRECTION : On passe schoolId pour sécuriser la lecture
+    return this.timetableService.findByClass(Number(classId), schoolId);
   }
 }

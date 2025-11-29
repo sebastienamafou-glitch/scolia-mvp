@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards, Request, ForbiddenException } from '@nestjs/common';
 import { HomeworksService } from './homeworks.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -11,13 +11,21 @@ export class HomeworksController {
 
   @Roles('Enseignant')
   @Post()
-  create(@Body() body: any) {
-    return this.homeworksService.create(body);
+  async create(@Request() req, @Body() body: any) {
+    const schoolId = req.user.schoolId;
+    if (!schoolId) throw new ForbiddenException("École non identifiée.");
+
+    // ✅ CORRECTION : On passe schoolId en 2ème argument
+    return this.homeworksService.create(body, schoolId);
   }
 
   @Roles('Parent', 'Élève', 'Enseignant')
   @Get('class/:classId')
-  findByClass(@Param('classId') classId: string) {
-    return this.homeworksService.findByClass(Number(classId));
+  async findByClass(@Request() req, @Param('classId') classId: string) {
+    const schoolId = req.user.schoolId;
+    if (!schoolId) throw new ForbiddenException("École non identifiée.");
+
+    // ✅ CORRECTION : On passe schoolId en 2ème argument
+    return this.homeworksService.findByClass(Number(classId), schoolId);
   }
 }

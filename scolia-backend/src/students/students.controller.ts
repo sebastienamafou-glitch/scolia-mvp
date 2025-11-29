@@ -1,6 +1,6 @@
-import { Controller, Get, Param, NotFoundException, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Param, NotFoundException, UseGuards, Request, ForbiddenException } from '@nestjs/common';
 import { StudentsService } from './students.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 
@@ -9,39 +9,35 @@ import { Roles } from '../auth/roles.decorator';
 export class StudentsController {
   constructor(private readonly studentsService: StudentsService) {}
 
-  // ===============================================================
-  // 1. ROUTES SPÉCIFIQUES
-  // ===============================================================
-  
-  // --- RÉCUPÉRER MES ENFANTS (Pour le Parent) ---
   @Roles('Parent')
   @Get('my-children')
   async getMyChildren(@Request() req) {
-    // L'ID du parent est stocké dans le token JWT (req.user.sub)
     const parentId = req.user.sub; 
     return this.studentsService.findByParent(parentId);
   }
 
   @Roles('Enseignant', 'Admin')
   @Get('class/:classId') 
-  async getStudentsByClass(@Param('classId') classId: string) {
-    return this.studentsService.findByClass(Number(classId));
+  async getStudentsByClass(@Request() req, @Param('classId') classId: string) {
+    const schoolId = req.user.schoolId;
+    if (!schoolId) throw new ForbiddenException("Accès refusé.");
+
+    // ✅ CORRECTION : On passe schoolId
+    return this.studentsService.findByClass(Number(classId), schoolId);
   }
 
-  // ===============================================================
-  // 2. ROUTE GÉNÉRIQUE (EN DERNIER)
-  // ===============================================================
-
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    if (isNaN(+id)) {
-        throw new NotFoundException(`L'ID fourni (${id}) n'est pas un nombre valide.`);
-    }
+  async findOne(@Request() req, @Param('id') id: string) {
+    if (isNaN(+id)) throw new NotFoundException(`ID invalide.`);
 
     const student = await this.studentsService.findOne(+id);
-    if (!student) {
-      throw new NotFoundException(`Student with ID ${id} not found`);
+    if (!student) throw new NotFoundException(`Élève introuvable`);
+    
+    // Protection Multi-Tenant simple
+    if (req.user.schoolId && student.schoolId !== req.user.schoolId) {
+        throw new ForbiddenException("Cet élève n'est pas dans votre école.");
     }
+    
     return student;
   }
 }
