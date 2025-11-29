@@ -13,7 +13,12 @@ export class TimetableService {
     @InjectRepository(TimetableEvent)
     private timetableRepo: Repository<TimetableEvent>,
   ) {
-    this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+    // Vérification de la clé API au démarrage
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+        this.logger.error("❌ CLÉ API GEMINI MANQUANTE DANS LES VARIABLES D'ENVIRONNEMENT !");
+    }
+    this.genAI = new GoogleGenerativeAI(apiKey || '');
   }
 
   // --- 1. LECTURE (Sécurisée) ---
@@ -23,7 +28,6 @@ export class TimetableService {
             where: { classId },
         });
 
-        // Si aucun événement, on renvoie une liste vide sans planter
         if (!events || events.length === 0) return [];
 
         const dayOrder: { [key: string]: number } = { 
@@ -33,70 +37,75 @@ export class TimetableService {
         return events.sort((a, b) => {
             const dayA = dayOrder[a.dayOfWeek] || 99;
             const dayB = dayOrder[b.dayOfWeek] || 99;
-            
             const diffDay = dayA - dayB;
-            if (diffDay !== 0) return diffDay;
-            
-            // Tri par heure (gestion sécurisée si startTime est nul)
-            return (a.startTime || '').localeCompare(b.startTime || '');
+            return diffDay !== 0 ? diffDay : (a.startTime || '').localeCompare(b.startTime || '');
         });
     } catch (error) {
         this.logger.error(`Erreur lecture emploi du temps classe ${classId}`, error);
-        return []; // On ne plante pas, on renvoie vide
+        return [];
     }
   }
 
-  // --- 2. GÉNÉRATION IA (Modèle Flash + Logs détaillés) ---
+  // --- 2. GÉNÉRATION IA (BLINDÉE) ---
   async generateWithAI(classId: number, constraints: any, schoolId: number) {
-    // 👇changement de modèle vers FLASH (plus rapide et stable)
-    const model = this.genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // Utilisation du modèle Pro (souvent plus stable pour le JSON complexe que Flash)
+    // Si Pro échoue (quota), repassez à "gemini-1.5-flash"
+    const model = this.genAI.getGenerativeModel({ model: "gemini-pro" });
 
     const prompt = `
-      Agis comme un planificateur scolaire.
-      Génère un emploi du temps JSON pour une classe.
+      Tu es un expert en planification scolaire. Génère un emploi du temps pour une classe.
       
-      MATIÈRES : ${JSON.stringify(constraints)}
-      
-      RÈGLES :
+      CONTRAINTES STRICTES :
       - Jours : Lundi, Mardi, Mercredi, Jeudi, Vendredi.
-      - Heures : 08:00-12:00 et 14:00-17:00.
-      - Format heure : "HH:MM" (ex: "08:00").
+      - Horaires : 08:00-12:00 et 14:00-17:00.
+      - Pause déjeuner : 12:00-14:00 (ne rien placer ici).
       
-      FORMAT JSON STRICT (Tableau d'objets) :
+      MATIÈRES À PLACER : ${JSON.stringify(constraints)}
+      
+      FORMAT DE RÉPONSE OBLIGATOIRE :
+      Tu dois répondre UNIQUEMENT par un tableau JSON valide. Pas de texte avant, pas de texte après.
+      Exemple de format attendu :
       [
-        { "day": "Lundi", "start": "08:00", "end": "09:00", "subject": "Maths", "room": "A1" }
+        { "day": "Lundi", "start": "08:00", "end": "09:00", "subject": "Maths", "room": "A1" },
+        { "day": "Mardi", "start": "14:00", "end": "16:00", "subject": "Sport", "room": "Gymnase" }
       ]
-      Retourne UNIQUEMENT le JSON brut, sans markdown, sans mot d'intro.
     `;
 
     try {
-      this.logger.log(`Demande IA envoyée pour classe ${classId}...`);
+      this.logger.log(`🤖 Envoi demande IA pour classe ${classId}...`);
       
       const result = await model.generateContent(prompt);
       const response = await result.response;
       const text = response.text();
 
-      this.logger.log("Réponse IA reçue (extrait) : " + text.substring(0, 100) + "...");
+      this.logger.log("✅ Réponse IA reçue. Début du nettoyage...");
 
-      // Nettoyage agressif du JSON
-      let jsonString = text.replace(/```json/g, '').replace(/```/g, '').trim();
-      
-      // Extraction pure entre [ et ]
-      const firstBracket = jsonString.indexOf('[');
-      const lastBracket = jsonString.lastIndexOf(']');
-      
-      if (firstBracket !== -1 && lastBracket !== -1) {
-          jsonString = jsonString.substring(firstBracket, lastBracket + 1);
-      } else {
-          throw new Error("JSON introuvable dans la réponse IA");
+      // --- NETTOYAGE ROBUSTE (REGEX) ---
+      // On cherche le premier crochet ouvrant '[' et le dernier fermant ']'
+      // Cela permet d'ignorer tout texte d'introduction type "Voici le résultat :"
+      const jsonRegex = /\[[\s\S]*\]/; 
+      const match = text.match(jsonRegex);
+
+      if (!match) {
+          this.logger.error("❌ Pas de JSON trouvé dans la réponse : " + text.substring(0, 100));
+          throw new Error("L'IA n'a pas renvoyé de format valide.");
       }
 
-      const scheduleData = JSON.parse(jsonString);
+      const cleanJsonString = match[0]; // On garde uniquement la partie tableau JSON
+      
+      let scheduleData;
+      try {
+          scheduleData = JSON.parse(cleanJsonString);
+      } catch (e) {
+          this.logger.error("❌ Erreur Syntax JSON", e);
+          // Si le JSON est mal formé, on log la chaine pour débugger
+          this.logger.error("Chaine JSON reçue :", cleanJsonString);
+          throw new Error("Le JSON renvoyé par l'IA est mal formé.");
+      }
 
-      // Suppression de l'ancien emploi du temps
+      // --- SAUVEGARDE EN BDD ---
       await this.timetableRepo.delete({ classId });
 
-      // Insertion des nouveaux cours
       const events = scheduleData.map((slot: any) => {
           return this.timetableRepo.create({
               dayOfWeek: slot.day,
@@ -111,13 +120,15 @@ export class TimetableService {
       });
 
       const saved = await this.timetableRepo.save(events);
-      this.logger.log(`${saved.length} cours sauvegardés avec succès.`);
+      this.logger.log(`🎉 ${saved.length} cours créés avec succès !`);
       return saved;
 
     } catch (error) {
+      // Log détaillé pour voir l'erreur exacte dans Render
       this.logger.error("ERREUR CRITIQUE IA :", error);
-      // On renvoie l'erreur exacte pour que vous puissiez la voir dans la console navigateur
-      throw new InternalServerErrorException(error instanceof Error ? error.message : "Erreur inconnue IA");
+      throw new InternalServerErrorException(
+          error instanceof Error ? error.message : "Erreur interne lors de la génération"
+      );
     }
   }
 }
