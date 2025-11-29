@@ -66,6 +66,7 @@ export class UsersService implements OnModuleInit {
   async generateUniqueEmail(prenom: string, nom: string): Promise<string> {
     const cleanPrenom = this.sanitizeString(prenom);
     const cleanNom = this.sanitizeString(nom);
+    const suffix = Math.random().toString(36).substring(2, 5);
     
     // Format demandé : nom.prenom@scolia.ci
     const baseEmail = `${cleanNom}.${cleanPrenom}`; 
@@ -82,7 +83,7 @@ export class UsersService implements OnModuleInit {
         throw new BadRequestException("Impossible de générer un email unique automatiquement.");
     }
 
-    return candidateEmail;
+    return `${cleanNom}.${cleanPrenom}.${suffix}@scolia.ci`;
   }
 
   // --- CRÉATION ---

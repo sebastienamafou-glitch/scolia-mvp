@@ -1,8 +1,8 @@
 // scolia-backend/src/users/entities/user.entity.ts
 
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { School } from '../../schools/entities/school.entity';
-import { Class } from '../../classes/entities/class.entity'; // 👈 Import de la Classe
+import { Class } from '../../classes/entities/class.entity';
 
 @Entity()
 export class User {
@@ -15,11 +15,11 @@ export class User {
   @Column({ nullable: true })
   fcmToken: string;
 
-  @Column({ nullable: true, select: false }) // Select: false pour ne pas renvoyer le hash par défaut
+  @Column({ nullable: true, select: false }) 
   passwordHash: string; 
 
   @Column({ nullable: true })
-  password: string; // Temporaire pour l'affichage à la création
+  password: string;
 
   @Column()
   nom: string;
@@ -40,7 +40,7 @@ export class User {
   @Column({ nullable: true, type: 'timestamp' })
   resetTokenExp: Date;
 
-  // --- PROFILS ÉLÈVE (Infos détaillées) ---
+  // --- PROFILS ÉLÈVE ---
   @Column({ nullable: true })
   dateNaissance: string;
 
@@ -70,27 +70,28 @@ export class User {
   notifQuietHours: string;  
   
   // =========================================================
-  // RELATIONS STRUCTURELLES (LA CORRECTION V2)
+  // 👇 CORRECTION ICI : AJOUT DE { insert: false, update: false }
   // =========================================================
 
-  // 1. L'École (Multi-Tenant)
+  // 1. L'École
   @ManyToOne(() => School, (school) => school.users, { nullable: true })
   @JoinColumn({ name: 'schoolId' })
   school: School;
 
-  @Column({ nullable: true })
+  // On garde la colonne pour lire l'ID facilement, mais on interdit l'écriture directe
+  @Column({ nullable: true, insert: false, update: false }) 
   schoolId: number;
 
-  // 2. La Classe (Architecture Propre)
-  // Remplace l'ancien champ texte 'classe'
+  // 2. La Classe
   @ManyToOne(() => Class, (classe) => classe.students, { nullable: true })
   @JoinColumn({ name: 'classId' })
   class: Class;
 
-  @Column({ nullable: true })
+  // Idem ici
+  @Column({ nullable: true, insert: false, update: false }) 
   classId: number;
 
-  // 3. Le Parent (Lien Familial)
+  // 3. Le Parent
   @Column({ nullable: true })
   parentId: number;
 }
