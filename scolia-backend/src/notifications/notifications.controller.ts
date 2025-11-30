@@ -1,9 +1,18 @@
 // scolia-backend/src/notifications/notifications.controller.ts
 
-import { Controller, Post, Body, UseGuards, Request, ForbiddenException } from '@nestjs/common';
+import { 
+  Controller, 
+  Post, 
+  Body, 
+  UseGuards, 
+  Request, 
+  ForbiddenException, 
+  Get,   // 👈 Ajouté
+  Patch, // 👈 Ajouté
+  Param  // 👈 Ajouté
+} from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-// 💡 CORRECTION DU CHEMIN : Ajout de 'guards/'
 import { RolesGuard } from '../auth/guards/roles.guard'; 
 import { Roles } from '../auth/roles.decorator';
 
@@ -35,5 +44,19 @@ export class NotificationsController {
           body.details, 
           body.duration
       );
+  }
+
+  // ✅ NOUVELLE ROUTE : Récupérer mes notifications non-lues
+  // Accessible par tout utilisateur authentifié (Pas de décorateur @Roles spécifique ici = tous rôles)
+  @Get('my-notifications')
+  async getMyNotifications(@Request() req) {
+      // Appel à la méthode du service (plus propre que d'accéder au repo directement)
+      return this.notificationsService.findAllUnread(req.user.sub);
+  }
+
+  // ✅ NOUVELLE ROUTE : Marquer une notification comme lue
+  @Patch(':id/read')
+  async markAsRead(@Param('id') id: string) {
+      return this.notificationsService.markAsRead(Number(id));
   }
 }
