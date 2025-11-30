@@ -1,6 +1,6 @@
 // scolia-backend/src/users/entities/user.entity.ts
 
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, RelationId } from 'typeorm';
 import { School } from '../../schools/entities/school.entity';
 import { Class } from '../../classes/entities/class.entity';
 
@@ -40,7 +40,7 @@ export class User {
   @Column({ nullable: true, type: 'timestamp' })
   resetTokenExp: Date;
 
-  // --- PROFILS ÉLÈVE ---
+  // --- PROFILS ÉLÈVE & INFOS ---
   @Column({ nullable: true })
   dateNaissance: string;
 
@@ -67,10 +67,10 @@ export class User {
   notifFinanceEnabled: boolean;
 
   @Column({ type: 'jsonb', nullable: true })
-  notifQuietHours: string;  
-  
+  notifQuietHours: string;
+
   // =========================================================
-  // 👇 CORRECTION ICI : AJOUT DE { insert: false, update: false }
+  // RELATIONS & IDs (Version @RelationId)
   // =========================================================
 
   // 1. L'École
@@ -78,8 +78,8 @@ export class User {
   @JoinColumn({ name: 'schoolId' })
   school: School;
 
-  // On garde la colonne pour lire l'ID facilement, mais on interdit l'écriture directe
-  @Column({ nullable: true, insert: false, update: false }) 
+  // Miroir automatique de l'ID (Lecture seule, géré par TypeORM)
+  @RelationId((user: User) => user.school)
   schoolId: number;
 
   // 2. La Classe
@@ -87,8 +87,8 @@ export class User {
   @JoinColumn({ name: 'classId' })
   class: Class;
 
-  // Idem ici
-  @Column({ nullable: true, insert: false, update: false }) 
+  // Miroir automatique de l'ID
+  @RelationId((user: User) => user.class)
   classId: number;
 
   // 3. Le Parent
