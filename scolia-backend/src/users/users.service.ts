@@ -10,7 +10,6 @@ import { PaymentsService } from '../payments/payments.service';
 @Injectable()
 export class UsersService implements OnModuleInit {
   private readonly logger = new Logger(UsersService.name);
-  // Domaine imposé pour toute l'organisation
   private readonly DOMAIN_NAME = 'scolia.ci';
 
   constructor(
@@ -44,113 +43,128 @@ export class UsersService implements OnModuleInit {
     await this.usersRepository.save(superAdmin);
   }
 
-  // --- CRUD ---
+  // --- UTILITAIRES ---
+  private sanitizeString(str: string): string {
+    if (!str) return '';
+    return str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+  }
+
+  // ✅ MÉTHODE MANQUANTE 1 : Génération d'email unique
+  async generateUniqueEmail(prenom: string, nom: string): Promise<string> {
+    const cleanPrenom = this.sanitizeString(prenom);
+    const cleanNom = this.sanitizeString(nom);
+    const baseEmail = `${cleanNom}.${cleanPrenom}`; 
+    let candidateEmail = `${baseEmail}@${this.DOMAIN_NAME}`;
+    
+    let counter = 1;
+    while ((await this.usersRepository.findOne({ where: { email: candidateEmail } })) && counter < 100) {
+      candidateEmail = `${baseEmail}${counter}@${this.DOMAIN_NAME}`;
+      counter++;
+    }
+    
+    if (counter >= 100) throw new BadRequestException("Impossible de générer un email unique.");
+
+    return candidateEmail;
+  }
+
+  // --- CRÉATION ---
   async create(createUserDto: any): Promise<any> {
-    // 1. Génération de l'email et du mot de passe temporaire
     const baseEmail = `${createUserDto.prenom.toLowerCase()}.${createUserDto.nom.toLowerCase()}`;
     let email = `${baseEmail}@${this.DOMAIN_NAME}`;
-    let emailCounter = 1;
-
-    // Vérification de l'unicité de l'email
-    while (await this.usersRepository.findOne({ where: { email } })) {
-        email = `${baseEmail}${emailCounter}@${this.DOMAIN_NAME}`;
-        emailCounter++;
+    
+    // Si l'email est déjà fourni (ex: import CSV avec email forcé), on l'utilise, sinon on génère
+    if (!createUserDto.email || createUserDto.email.indexOf('@') === -1) {
+       email = await this.generateUniqueEmail(createUserDto.prenom, createUserDto.nom);
+    } else {
+       email = createUserDto.email;
     }
 
-    const plainPassword = Math.random().toString(36).slice(-8); // Mot de passe temporaire
+    const plainPassword = Math.random().toString(36).slice(-8); 
     const passwordHash = await bcrypt.hash(plainPassword, 10);
 
-    // 2. Préparation des données
     const newUser: any = {
         ...createUserDto,
         email,
         passwordHash,
-        // Si l'utilisateur est un Élève et qu'une classe ID est fournie
         ...(createUserDto.classId && createUserDto.role === 'Élève' && { 
             class: { id: createUserDto.classId } 
         }),
-        // On assure que les champs qui ne sont pas des colonnes (classId) sont supprimés
-        classId: undefined,
+        classId: undefined, // Nettoyage
     };
     
-    // 3. Sauvegarde
     const savedUser = await this.usersRepository.save(newUser);
 
-    // 4. Création du compte de paiement si applicable
-    if (savedUser.role === 'Élève' || savedUser.role === 'Parent') {
-        await this.paymentsService.createPaymentAccount(savedUser.id);
+    // Initialisation Compte Paiement (V2)
+    if (savedUser.role === 'Élève') {
+        try {
+            await this.paymentsService.createPaymentAccount(savedUser.id);
+            // Si des frais sont fournis à la création
+            if (createUserDto.fraisScolarite) {
+                await this.paymentsService.setStudentTuition(
+                    savedUser.id, 
+                    Number(createUserDto.fraisScolarite), 
+                    savedUser.schoolId ?? 0
+                );
+            }
+        } catch (e) { console.error("Erreur init paiement", e); }
     }
 
-    // On retourne le mot de passe temporaire pour l'affichage ponctuel (non stocké)
     return { ...savedUser, plainPassword };
   }
 
-  // --- READ ---
+  // --- LECTURE ---
 
-  findAll(): Promise<User[]> {
+  async findAll(): Promise<User[]> {
     return this.usersRepository.find({ 
         relations: ['class'],
         order: { nom: 'ASC', prenom: 'ASC' },
     });
   }
 
-  findAllBySchool(schoolId: number): Promise<User[]> {
+  async findAllBySchool(schoolId: number): Promise<User[]> {
     return this.usersRepository.find({ 
-        where: { schoolId, role: Not('SuperAdmin') }, 
+        where: { school: { id: schoolId }, role: Not('SuperAdmin') }, 
         relations: ['class'],
         order: { nom: 'ASC', prenom: 'ASC' },
     });
   }
 
-  async findByEmailWithPassword(email: string): Promise<User | null> {
+  // ✅ MÉTHODE MANQUANTE 2 : Recherche par Email avec Password (pour Auth)
+  async findOneByEmail(email: string): Promise<User | null> {
     return this.usersRepository.createQueryBuilder("user")
         .where("user.email = :email", { email })
-        .addSelect("user.passwordHash") 
+        .addSelect("user.passwordHash") // Indispensable car select: false dans l'entité
         .leftJoinAndSelect("user.school", "school")
         .getOne();
   }
   
   async findStudentsByParentId(parentId: number): Promise<User[]> {
-    return this.usersRepository.find({ where: { role: 'Élève', parentId } });
+    return this.usersRepository.find({ where: { role: 'Élève', parentId }, relations: ['class'] });
   }
 
   async findOneById(id: number): Promise<User | null> {
-      return this.usersRepository.findOne({ where: { id } });
+      return this.usersRepository.findOne({ where: { id }, relations: ['class', 'school'] });
   }
 
   // --- UPDATE ---
   
-  // ✅ NOUVELLE MÉTHODE : Mise à jour générique (Nom, Classe, Infos...) par Admin
   async updateUser(userId: number, data: any, adminSchoolId: number | null) {
-    // 1. Chercher l'utilisateur
     const user = await this.usersRepository.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException("Utilisateur introuvable");
 
-    // 2. Sécurité Multi-Tenant
     if (adminSchoolId && user.schoolId !== adminSchoolId) {
-        throw new ForbiddenException("Vous ne pouvez pas modifier cet utilisateur.");
+        throw new ForbiddenException("Modification interdite.");
     }
     
-    // 3. Traiter la relation de classe si elle est fournie
     if (data.classId) {
-        // TypeORM: On assigne un objet relationnel
         user.class = { id: Number(data.classId) } as any; 
-        delete data.classId; // On retire l'ID brut pour éviter le crash (n'existe pas dans l'entité)
+        delete data.classId;
     }
 
-    // 4. Protection : On empêche de changer les champs sensibles via cette route simple
-    delete data.password;
-    delete data.passwordHash;
-    delete data.email;
-    delete data.role;
-    delete data.schoolId; // On ne change pas d'école comme ça
-    delete data.resetToken;
-    delete data.resetTokenExp;
+    delete data.password; delete data.passwordHash; delete data.email;
+    delete data.role; delete data.schoolId;
     
-    // 5. Application des autres champs (Nom, Prenom, Infos...)
     Object.assign(user, data);
-
-    // 6. Sauvegarde
     return this.usersRepository.save(user);
   }
   
@@ -165,27 +179,27 @@ export class UsersService implements OnModuleInit {
 
   async updateNotificationPreferences(userId: number, prefs: any) {
     const user = await this.usersRepository.findOne({ where: { id: userId } });
-    if (!user) throw new NotFoundException('Utilisateur non trouvé.');
+    if (!user) throw new NotFoundException();
 
     const dataToUpdate: any = {
         notifGradesEnabled: prefs.notifGradesEnabled,
         notifAbsencesEnabled: prefs.notifAbsencesEnabled,
         notifFinanceEnabled: prefs.notifFinanceEnabled,
-        // Sérialisation du JSON si le champ est de type JSON ou string
         notifQuietHours: prefs.notifQuietHours ? JSON.stringify(prefs.notifQuietHours) : null,
     };
-
     Object.assign(user, dataToUpdate);
-
     return this.usersRepository.save(user);
   }
 
-  async resetPassword(userId: number) {
-    const plainPassword = Math.random().toString(36).slice(-8);
-    const newHash = await bcrypt.hash(plainPassword, 10);
+  // Méthode pour le reset administratif (Option A)
+  async adminResetPassword(adminSchoolId: number | null, targetUserId: number): Promise<string> {
+    const targetUser = await this.usersRepository.findOne({ where: { id: targetUserId }, relations: ['school'] });
+    if (!targetUser) throw new NotFoundException("Utilisateur introuvable.");
+    if (adminSchoolId && targetUser.schoolId !== adminSchoolId) throw new ForbiddenException("Accès interdit.");
 
-    await this.usersRepository.update(userId, { passwordHash: newHash });
-
-    return { plainPassword };
+    const tempPassword = Math.random().toString(36).slice(-6);
+    const newHash = await bcrypt.hash(tempPassword, 10);
+    await this.usersRepository.update(targetUserId, { passwordHash: newHash });
+    return tempPassword;
   }
 }
