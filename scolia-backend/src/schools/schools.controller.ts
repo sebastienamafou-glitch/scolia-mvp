@@ -1,16 +1,6 @@
-// scolia-backend/src/schools/schools.controller.ts
-
 import { 
-    Controller, 
-    Post, 
-    Body, 
-    UseGuards, 
-    Request, 
-    ForbiddenException, 
-    Patch, 
-    Get, 
-    Param, 
-    NotFoundException 
+    Controller, Post, Body, UseGuards, Request, ForbiddenException, 
+    Patch, Get, Param, NotFoundException 
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -32,137 +22,113 @@ export class SchoolsController {
     private usersService: UsersService,
   ) {}
 
-  // =================================================================
-  // 👑 ZONE SUPER ADMIN (Gestion de la plateforme SaaS)
-  // =================================================================
-
-  // --- 1. CRÉATION D'UNE NOUVELLE ÉCOLE (ONBOARDING) ---
+  // --- SUPER ADMIN : CRÉATION ---
   @Roles('SuperAdmin')
   @Post('onboard')
   async onboardNewSchool(@Request() req, @Body() body: any) {
-    // Sécurité : On s'assure que c'est bien un SuperAdmin (schoolId doit être null)
-    if (req.user.schoolId !== null) {
-      throw new ForbiddenException("Seul le Super Admin peut créer une nouvelle école.");
-    }
+    if (req.user.schoolId !== null) throw new ForbiddenException("Seul le Super Admin peut créer une nouvelle école.");
 
     const { schoolName, schoolAddress, schoolLogo, adminNom, adminPrenom } = body;
 
-    // A. Création de l'école (Modules désactivés par défaut via l'entité)
     const newSchool = this.schoolRepo.create({
       name: schoolName,
       address: schoolAddress,
       logo: schoolLogo, 
-      isActive: true 
+      isActive: true,
+      modules: { cards: false, sms: false, ai_planning: false, risk_radar: false }
     });
     const savedSchool = await this.schoolRepo.save(newSchool);
 
-    // B. Génération des accès Administrateur
-    // On force l'email au format pro (nom.prenom@scolia.ci) via le UsersService
     const uniqueEmail = await this.usersService.generateUniqueEmail(adminPrenom, adminNom);
-
-    // Mot de passe temporaire aléatoire (8 caractères hexadécimaux)
     const temporaryPassword = randomBytes(4).toString('hex');
     const salt = await bcrypt.genSalt();
     const hash = await bcrypt.hash(temporaryPassword, salt);
 
-    // C. Création du compte Directeur
     const newAdmin = this.userRepo.create({
       email: uniqueEmail,
       nom: adminNom,
       prenom: adminPrenom,
       passwordHash: hash,  
-      role: 'Admin', // Le directeur est "Admin" de son école
+      role: 'Admin',
       school: savedSchool, 
-      schoolId: savedSchool.id
+      // NOTE: schoolId est géré par la relation 'school' (insert: false dans l'entité User)
     });
     
     await this.userRepo.save(newAdmin);
 
-    // D. Retour des identifiants en clair (à afficher une seule fois au SuperAdmin)
     return {
-      message: "✅ Nouvelle école et administrateur créés !",
+      message: "✅ Nouvelle école créée !",
       school: savedSchool,
-      admin: { 
-          nom: newAdmin.nom,
-          prenom: newAdmin.prenom,
-          generatedEmail: uniqueEmail,
-          generatedPassword: temporaryPassword 
-      }
+      admin: { generatedEmail: uniqueEmail, generatedPassword: temporaryPassword }
     };
   }
 
-  // --- 2. GESTION DES MODULES (UPSELL / FEATURE FLIPPING) ---
-  // Permet d'activer/désactiver les options payantes (Cartes, SMS, IA, Radar)
+  // --- SUPER ADMIN : GESTION DES MODULES ---
   @Roles('SuperAdmin')
   @Patch(':id/modules')
-  async updateSchoolModules(
-      @Param('id') id: string, 
-      @Body() modules: Partial<SchoolModules> // Ex: { cards: true }
-  ) {
+  async updateSchoolModules(@Param('id') id: string, @Body() modules: Partial<SchoolModules>) {
       const school = await this.schoolRepo.findOne({ where: { id: Number(id) } });
       if (!school) throw new NotFoundException("École introuvable");
 
-      // Fusion intelligente : on garde les anciens réglages et on applique les nouveaux
-      school.modules = { ...school.modules, ...modules };
+      // Si les modules sont null (vieux compte), on initialise
+      const currentModules = school.modules || { cards: false, sms: false, ai_planning: false, risk_radar: false };
+      school.modules = { ...currentModules, ...modules };
       
       return this.schoolRepo.save(school);
   }
 
-  // --- 3. ACTIVER / SUSPENDRE UNE ÉCOLE (IMPAYÉS) ---
+  // --- SUPER ADMIN : STATUT ---
   @Roles('SuperAdmin')
   @Patch(':id/status')
   async updateSchoolStatus(@Param('id') schoolId: string, @Body('isActive') isActive: boolean) {
-    const school = await this.schoolRepo.findOne({ where: { id: Number(schoolId) } });
-    if (!school) throw new NotFoundException("École non trouvée.");
-
-    school.isActive = isActive;
-    await this.schoolRepo.save(school);
-
-    return { message: `Statut mis à jour : ${isActive ? 'Active' : 'Suspendue'}` };
+    await this.schoolRepo.update(schoolId, { isActive });
+    return { message: "Statut mis à jour" };
   }
 
-  // --- 4. LISTER TOUS LES CLIENTS ---
+  // --- SUPER ADMIN : LISTE ---
   @Roles('SuperAdmin')
   @Get()
   async findAllSchools() {
       return this.schoolRepo.find({ order: { name: 'ASC' } });
   }
 
-
-  // =================================================================
-  // 🏫 ZONE ADMIN CLIENT (Le Directeur gère son école)
-  // =================================================================
-
-  // --- 5. VOIR MON ÉCOLE ---
+  // --- ADMIN CLIENT : MON ÉCOLE ---
   @Roles('Admin')
   @Get('my-school')
   async findMySchool(@Request() req) {
     const schoolId = req.user.schoolId;
     if (!schoolId) throw new ForbiddenException("Aucune école associée.");
     
-    return this.schoolRepo.findOne({ where: { id: schoolId } });
+    const school = await this.schoolRepo.findOne({ where: { id: schoolId } });
+    if (!school) {
+        throw new NotFoundException("École introuvable.");
+    }
+    
+    // 🛡️ PATCH : Si modules est null en BDD, on renvoie les défauts pour ne pas casser le Front
+    if (!school.modules) {
+        school.modules = { cards: false, sms: false, ai_planning: false, risk_radar: false };
+    }
+    return school;
   }
 
-  // --- 6. MODIFIER LES INFOS DE MON ÉCOLE ---
   @Roles('Admin')
   @Patch('my-school')
-  async updateMySchool(@Request() req, @Body() body: { name?: string; address?: string; logo?: string; description?: string }) {
+  async updateMySchool(@Request() req, @Body() body: any) {
     const schoolId = req.user.schoolId;
-    if (!schoolId) throw new ForbiddenException("Aucune école associée.");
+    if (!schoolId) throw new ForbiddenException();
     
-    // 🛡️ SÉCURITÉ : On filtre le body pour empêcher le client de s'activer des modules lui-même
-    // On extrait uniquement les champs autorisés
-    const safeUpdateData = {
-        name: body.name,
-        address: body.address,
-        logo: body.logo,
-        description: body.description
-    };
-
-    // Nettoyage des undefined (si le client n'envoie pas tous les champs)
-    Object.keys(safeUpdateData).forEach(key => safeUpdateData[key] === undefined && delete safeUpdateData[key]);
+    // Sécurité : on ne laisse pas l'admin modifier ses modules lui-même
+    const { modules, isActive, ...safeBody } = body; 
     
-    await this.schoolRepo.update(schoolId, safeUpdateData);
+    await this.schoolRepo.update(schoolId, safeUpdateData(safeBody));
     return this.schoolRepo.findOne({ where: { id: schoolId } });
   }
+}
+
+// Petit helper pour nettoyer les objets
+function safeUpdateData(body: any) {
+    const allowed = ['name', 'address', 'logo', 'description'];
+    const clean: any = {};
+    allowed.forEach(key => { if(body[key] !== undefined) clean[key] = body[key] });
+    return clean;
 }

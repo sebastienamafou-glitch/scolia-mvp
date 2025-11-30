@@ -1,5 +1,3 @@
-// scolia-backend/src/users/users.controller.ts
-
 import { Controller, Get, Patch, Body, Post, Request, UseGuards, ForbiddenException } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -16,10 +14,17 @@ export class UsersController {
   @Get()
   findAll(@Request() req) {
     const mySchoolId = req.user.schoolId;
-    // Si SuperAdmin (pas d'école liée), il voit tout. Sinon, filtre par école.
+    const userRole = req.user.role;
+
+    // 🚨 SÉCURITÉ : Si pas d'école, seul le SuperAdmin passe.
     if (!mySchoolId) {
+        if (userRole !== 'SuperAdmin') {
+            throw new ForbiddenException("Accès refusé : Contexte école manquant.");
+        }
         return this.usersService.findAll();
     }
+    
+    // Sinon comportement normal (filtré par école)
     return this.usersService.findAllBySchool(mySchoolId);
   }
 
@@ -29,26 +34,23 @@ export class UsersController {
     return req.user; 
   }
   
-  // ✅ CORRECTION ROBUSTE : Gestion intelligente du SchoolId
   @Post() 
-  @Roles('Admin', 'SuperAdmin') // SuperAdmin autorisé aussi
+  @Roles('Admin', 'SuperAdmin') 
   async create(@Request() req, @Body() createUserDto: CreateUserDto) {
     const creatorSchoolId = req.user.schoolId;
     const creatorRole = req.user.role;
 
-    // Cas 1: Admin d'école -> On force son école (Sécurité)
+    // Admin d'école : Doit avoir un schoolId
     if (creatorRole === 'Admin') {
         if (!creatorSchoolId) throw new ForbiddenException("Erreur critique: Admin sans école.");
         
-        // 👇 SÉCURITÉ AJOUTÉE : Interdire la création de SuperAdmin par un Admin
-        if (createUserDto.role === 'SuperAdmin') {
-            throw new ForbiddenException("Vous ne pouvez pas créer de SuperAdmin.");
-        }
+        // Interdiction de créer un SuperAdmin
+        if (createUserDto.role === 'SuperAdmin') throw new ForbiddenException("Action non autorisée.");
 
         return this.usersService.create({ ...createUserDto, schoolId: creatorSchoolId });
     }
 
-    // Cas 2: SuperAdmin -> On utilise l'ID fourni dans le formulaire (ou null)
+    // SuperAdmin : OK
     if (creatorRole === 'SuperAdmin') {
         return this.usersService.create(createUserDto);
     }
