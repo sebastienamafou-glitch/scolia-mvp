@@ -17,7 +17,7 @@ export class PaymentsService {
     private transactionsRepository: Repository<Transaction>,
   ) {}
 
-  // 1. Voir le solde (Parent)
+  // 1. Voir le solde (Parent / Admin)
   async getFeeByStudent(studentId: number, schoolId: number): Promise<Fee | null> {
     return this.feesRepository.findOne({ 
         where: { studentId, school: { id: schoolId } },
@@ -77,10 +77,9 @@ export class PaymentsService {
         
         let newTotal = currentPaid + amountToAdd;
 
-        // ✅ SÉCURITÉ : Gestion du trop-perçu
+        // Gestion du trop-perçu (Log seulement, on ne bloque pas l'encaissement)
         if (newTotal > totalDue) {
             this.logger.warn(`⚠️ Trop-perçu détecté pour l'élève ${transaction.studentId}. Payé: ${newTotal}, Dû: ${totalDue}`);
-            // On accepte le paiement (crédit), mais on pourrait aussi rejeter ici selon la politique de l'école.
         }
 
         fee.amountPaid = newTotal;
@@ -88,20 +87,22 @@ export class PaymentsService {
         
         this.logger.log(`✅ Paiement validé par Admin ${adminId}. Élève ${transaction.studentId} : +${amountToAdd}`);
     } else {
-        this.logger.warn(`⚠️ Transaction validée mais aucun dossier 'Fee' trouvé pour l'élève ${transaction.studentId}`);
+        // Si le dossier 'Fee' n'existe pas encore, on le crée à la volée
+        await this.createPaymentAccount(transaction.studentId);
+        // Et on rappelle récursivement pour appliquer le paiement (cas rare)
+        return this.validateTransaction(transactionId, schoolId, adminId);
     }
 
     return transaction;
   }
 
-  // 5. DÉFINIR LA SCOLARITÉ (Appelé par UsersService)
+  // 5. DÉFINIR LA SCOLARITÉ (Admin)
   async setStudentTuition(studentId: number, totalAmount: number, schoolId: number): Promise<Fee> {
     let fee = await this.feesRepository.findOne({ 
-        where: { studentId, school: { id: schoolId } } 
+        where: { studentId } // On cherche par élève (schoolId implicite car un élève n'a qu'une école)
     });
 
     if (!fee) {
-        // Création si n'existe pas
         fee = this.feesRepository.create({
             studentId,
             school: { id: schoolId },
@@ -109,10 +110,25 @@ export class PaymentsService {
             amountPaid: 0,
         });
     } else {
-        // Mise à jour si existe (ex: changement de scolarité en cours d'année)
         fee.totalAmount = Number(totalAmount);
+        // Si l'école change, on met à jour
+        if (schoolId) fee.school = { id: schoolId } as any;
     }
 
     return this.feesRepository.save(fee);
+  }
+
+  // ✅ 6. CRÉATION AUTOMATIQUE DU COMPTE (La méthode manquante)
+  // Appelée lors de l'inscription d'un élève pour éviter les erreurs "null"
+  async createPaymentAccount(userId: number) {
+      const exists = await this.feesRepository.findOne({ where: { studentId: userId } });
+      if (!exists) {
+          await this.feesRepository.save({
+              studentId: userId,
+              totalAmount: 0,
+              amountPaid: 0,
+              // Le schoolId sera attaché plus tard ou déduit de l'utilisateur
+          });
+      }
   }
 }

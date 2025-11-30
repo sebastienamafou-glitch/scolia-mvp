@@ -5,7 +5,6 @@ import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Logo } from '../components/Logo';
 import { Link } from 'react-router-dom';
-
 // Imports des modules fonctionnels
 import { ClassManager } from '../components/ClassManager';
 import { BulletinEditor } from '../components/BulletinEditor';
@@ -14,7 +13,7 @@ import { SchoolNews } from '../components/SchoolNews';
 import { TransactionValidator } from '../components/TransactionValidator';
 import { RiskRadarWidget } from '../components/RiskRadarWidget'; // Module Payant
 import { SkillsManager } from '../components/SkillsManager';
-import { TimetableManager } from '../components/TimetableManager'; // Module Payant
+import { TimetableManager } from '../components/TimetableManager';
 import { Footer } from '../components/Footer';
 
 // Icônes
@@ -24,7 +23,7 @@ import {
     FaCog, FaUnlockAlt, FaLock 
 } from 'react-icons/fa';
 
-// --- TYPES ---
+// --- TYPES MIS À JOUR (COMPATIBILITÉ V2) ---
 
 interface User {
   id: number;
@@ -32,7 +31,11 @@ interface User {
   prenom: string;
   email: string;
   role: string;
-  classe?: string;
+  // ✅ CORRECTION : Adaptation à la relation TypeORM V2, on utilise 'class'
+  class?: {
+      id: number;
+      name: string;
+  }; 
   photo?: string;
   dateNaissance?: string;
   adresse?: string;
@@ -56,16 +59,24 @@ interface SchoolInfo {
     };
 }
 
+// 👈 NOUVEAU : Interface pour le sélecteur de classes
+interface ClassOption {
+    id: number;
+    name: string;
+}
+
 const AdminDashboard: React.FC = () => {
   const { logout } = useAuth();
   
   // États Données
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [mySchool, setMySchool] = useState<SchoolInfo | null>(null);
+  const [availableClasses, setAvailableClasses] = useState<ClassOption[]>([]); // 👈 NOUVEL ÉTAT
   const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
   
   // États Chargement
   const [loading, setLoading] = useState(true);
+  const [schoolLoading, setSchoolLoading] = useState(true);
 
   // États UI (Tableau Utilisateurs)
   const [activeTab, setActiveTab] = useState<string>('Tous');
@@ -73,14 +84,16 @@ const AdminDashboard: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [showCreateForm, setShowCreateForm] = useState(false);
-
+  
   // Formulaire Paramètres École
   const [schoolForm, setSchoolForm] = useState({ name: '', address: '', logo: '', description: '' });
-
-  // Formulaire Création Utilisateur
+  
+  // Formulaire Création Utilisateur (Utilise classId)
   const [newUser, setNewUser] = useState({
     password: '', role: 'Enseignant', 
-    nom: '', prenom: '', classe: '', parentId: '', photo: '',
+    nom: '', prenom: '', 
+    classId: '', // 👈 Utilise classId pour l'ID de la classe
+    parentId: '', photo: '',
     dateNaissance: '', adresse: '',
     contactUrgenceNom: '', contactUrgenceTel: '', infosMedicales: ''
   });
@@ -88,7 +101,8 @@ const AdminDashboard: React.FC = () => {
   // --- INITIALISATION ---
   useEffect(() => {
     const init = async () => {
-        await Promise.all([fetchUsers(), fetchMySchool()]);
+        // Charge les classes, utilisateurs et école au démarrage
+        await Promise.all([fetchUsers(), fetchMySchool(), fetchClasses()]);
         setLoading(false);
     };
     init();
@@ -102,10 +116,26 @@ const AdminDashboard: React.FC = () => {
       console.error("Erreur chargement utilisateurs", error);
     }
   };
+  
+  // 👈 NOUVEAU : Récupérer la liste des classes
+  const fetchClasses = async () => {
+      try {
+          const res = await api.get('/classes');
+          setAvailableClasses(res.data);
+      } catch (e) { console.error("Erreur classes", e); }
+  };
 
   const fetchMySchool = async () => {
+    setSchoolLoading(true);
     try {
         const res = await api.get('/schools/my-school');
+        let mod = res.data.modules;
+        // Parsing sécurisé immédiat des modules
+        if (typeof mod === 'string') {
+            try { mod = JSON.parse(mod);
+            } catch(e) {}
+        }
+        res.data.modules = mod; // Injecte les valeurs parsées
         setMySchool(res.data);
         setSchoolForm({
             name: res.data.name || '',
@@ -115,6 +145,8 @@ const AdminDashboard: React.FC = () => {
         });
     } catch (e) {
         console.error("Erreur chargement école", e);
+    } finally {
+        setSchoolLoading(false);
     }
   };
 
@@ -123,7 +155,7 @@ const AdminDashboard: React.FC = () => {
     e.preventDefault();
     try {
         await api.patch('/schools/my-school', schoolForm);
-        alert('✅ Informations de l\'école mises à jour !');
+        alert('✅ Informations mises à jour !');
         fetchMySchool();
     } catch (e) {
         alert("Erreur lors de la mise à jour.");
@@ -139,7 +171,6 @@ const AdminDashboard: React.FC = () => {
 
     const formData = new FormData();
     formData.append('file', file);
-
     try {
       const res = await api.post('/import/users', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -160,11 +191,14 @@ const AdminDashboard: React.FC = () => {
       
       // Nettoyage des champs selon le rôle
       if (payload.role !== 'Élève') {
-          delete payload.classe; delete payload.parentId; delete payload.dateNaissance;
+          delete payload.classId;
+          delete payload.parentId; delete payload.dateNaissance;
           delete payload.adresse; delete payload.contactUrgenceNom;
           delete payload.contactUrgenceTel; delete payload.infosMedicales;
       } else {
-          payload.parentId = payload.parentId ? Number(payload.parentId) : null;
+          // ✅ PERFECTION : Conversion des IDs de classe et parent en nombres
+          payload.parentId = payload.parentId ? Number(payload.parentId) : undefined;
+          payload.classId = payload.classId ? Number(payload.classId) : undefined;
       }
 
       const response = await api.post('/users', payload);
@@ -173,10 +207,11 @@ const AdminDashboard: React.FC = () => {
 
       alert(`✅ Utilisateur créé !\n\n📧 Login : ${createdUser.email}\n🔑 MDP : ${passwordDisplay}`);
       
-      fetchUsers(); 
+      fetchUsers();
+      // Reset du formulaire
       setNewUser({ 
           password: '', role: 'Enseignant', nom: '', prenom: '', 
-          classe: '', parentId: '', photo: '', dateNaissance: '', adresse: '',
+          classId: '', parentId: '', photo: '', dateNaissance: '', adresse: '',
           contactUrgenceNom: '', contactUrgenceTel: '', infosMedicales: ''
       });
       setShowCreateForm(false);
@@ -184,14 +219,14 @@ const AdminDashboard: React.FC = () => {
       alert("Erreur création. Vérifiez les champs.");
     }
   };
-  
-  // Reset Password
+
+  // Reset Password (Mise à jour V2 : Génération et affichage du nouveau mot de passe par PATCH)
   const handleResetPassword = async (user: User) => {
-    if (!window.confirm(`Réinitialiser le mot de passe pour ${user.prenom} ${user.nom} ?`)) return;
+    if (!window.confirm(`Générer un nouveau mot de passe pour ${user.prenom} ${user.nom} ?`)) return;
     try {
-        // Envoi d'un mail de réinitialisation (plus sécurisé que de donner le mdp à l'admin)
-        await api.post('/auth/forgot-password', { email: user.email });
-        alert(`✅ Email de réinitialisation envoyé à ${user.email}`);
+        const res = await api.patch(`/users/${user.id}/reset-password`);
+        // On affiche le mot de passe reçu du backend
+        prompt(`✅ Nouveau mot de passe pour ${user.nom} :`, res.data.plainPassword);
     } catch (error) {
         alert("Erreur lors de la demande.");
     }
@@ -219,10 +254,22 @@ const AdminDashboard: React.FC = () => {
   const countParents = allUsers.filter(u => u.role === 'Parent').length;
   const countAdmins = allUsers.filter(u => u.role === 'Admin').length;
   const availableParents = allUsers.filter(user => user.role === 'Parent');
-
-  // Raccourci Modules
-  const modules = mySchool?.modules || { risk_radar: false, ai_planning: false, sms: false, cards: false };
-
+  
+  // Raccourci Modules (Utilise l'objet déjà parsé dans fetchMySchool)
+  const defaultModules: SchoolInfo['modules'] = { risk_radar: false, ai_planning: false, sms: false, cards: false };
+  const safeModules = mySchool?.modules && typeof mySchool.modules === 'object' ? { ...defaultModules, ...mySchool.modules } : defaultModules;
+  
+  // Ecran de chargement
+  if (schoolLoading || loading) {
+      return (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', flexDirection: 'column', backgroundColor: '#f0f2f5', color: '#0A2240', fontFamily: 'sans-serif' }}>
+              <div style={{ border: '4px solid #f3f3f3', borderRadius: '50%', borderTop: '4px solid #0A2240', width: '40px', height: '40px', animation: 'spin 1s linear infinite' }}></div>
+              <p style={{ marginTop: '15px', fontWeight: 'bold' }}>Chargement de l'espace administration...</p>
+              <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+          </div>
+      );
+  }
+  
   return (
     <div style={{ backgroundColor: '#f0f2f5', minHeight: '100vh', color: '#333', fontFamily: 'sans-serif' }}>
       
@@ -230,7 +277,7 @@ const AdminDashboard: React.FC = () => {
       <header style={{ backgroundColor: 'white', padding: '15px 30px', borderBottom: '1px solid #ddd', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 100 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             {mySchool?.logo ? (
-                <img src={mySchool.logo} alt="Logo" style={{ width: '40px', height: '40px', objectFit: 'contain', borderRadius: '5px' }} />
+             <img src={mySchool.logo} alt="Logo" style={{ width: '40px', height: '40px', objectFit: 'contain', borderRadius: '5px' }} />
             ) : (
                 <Logo width={36} height={36} showText={false} />
             )}
@@ -250,10 +297,12 @@ const AdminDashboard: React.FC = () => {
 
       <div style={{ maxWidth: '1200px', margin: '30px auto', padding: '0 20px' }}>
 
+        
         {/* 🚀 MODULE PAYANT 1 : RADAR DE RISQUE */}
         {activeTab !== 'Paramètres' && (
             <div style={{ marginBottom: '30px' }}>
-                {modules.risk_radar ? (
+                {safeModules.risk_radar ?
+                (
                     <RiskRadarWidget />
                 ) : (
                     <UpsellBanner 
@@ -370,7 +419,19 @@ const AdminDashboard: React.FC = () => {
                                 
                                 {newUser.role === 'Élève' && (
                                     <div style={{ gridColumn: '1 / -1', backgroundColor: '#E3F2FD', padding: '15px', borderRadius: '8px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
-                                        <input type="text" placeholder="Classe (ex: 6ème A)" value={newUser.classe} onChange={e => setNewUser({...newUser, classe: e.target.value})} style={inputStyle} />
+                                        
+                                        {/* ✅ SÉLECTEUR DE CLASSE MISE À JOUR (Utilise classId et availableClasses) */}
+                                        <select 
+                                            value={newUser.classId} 
+                                            onChange={e => setNewUser({...newUser, classId: e.target.value})} 
+                                            style={inputStyle}
+                                        >
+                                            <option value="">-- Choisir une Classe --</option>
+                                            {availableClasses.map(cls => (
+                                                <option key={cls.id} value={cls.id}>{cls.name}</option>
+                                            ))}
+                                        </select>
+                                        
                                         <select value={newUser.parentId} onChange={e => setNewUser({...newUser, parentId: e.target.value})} style={inputStyle}>
                                             <option value="">-- Lier à un Parent --</option>
                                             {availableParents.map(p => <option key={p.id} value={p.id}>{p.nom} {p.prenom}</option>)}
@@ -397,8 +458,7 @@ const AdminDashboard: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {loading ? <tr><td colSpan={5} style={{ padding: '20px', textAlign: 'center' }}>Chargement...</td></tr> : 
-                                currentUsers.length === 0 ? <tr><td colSpan={5} style={{ padding: '20px', textAlign: 'center' }}>Aucun résultat.</td></tr> :
+                                {currentUsers.length === 0 ? <tr><td colSpan={5} style={{ padding: '20px', textAlign: 'center' }}>Aucun résultat.</td></tr> :
                                 currentUsers.map(user => (
                                     <tr key={user.id} style={{ borderBottom: '1px solid #eee', cursor: user.role === 'Élève' ? 'pointer' : 'default' }} onClick={() => user.role === 'Élève' && setSelectedStudent(user)}>
                                         <td style={{ padding: '10px 15px', fontWeight: 'bold' }}>{user.nom} {user.prenom}</td>
@@ -408,9 +468,9 @@ const AdminDashboard: React.FC = () => {
                                             </span>
                                         </td>
                                         <td style={{ padding: '10px 15px', color: '#666' }}>{user.email}</td>
-                                        <td style={{ padding: '10px 15px' }}>{user.classe || '-'}</td>
+                                        <td style={{ padding: '10px 15px' }}>{user.class?.name || '-'}</td>
                                         <td style={{ padding: '10px 15px', textAlign: 'center' }}>
-                                            <button onClick={(e) => { e.stopPropagation(); handleResetPassword(user); }} title="Reset Password" style={{ padding: '6px 10px', backgroundColor: '#ffc107', color: '#333', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+                                            <button onClick={(e) => { e.stopPropagation(); handleResetPassword(user); }} title="Réinitialiser Mot de Passe" style={{ padding: '6px 10px', backgroundColor: '#ffc107', color: '#333', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
                                                 <FaUnlockAlt />
                                             </button>
                                         </td>
@@ -441,7 +501,8 @@ const AdminDashboard: React.FC = () => {
                     {/* 🚀 MODULE PAYANT 2 : EMPLOI DU TEMPS IA */}
                     <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px' }}>
                         <h2 style={{ color: '#0A2240', marginTop: 0 }}>📅 Gestion des Emplois du Temps</h2>
-                        {modules.ai_planning ? (
+                        {safeModules.ai_planning ?
+                        (
                             <TimetableManager />
                         ) : (
                             <UpsellBannerSmall title="Générateur IA d'Emploi du temps" />

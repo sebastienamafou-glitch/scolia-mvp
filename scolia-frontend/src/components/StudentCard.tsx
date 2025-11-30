@@ -1,19 +1,19 @@
+// scolia-frontend/src/components/StudentCard.tsx
+
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 
 interface StudentCardProps {
-  student: any; // On utilise any pour simplifier l'intégration rapide, ou votre interface Student
+  student: any; 
   onClose: () => void;
 }
 
 export const StudentCard: React.FC<StudentCardProps> = ({ student, onClose }) => {
-  // États pour la finance
   const [amountDue, setAmountDue] = useState('');
   const [amountPaid, setAmountPaid] = useState(0);
   const [dueDate, setDueDate] = useState('');
   const [loadingFee, setLoadingFee] = useState(false);
 
-  // Charger les infos financières à l'ouverture
   useEffect(() => {
     const loadFee = async () => {
         setLoadingFee(true);
@@ -22,7 +22,6 @@ export const StudentCard: React.FC<StudentCardProps> = ({ student, onClose }) =>
             if (res.data) {
                 setAmountDue(res.data.amountDue);
                 setAmountPaid(res.data.amountPaid);
-                // Formater la date pour l'input type="date" (YYYY-MM-DD)
                 const date = new Date(res.data.dueDate);
                 setDueDate(date.toISOString().split('T')[0]);
             }
@@ -37,7 +36,6 @@ export const StudentCard: React.FC<StudentCardProps> = ({ student, onClose }) =>
 
   const handleSaveFee = async () => {
     if (!amountDue || !dueDate) return alert("Veuillez remplir le montant et la date limite.");
-    
     try {
         await api.post('/payments/fees', {
             studentId: student.id,
@@ -63,21 +61,23 @@ export const StudentCard: React.FC<StudentCardProps> = ({ student, onClose }) =>
         maxHeight: '90vh', overflowY: 'auto', position: 'relative'
       }} onClick={e => e.stopPropagation()}>
 
-        {/* HEADER */}
         <div style={{ backgroundColor: '#0A2240', padding: '20px', color: 'white', display: 'flex', justifyContent: 'space-between' }}>
             <h2 style={{ margin: 0 }}>Fiche : {student.prenom} {student.nom}</h2>
             <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.5rem', cursor: 'pointer' }}>✖</button>
         </div>
 
         <div style={{ padding: '25px' }}>
-            
-            {/* INFO ÉLÈVE (Existantes) */}
+        
             <div style={{ marginBottom: '30px', borderBottom: '1px solid #eee', paddingBottom: '20px' }}>
-                <p><strong>Classe :</strong> {student.classe || student.class?.name || 'Non assigné'}</p>
+                {/* ✅ CORRECTION V2 : On ne lit QUE la relation objet 'class' */}
+                <p><strong>Classe :</strong> {student.class?.name || 'Non assigné'}</p> 
                 <p><strong>Email :</strong> {student.email}</p>
+
+                {student.infosMedicales && (
+                    <p style={{color: '#d32f2f'}}><strong>Santé/Infos Médicales :</strong> {student.infosMedicales}</p>
+                )}
             </div>
 
-            {/* --- SECTION FINANCE (AJOUT) --- */}
             <div style={{ backgroundColor: '#F9F9F9', padding: '20px', borderRadius: '10px', border: '1px solid #ddd' }}>
                 <h3 style={{ color: '#F77F00', marginTop: 0 }}>💰 Configuration Scolarité</h3>
                 

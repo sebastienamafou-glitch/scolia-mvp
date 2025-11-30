@@ -1,4 +1,6 @@
-import { Controller, Get, Patch, Body, Post, Request, UseGuards, ForbiddenException } from '@nestjs/common';
+// scolia-backend/src/users/users.controller.ts
+
+import { Controller, Get, Patch, Body, Post, Request, UseGuards, ForbiddenException, Param } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -43,10 +45,8 @@ export class UsersController {
     // Admin d'école : Doit avoir un schoolId
     if (creatorRole === 'Admin') {
         if (!creatorSchoolId) throw new ForbiddenException("Erreur critique: Admin sans école.");
-        
         // Interdiction de créer un SuperAdmin
         if (createUserDto.role === 'SuperAdmin') throw new ForbiddenException("Action non autorisée.");
-
         return this.usersService.create({ ...createUserDto, schoolId: creatorSchoolId });
     }
 
@@ -54,6 +54,15 @@ export class UsersController {
     if (creatorRole === 'SuperAdmin') {
         return this.usersService.create(createUserDto);
     }
+  }
+
+  // NOUVEAU : Route pour la mise à jour d'un utilisateur par un Admin
+  @Roles('Admin', 'SuperAdmin')
+  @Patch(':id')
+  async update(@Request() req, @Param('id') id: string, @Body() body: any) {
+    const adminSchoolId = req.user.schoolId;
+    // On appelle une nouvelle méthode du service
+    return this.usersService.updateUser(Number(id), body, adminSchoolId);
   }
 
   @Roles('Parent', 'Élève', 'Enseignant', 'Admin', 'SuperAdmin')

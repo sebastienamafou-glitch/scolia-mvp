@@ -1,8 +1,8 @@
 // scolia-backend/src/users/users.service.ts
 
-import { Injectable, OnModuleInit, Logger, Inject, forwardRef, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger, Inject, forwardRef, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Not } from 'typeorm'; // Added 'Not' for the query filter
+import { Repository, Not } from 'typeorm'; 
 import { User } from './entities/user.entity';
 import * as bcrypt from 'bcrypt';
 import { PaymentsService } from '../payments/payments.service';
@@ -33,7 +33,6 @@ export class UsersService implements OnModuleInit {
     const hashedPassword = await bcrypt.hash('password', 10);
 
     const superAdmin: any = {
-        // Le SuperAdmin respecte aussi la convention ou reste spécifique
         email: `admin@${this.DOMAIN_NAME}`, 
         passwordHash: hashedPassword,
         role: 'SuperAdmin',
@@ -43,105 +42,67 @@ export class UsersService implements OnModuleInit {
     };
 
     await this.usersRepository.save(superAdmin);
-    this.logger.log(`✅ Super Admin créé : admin@${this.DOMAIN_NAME}`);
   }
 
-  // --- UTILITAIRES ---
-  private generateRandomPassword(length: number = 8): string {
-    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#";
-    let password = "";
-    for (let i = 0; i < length; ++i) {
-      password += charset[Math.floor(Math.random() * charset.length)];
-    }
-    return password;
-  }
+  // --- CRUD ---
+  async create(createUserDto: any): Promise<any> {
+    // 1. Génération de l'email et du mot de passe temporaire
+    const baseEmail = `${createUserDto.prenom.toLowerCase()}.${createUserDto.nom.toLowerCase()}`;
+    let email = `${baseEmail}@${this.DOMAIN_NAME}`;
+    let emailCounter = 1;
 
-  private sanitizeString(str: string): string {
-    if (!str) return '';
-    // Nettoie les accents, espaces et caractères spéciaux
-    return str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
-  }
-
-  // ✅ ROBUSTESSE : Génération stricte NOM.PRENOM@SCOLIA.CI
-  async generateUniqueEmail(prenom: string, nom: string): Promise<string> {
-    const cleanPrenom = this.sanitizeString(prenom);
-    const cleanNom = this.sanitizeString(nom);
-    const suffix = Math.random().toString(36).substring(2, 5);
-    
-    // Format demandé : nom.prenom@scolia.ci
-    const baseEmail = `${cleanNom}.${cleanPrenom}`; 
-    let candidateEmail = `${baseEmail}@${this.DOMAIN_NAME}`;
-    
-    let counter = 1;
-    // Vérification d'unicité (gestion des homonymes: kone.moussa1@scolia.ci)
-    while ((await this.usersRepository.findOne({ where: { email: candidateEmail } })) && counter < 100) {
-      candidateEmail = `${baseEmail}${counter}@${this.DOMAIN_NAME}`;
-      counter++;
-    }
-    
-    if (counter >= 100) {
-        throw new BadRequestException("Impossible de générer un email unique automatiquement.");
+    // Vérification de l'unicité de l'email
+    while (await this.usersRepository.findOne({ where: { email } })) {
+        email = `${baseEmail}${emailCounter}@${this.DOMAIN_NAME}`;
+        emailCounter++;
     }
 
-    return `${cleanNom}.${cleanPrenom}.${suffix}@scolia.ci`;
-  }
+    const plainPassword = Math.random().toString(36).slice(-8); // Mot de passe temporaire
+    const passwordHash = await bcrypt.hash(plainPassword, 10);
 
-  // --- CRÉATION ---
-  async create(createUserDto: any): Promise<User> {
-    const plainPassword = createUserDto.password || this.generateRandomPassword(8);
-    const hashedPassword = await bcrypt.hash(plainPassword, 10);
-
-    // ⛔ ON IGNORE l'email envoyé par le formulaire/CSV.
-    // ✅ ON FORCE la génération au format scolia.ci
-    const finalEmail = await this.generateUniqueEmail(createUserDto.prenom, createUserDto.nom);
-
-    const { password, email, fraisScolarite, ...userData } = createUserDto; 
-
-    const newUser = this.usersRepository.create({
-      ...userData,
-      email: finalEmail, // L'email officiel
-      passwordHash: hashedPassword,
-    });
-
-    // Double Cast pour TypeScript
-    const savedUser = (await this.usersRepository.save(newUser)) as unknown as User;
+    // 2. Préparation des données
+    const newUser: any = {
+        ...createUserDto,
+        email,
+        passwordHash,
+        // Si l'utilisateur est un Élève et qu'une classe ID est fournie
+        ...(createUserDto.classId && createUserDto.role === 'Élève' && { 
+            class: { id: createUserDto.classId } 
+        }),
+        // On assure que les champs qui ne sont pas des colonnes (classId) sont supprimés
+        classId: undefined,
+    };
     
-    // Gestion des frais (Élèves uniquement)
-    if (savedUser.role === 'Élève' && fraisScolarite) {
-        try {
-            await this.paymentsService.setStudentTuition(
-                savedUser.id, 
-                Number(fraisScolarite), 
-                savedUser.schoolId ?? 0 
-            );
-        } catch (error) {
-            this.logger.error(`Erreur définition frais: ${error}`);
-        }
+    // 3. Sauvegarde
+    const savedUser = await this.usersRepository.save(newUser);
+
+    // 4. Création du compte de paiement si applicable
+    if (savedUser.role === 'Élève' || savedUser.role === 'Parent') {
+        await this.paymentsService.createPaymentAccount(savedUser.id);
     }
-    
-    this.logger.log(`👤 Compte créé : ${finalEmail} (Rôle: ${savedUser.role})`);
-    
-    (savedUser as any).plainPassword = plainPassword;
 
-    return savedUser;
+    // On retourne le mot de passe temporaire pour l'affichage ponctuel (non stocké)
+    return { ...savedUser, plainPassword };
   }
 
-  // --- LECTURE ---
-  async findAll(): Promise<User[]> { return this.usersRepository.find(); }
+  // --- READ ---
 
-  // ✅ FIX: Correction Visibilité SuperAdmin
-  // On s'assure que même si un SuperAdmin a un schoolId (erreur), il n'apparait pas dans les listes scolaires
-  async findAllBySchool(schoolId: number): Promise<User[]> {
+  findAll(): Promise<User[]> {
     return this.usersRepository.find({ 
-        where: { 
-            school: { id: schoolId },
-            role: Not('SuperAdmin') // Exclure explicitement le SuperAdmin
-        }, 
-        order: { nom: 'ASC' } 
+        relations: ['class'],
+        order: { nom: 'ASC', prenom: 'ASC' },
     });
   }
 
-  async findOneByEmail(email: string): Promise<User | null> {
+  findAllBySchool(schoolId: number): Promise<User[]> {
+    return this.usersRepository.find({ 
+        where: { schoolId, role: Not('SuperAdmin') }, 
+        relations: ['class'],
+        order: { nom: 'ASC', prenom: 'ASC' },
+    });
+  }
+
+  async findByEmailWithPassword(email: string): Promise<User | null> {
     return this.usersRepository.createQueryBuilder("user")
         .where("user.email = :email", { email })
         .addSelect("user.passwordHash") 
@@ -158,6 +119,41 @@ export class UsersService implements OnModuleInit {
   }
 
   // --- UPDATE ---
+  
+  // ✅ NOUVELLE MÉTHODE : Mise à jour générique (Nom, Classe, Infos...) par Admin
+  async updateUser(userId: number, data: any, adminSchoolId: number | null) {
+    // 1. Chercher l'utilisateur
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException("Utilisateur introuvable");
+
+    // 2. Sécurité Multi-Tenant
+    if (adminSchoolId && user.schoolId !== adminSchoolId) {
+        throw new ForbiddenException("Vous ne pouvez pas modifier cet utilisateur.");
+    }
+    
+    // 3. Traiter la relation de classe si elle est fournie
+    if (data.classId) {
+        // TypeORM: On assigne un objet relationnel
+        user.class = { id: Number(data.classId) } as any; 
+        delete data.classId; // On retire l'ID brut pour éviter le crash (n'existe pas dans l'entité)
+    }
+
+    // 4. Protection : On empêche de changer les champs sensibles via cette route simple
+    delete data.password;
+    delete data.passwordHash;
+    delete data.email;
+    delete data.role;
+    delete data.schoolId; // On ne change pas d'école comme ça
+    delete data.resetToken;
+    delete data.resetTokenExp;
+    
+    // 5. Application des autres champs (Nom, Prenom, Infos...)
+    Object.assign(user, data);
+
+    // 6. Sauvegarde
+    return this.usersRepository.save(user);
+  }
+  
   async updatePassword(userId: number, plainPassword: string): Promise<void> {
     const newHash = await bcrypt.hash(plainPassword, 10);
     await this.usersRepository.update(userId, { passwordHash: newHash });
@@ -175,10 +171,21 @@ export class UsersService implements OnModuleInit {
         notifGradesEnabled: prefs.notifGradesEnabled,
         notifAbsencesEnabled: prefs.notifAbsencesEnabled,
         notifFinanceEnabled: prefs.notifFinanceEnabled,
+        // Sérialisation du JSON si le champ est de type JSON ou string
         notifQuietHours: prefs.notifQuietHours ? JSON.stringify(prefs.notifQuietHours) : null,
     };
 
-    await this.usersRepository.update(userId, dataToUpdate);
-    return this.usersRepository.findOne({ where: { id: userId } });
+    Object.assign(user, dataToUpdate);
+
+    return this.usersRepository.save(user);
+  }
+
+  async resetPassword(userId: number) {
+    const plainPassword = Math.random().toString(36).slice(-8);
+    const newHash = await bcrypt.hash(plainPassword, 10);
+
+    await this.usersRepository.update(userId, { passwordHash: newHash });
+
+    return { plainPassword };
   }
 }
