@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Body, UseGuards, Request, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { AuthService } from './auth.service';
-import { JwtAuthGuard } from './jwt-auth.guard'; // Assurez-vous que le chemin est correct
+import { JwtAuthGuard } from './guards/jwt-auth.guard'; // Ajoutez 'guard'
 import { Throttle } from '@nestjs/throttler'; // 👈 Importez Throttle
 
 @Controller('auth')
