@@ -1,3 +1,5 @@
+// scolia-backend/src/app.module.ts
+
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -21,7 +23,7 @@ import { Fee } from './payments/entities/fee.entity';
 import { Transaction } from './payments/entities/transaction.entity';
 import { Competence } from './skills/entities/competence.entity';
 import { SkillEvaluation } from './skills/entities/skill-evaluation.entity';
-import { TimetableEvent } from './timetable/entities/timetable-event.entity'; // Assurez-vous que le chemin est bon
+import { TimetableEvent } from './timetable/entities/timetable-event.entity'; 
 import { Attendance } from './attendance/entities/attendance.entity';
 import { Notification } from './notifications/entities/notification.entity';
 
@@ -39,8 +41,8 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { AnalyticsModule } from './analytics/analytics.module'; 
 import { TimetableModule } from './timetable/timetable.module';
 import { SkillsModule } from './skills/skills.module';
-import { AttendanceModule } from './attendance/attendance.module'; // Si créé
-import { ImportModule } from './import/import.module'; // Si créé
+import { AttendanceModule } from './attendance/attendance.module'; 
+import { ImportModule } from './import/import.module'; 
 
 @Module({
   imports: [
@@ -63,7 +65,7 @@ import { ImportModule } from './import/import.module'; // Si créé
             Fee, Transaction, Competence, SkillEvaluation, TimetableEvent,
             Attendance, Notification
         ],
-        synchronize: false, 
+        synchronize: false, // Mettre à true UNE SEULE FOIS pour créer les tables
       }),
       inject: [ConfigService],
     }),

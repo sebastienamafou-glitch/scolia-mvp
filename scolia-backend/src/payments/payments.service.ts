@@ -1,3 +1,5 @@
+// scolia-backend/src/payments/payments.service.ts
+
 import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -20,16 +22,12 @@ export class PaymentsService {
   @OnEvent('student.created')
   async handleStudentCreation(payload: { studentId: number, schoolId: number, fraisScolarite?: number }) {
       this.logger.log(`🏗️ Création auto du compte paiement pour l'élève #${payload.studentId}`);
-      
       await this.createPaymentAccount(payload.studentId);
       
       if (payload.fraisScolarite) {
           await this.setStudentTuition(payload.studentId, payload.fraisScolarite, payload.schoolId);
       }
   }
-
-  // ... (Gardez toutes vos autres méthodes existantes : getFeeByStudent, submitTransaction, findPending, validateTransaction, setStudentTuition) ...
-  // Je les remets ici pour être sûr que le fichier soit complet
 
   async getFeeByStudent(studentId: number, schoolId: number): Promise<Fee | null> {
     return this.feesRepository.findOne({ where: { studentId, school: { id: schoolId } }, relations: ['student'] });
@@ -56,7 +54,7 @@ export class PaymentsService {
     let fee = await this.feesRepository.findOne({ where: { studentId: transaction.studentId, school: { id: schoolId } } });
     if (!fee) {
         await this.createPaymentAccount(transaction.studentId);
-        fee = await this.feesRepository.findOne({ where: { studentId: transaction.studentId } }); // Récupération après création
+        fee = await this.feesRepository.findOne({ where: { studentId: transaction.studentId } });
     }
 
     if (fee) {

@@ -1,3 +1,5 @@
+// scolia-backend/src/grades/dto/bulk-grade.dto.ts
+
 import { IsNumber, IsString, IsNotEmpty, Min, IsArray, ValidateNested, IsPositive } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -8,7 +10,7 @@ export class BulkGradeItemDto {
 
     @IsNumber()
     @Min(0)
-    noteValue: number; // On s'assure que la note n'est pas négative
+    noteValue: number;
 }
 
 export class BulkGradeDto {
@@ -30,6 +32,6 @@ export class BulkGradeDto {
 
     @IsArray()
     @ValidateNested({ each: true })
-    @Type(() => BulkGradeItemDto) // Valide chaque objet dans le tableau
+    @Type(() => BulkGradeItemDto)
     notes: BulkGradeItemDto[]; 
 }

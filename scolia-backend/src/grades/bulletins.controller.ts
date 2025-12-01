@@ -1,24 +1,30 @@
-import { Controller, Get, Post, Body, Query, UseGuards } from '@nestjs/common';
-import { BulletinsService } from './bulletins.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+// scolia-backend/src/grades/grades.controller.ts
 
-@UseGuards(JwtAuthGuard)
-@Controller('bulletins')
-export class BulletinsController {
-  constructor(private readonly bulletinsService: BulletinsService) {}
+import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
+import { GradesService } from './grades.service';
+import { BulkGradeDto } from './dto/bulk-grade.dto'; // 👈 Import DTO
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/roles.decorator';
 
-  // GET /bulletins?studentId=5&period=T1
-  @Get()
-  async getBulletin(
-      @Query('studentId') studentId: string, 
-      @Query('period') period: string
-  ) {
-    return this.bulletinsService.getStudentBulletin(Number(studentId), period || 'T1');
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Controller('grades')
+export class GradesController {
+  constructor(private readonly gradesService: GradesService) {}
+
+  @Roles('Enseignant', 'Admin')
+  @Post()
+  async create(@Body() body: BulkGradeDto) { // 👈 Typage strict
+    // On détecte automatiquement si c'est du bulk grâce au DTO
+    if (body.notes && Array.isArray(body.notes)) {
+        return this.gradesService.saveBulk(body);
+    }
+    return { message: "Format invalide. Utilisez le format bulk." };
   }
 
-  // POST /bulletins/save
-  @Post('save')
-  async saveAppreciation(@Body() body: { studentId: number, period: string, appreciation: string }) {
-    return this.bulletinsService.saveAppreciation(body.studentId, body.period, body.appreciation);
+  @Roles('Parent', 'Élève', 'Admin', 'Enseignant')
+  @Get('student/:studentId')
+  findByStudent(@Param('studentId') studentId: string) {
+    return this.gradesService.findByStudent(Number(studentId));
   }
 }

@@ -1,7 +1,9 @@
+// scolia-backend/src/users/users.service.ts
+
 import { Injectable, OnModuleInit, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Not } from 'typeorm'; 
-import { User } from './entities/user.entity'; 
+import { User } from './entities/user.entity'; // ✅ Import Unique
 import { Student } from '../students/entities/student.entity'; 
 import * as bcrypt from 'bcrypt';
 import { EventEmitter2 } from '@nestjs/event-emitter'; // 👈 Import Event
@@ -16,14 +18,15 @@ export class UsersService implements OnModuleInit {
     private usersRepository: Repository<User>,
     @InjectRepository(Student)
     private studentsRepository: Repository<Student>,
-    private eventEmitter: EventEmitter2, // 👈 Injection de l'émetteur
+    private eventEmitter: EventEmitter2, // 👈 Injection de l'émetteur (plus de PaymentsService)
   ) {}
 
   async onModuleInit() {
     await this.seedUsers();
   }
 
-  // ... (Méthodes seedUsers, generateRandomPassword, sanitizeString, generateUniqueEmail inchangées) ...
+  // --- SEEDING & UTILS ---
+
   private async seedUsers() {
     const count = await this.usersRepository.count();
     if (count > 0) return;
@@ -61,7 +64,8 @@ export class UsersService implements OnModuleInit {
     if (counter >= 100) throw new BadRequestException("Impossible de générer un email unique.");
     return candidateEmail;
   }
-  // ... (Fin des méthodes utilitaires) ...
+
+  // --- CRÉATION ---
 
   async create(createUserDto: any): Promise<any> {
     let email = createUserDto.email;
@@ -82,6 +86,7 @@ export class UsersService implements OnModuleInit {
         role: createUserDto.role
     });
 
+    // ✅ Double cast pour satisfaire TypeScript
     const savedUser = (await this.usersRepository.save(newUser)) as unknown as User;
 
     if (savedUser.role === 'Élève') {
@@ -96,7 +101,7 @@ export class UsersService implements OnModuleInit {
             const savedStudent = await this.studentsRepository.save(newStudent);
             this.logger.log(`✅ Profil Étudiant créé (ID: ${savedStudent.id})`);
 
-            // 📢 ÉMISSION DE L'ÉVÉNEMENT (Découplage total)
+            // 📢 ÉMISSION DE L'ÉVÉNEMENT (Découplage)
             this.eventEmitter.emit('student.created', {
                 studentId: savedStudent.id,
                 userId: savedUser.id,
@@ -112,8 +117,7 @@ export class UsersService implements OnModuleInit {
     return { ...savedUser, plainPassword };
   }
 
-  // --- LECTURE & MISE A JOUR (Identique au fichier précédent, je ne les répète pas pour gagner de la place, gardez les vôtres) ---
-  // (Copiez ici findAll, findAllBySchool, findOneByEmail, findStudentsByParentId, findOneById, updateUser, updatePassword, updateResetToken, updateNotificationPreferences, adminResetPassword)
+  // --- LECTURE ---
   
   async findAll(): Promise<User[]> { return this.usersRepository.find({ relations: ['class'], order: { nom: 'ASC', prenom: 'ASC' } }); }
   async findAllBySchool(schoolId: number): Promise<User[]> { return this.usersRepository.find({ where: { school: { id: schoolId }, role: Not('SuperAdmin') }, relations: ['class'], order: { nom: 'ASC', prenom: 'ASC' } }); }
@@ -121,6 +125,8 @@ export class UsersService implements OnModuleInit {
   async findStudentsByParentId(parentId: number): Promise<User[]> { return this.usersRepository.find({ where: { role: 'Élève', parentId }, relations: ['class'] }); }
   async findOneById(id: number): Promise<User | null> { return this.usersRepository.findOne({ where: { id }, relations: ['class', 'school'] }); }
   
+  // --- MISE A JOUR ---
+
   async updateUser(userId: number, data: any, adminSchoolId: number | null) {
     const user = await this.usersRepository.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException("Utilisateur introuvable");
