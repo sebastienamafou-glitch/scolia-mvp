@@ -1,17 +1,14 @@
-// scolia-backend/src/users/users.module.ts
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
 import { User } from './entities/user.entity';
-import { Student } from '../students/entities/student.entity'; // 👈 Import Student
-import { PaymentsModule } from '../payments/payments.module';
+import { Student } from '../students/entities/student.entity';
 
 @Module({
-  // 👇 AJOUTER Student ICI
   imports: [
-    TypeOrmModule.forFeature([User, Student]), 
-    PaymentsModule
+    TypeOrmModule.forFeature([User, Student]),
+    // ❌ PaymentsModule n'est plus nécessaire ici grâce aux événements !
   ],
   controllers: [UsersController],
   providers: [UsersService],

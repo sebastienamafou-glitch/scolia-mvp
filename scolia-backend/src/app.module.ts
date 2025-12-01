@@ -1,17 +1,14 @@
-// scolia-backend/src/app.module.ts
-
-import { SkillsModule } from './skills/skills.module'; 
-import { Competence } from './skills/entities/competence.entity';
-import { SkillEvaluation } from './skills/entities/skill-evaluation.entity';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
+import { EventEmitterModule } from '@nestjs/event-emitter'; // 👈 NOUVEAU
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler'; 
 import { APP_GUARD } from '@nestjs/core'; 
 
-// --- 1. IMPORT DES ENTITÉS ---
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+
+// Import des Entités
 import { User } from './users/entities/user.entity';
 import { Student } from './students/entities/student.entity';
 import { Class } from './classes/entities/class.entity';
@@ -22,8 +19,13 @@ import { News } from './news/entities/news.entity';
 import { School } from './schools/entities/school.entity';
 import { Fee } from './payments/entities/fee.entity';
 import { Transaction } from './payments/entities/transaction.entity';
+import { Competence } from './skills/entities/competence.entity';
+import { SkillEvaluation } from './skills/entities/skill-evaluation.entity';
+import { TimetableEvent } from './timetable/entities/timetable-event.entity'; // Assurez-vous que le chemin est bon
+import { Attendance } from './attendance/entities/attendance.entity';
+import { Notification } from './notifications/entities/notification.entity';
 
-// --- 2. IMPORT DES MODULES ---
+// Import des Modules
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { StudentsModule } from './students/students.module';
@@ -36,10 +38,16 @@ import { PaymentsModule } from './payments/payments.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AnalyticsModule } from './analytics/analytics.module'; 
 import { TimetableModule } from './timetable/timetable.module';
+import { SkillsModule } from './skills/skills.module';
+import { AttendanceModule } from './attendance/attendance.module'; // Si créé
+import { ImportModule } from './import/import.module'; // Si créé
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    // ✅ Activation des événements globaux
+    EventEmitterModule.forRoot(),
+    
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
@@ -49,22 +57,20 @@ import { TimetableModule } from './timetable/timetable.module';
         username: configService.get<string>('DB_USER'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
-        
-        // SSL obligatoire pour la production (Neon/Render)
-        ssl: process.env.NODE_ENV === 'production' 
-             ? { rejectUnauthorized: false } 
-             : false, 
-
-        entities: [User, Student, Class, Grade, Homework, Bulletin, News, School, Fee, Transaction, Competence, SkillEvaluation],
-        synchronize: false, // ⚠️ À passer à false et utiliser les migrations une fois stable en prod
+        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false, 
+        entities: [
+            User, Student, Class, Grade, Homework, Bulletin, News, School, 
+            Fee, Transaction, Competence, SkillEvaluation, TimetableEvent,
+            Attendance, Notification
+        ],
+        synchronize: false, 
       }),
       inject: [ConfigService],
     }),
 
-    // ✅ CONFIGURATION RATE LIMITING ADAPTÉE À LA PRODUCTION
     ThrottlerModule.forRoot([{
-        ttl: 60000, // 60 secondes
-        limit: 100,  // 100 requêtes par minute (Suffisant pour un usage normal, bloquant pour les bots)
+        ttl: 60000, 
+        limit: 100,
     }]),
 
     AuthModule,
@@ -80,11 +86,12 @@ import { TimetableModule } from './timetable/timetable.module';
     SkillsModule,
     AnalyticsModule, 
     TimetableModule,
+    AttendanceModule,
+    ImportModule
   ],
   controllers: [AppController],
   providers: [
     AppService,
-    // Appliquer le Guard de Rate Limiting globalement
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,

@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
 import { GradesService } from './grades.service';
+import { BulkGradeDto } from './dto/bulk-grade.dto'; // 👈 Import DTO
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -11,18 +12,14 @@ export class GradesController {
 
   @Roles('Enseignant', 'Admin')
   @Post()
-  create(@Body() body: any) {
-    if (Array.isArray(body.notes)) {
-        const notesToSave = body.notes.map((n: any) => ({
-            studentId: n.studentId,
-            value: n.noteValue,
-            matiere: body.matiere,
-            sur: body.noteSur,
-            type: body.titreEvaluation
-        }));
-        return this.gradesService.saveBulk(notesToSave);
+  async create(@Body() body: BulkGradeDto) { // 👈 Typage strict ici
+    // On détecte automatiquement si c'est du bulk grâce au DTO
+    if (body.notes && Array.isArray(body.notes)) {
+        return this.gradesService.saveBulk(body);
     }
-    return this.gradesService.create(body);
+    // Si vous avez une méthode unitaire, vous pouvez la garder, 
+    // sinon le bulk couvre tous les cas (même pour 1 note).
+    return { message: "Utilisez le format bulk." };
   }
 
   @Roles('Parent', 'Élève', 'Admin', 'Enseignant')
