@@ -1,9 +1,11 @@
 // scolia-backend/src/users/users.service.ts
 
+
 import { Injectable, OnModuleInit, Logger, Inject, forwardRef, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Not } from 'typeorm'; 
 import { User } from './entities/user.entity';
+import { Student } from '../students/entities/student.entity'; // Import Student Entity [cite: 42]
 import * as bcrypt from 'bcrypt';
 import { PaymentsService } from '../payments/payments.service';
 
@@ -15,6 +17,8 @@ export class UsersService implements OnModuleInit {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @InjectRepository(Student) // Injection du Repo Student 
+    private studentsRepository: Repository<Student>,
     @Inject(forwardRef(() => PaymentsService))
     private paymentsService: PaymentsService,
   ) {}
@@ -78,10 +82,10 @@ export class UsersService implements OnModuleInit {
     }
 
     // 2. Gestion du mot de passe
-    const plainPassword = this.generateRandomPassword(8); 
+    const plainPassword = this.generateRandomPassword(8);
     const passwordHash = await bcrypt.hash(plainPassword, 10);
 
-    // 3. Extraction des données
+    // Extraction des données
     const { 
         password, 
         fraisScolarite, 
@@ -90,33 +94,47 @@ export class UsersService implements OnModuleInit {
         ...userData 
     } = createUserDto;
 
-    // Création de l'entité (TypeORM convertit les IDs en relations si besoin)
+    // 3. Création de l'entité USER (Compte de connexion)
+    // Note: On n'associe pas la classe ici car elle sera liée à l'entité Student
     const newUser = this.usersRepository.create({
         ...userData,
         email,
         passwordHash,
-        ...(classId && { class: { id: Number(classId) } }),
-        ...(schoolId && { school: { id: Number(schoolId) } }),
+        school: { id: Number(schoolId) },
+        role: createUserDto.role
     });
 
-    // 4. SAUVEGARDE
-    // Utilisation de "as any" pour contourner l'erreur de typage User[] vs User
-    const savedUser = (await this.usersRepository.save(newUser)) as any;
+    // 4. SAUVEGARDE USER
+    const savedUser = (await this.usersRepository.save(newUser)) as unknown as User;
 
-    // 5. Initialisation Paiement (Si c'est un élève)
+    // 5. LOGIQUE SPÉCIFIQUE ÉLÈVE (Création Profile Student + Paiement)
     if (savedUser.role === 'Élève') {
         try {
-            await this.paymentsService.createPaymentAccount(savedUser.id);
+            // ✅ A. CRÉATION DU PROFIL ÉTUDIANT (Linked to User)
+            const newStudent = this.studentsRepository.create({
+                nom: savedUser.nom,
+                prenom: savedUser.prenom,
+                userId: savedUser.id, // 🔗 Lien technique User <-> Student [cite: 53]
+                // On lie la classe ici, c'est plus logique académiquement
+                class: classId ? { id: Number(classId) } : undefined,
+            });
             
+            const savedStudent = await this.studentsRepository.save(newStudent);
+            this.logger.log(`✅ Profil Étudiant créé (ID: ${savedStudent.id}) pour User (ID: ${savedUser.id})`);
+
+            // ✅ B. CRÉATION DU COMPTE PAIEMENT (Avec ID Student !)
+            await this.paymentsService.createPaymentAccount(savedStudent.id); // [cite: 56]
+
             if (fraisScolarite) {
                 await this.paymentsService.setStudentTuition(
-                    savedUser.id, 
+                    savedStudent.id, // 👈 On utilise l'ID de l'étudiant, pas du User [cite: 57]
                     Number(fraisScolarite), 
                     savedUser.schoolId ?? 0
                 );
             }
         } catch (e) { 
-            this.logger.error("Erreur init paiement", e);
+            this.logger.error("Erreur critique création profil élève/paiement", e);
+            // Optionnel : Rollback manuel ici si nécessaire
         }
     }
 
@@ -150,6 +168,8 @@ export class UsersService implements OnModuleInit {
   }
   
   async findStudentsByParentId(parentId: number): Promise<User[]> {
+    // Note: Si la logique change vers l'entité Student, cette requête devra peut-être
+    // être adaptée pour chercher dans StudentRepository au lieu de UsersRepository
     return this.usersRepository.find({ where: { role: 'Élève', parentId }, relations: ['class'] });
   }
 
@@ -169,8 +189,10 @@ export class UsersService implements OnModuleInit {
     }
 
     // Gestion relation classe
+    // Note: Si la classe est désormais sur l'entité Student, ceci mettra à jour la relation 
+    // sur User uniquement si User possède toujours la colonne classId.
     if (data.classId) {
-        user.class = { id: Number(data.classId) } as any; 
+        user.class = { id: Number(data.classId) } as any;
         delete data.classId;
     }
 
@@ -199,7 +221,8 @@ export class UsersService implements OnModuleInit {
         notifGradesEnabled: prefs.notifGradesEnabled,
         notifAbsencesEnabled: prefs.notifAbsencesEnabled,
         notifFinanceEnabled: prefs.notifFinanceEnabled,
-        notifQuietHours: prefs.notifQuietHours ? JSON.stringify(prefs.notifQuietHours) : null,
+        notifQuietHours: prefs.notifQuietHours ?
+            JSON.stringify(prefs.notifQuietHours) : null,
     };
     
     Object.assign(user, dataToUpdate);

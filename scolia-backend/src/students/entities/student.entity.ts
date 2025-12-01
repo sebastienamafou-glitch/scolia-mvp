@@ -1,6 +1,6 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, OneToMany } from 'typeorm';
-import { User } from '../../users/entities/user.entity'; // Assurez-vous du chemin vers User
-import { Class } from '../../classes/entities/class.entity'; // Assurez-vous du chemin
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, OneToMany, OneToOne, JoinColumn } from 'typeorm';
+import { User } from '../../users/entities/user.entity';
+import { Class } from '../../classes/entities/class.entity';
 import { Grade } from '../../grades/entities/grade.entity';
 
 @Entity()
@@ -35,6 +35,17 @@ export class Student {
   // Infos Santé
   @Column({ type: 'text', nullable: true })
   infosMedicales: string; // Ex: "Allergique aux arachides, Asthmatique"
+
+  // --------------------------------------
+
+  // ✅ CRUCIAL : Lien One-to-One vers le User (Login)
+  // C'est ce lien qui permet de dire "L'utilisateur ID 11 est l'étudiant ID 5"
+  @OneToOne(() => User)
+  @JoinColumn({ name: 'userId' })
+  user: User;
+
+  @Column({ nullable: true })
+  userId: number;
 
   // --------------------------------------
 
