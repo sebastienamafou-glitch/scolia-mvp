@@ -1,7 +1,7 @@
 // scolia-backend/src/grades/bulletins.controller.ts
 
 import { Controller, Get, Param, UseGuards } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard'; // 👈 Notez le dossier guards
+import { JwtAuthGuard } from '../auth/jwt-auth.guard'; // 👈 Notez le dossier guards
 import { RolesGuard } from '../auth/guard/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { GradesService } from './grades.service';

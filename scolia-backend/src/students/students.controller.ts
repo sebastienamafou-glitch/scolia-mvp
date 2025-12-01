@@ -1,6 +1,6 @@
 import { Controller, Get, Param, NotFoundException, UseGuards, Request, ForbiddenException } from '@nestjs/common';
 import { StudentsService } from './students.service';
-import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/guard/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 

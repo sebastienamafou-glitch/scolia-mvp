@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
 import { GradesService } from './grades.service';
 import { BulkGradeDto } from './dto/bulk-grade.dto'; // 👈 Import DTO
-import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/guard/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 

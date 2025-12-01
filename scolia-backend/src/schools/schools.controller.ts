@@ -6,7 +6,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { School, SchoolModules } from './entities/school.entity';
 import { User } from '../users/entities/user.entity';
-import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/guard/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import * as bcrypt from 'bcrypt';
