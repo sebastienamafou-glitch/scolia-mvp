@@ -2,7 +2,7 @@ import { Controller, Post, UseInterceptors, UploadedFile, Request, ForbiddenExce
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ImportService } from './import.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
+import { RolesGuard } from '../auth/guard/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 
 @UseGuards(JwtAuthGuard, RolesGuard)

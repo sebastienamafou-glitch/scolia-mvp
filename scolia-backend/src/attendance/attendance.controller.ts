@@ -2,8 +2,8 @@
 
 import { Controller, Post, Body, UseGuards, Request, Get, Param } from '@nestjs/common'; // <-- AJOUT de Get et Param
 import { AttendanceService } from './attendance.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
+import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
+import { RolesGuard } from '../auth/guard/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 
 // DTO simulé pour la clarté (nous allons le créer dans un fichier séparé pour la vraie version)
