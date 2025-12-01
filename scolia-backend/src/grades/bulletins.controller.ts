@@ -1,30 +1,21 @@
-// scolia-backend/src/grades/grades.controller.ts
+// scolia-backend/src/grades/bulletins.controller.ts
 
-import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
-import { GradesService } from './grades.service';
-import { BulkGradeDto } from './dto/bulk-grade.dto'; // 👈 Import DTO
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Controller, Get, Param, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard'; // 👈 Notez le dossier guards
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { GradesService } from './grades.service';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Controller('grades')
-export class GradesController {
+@Controller('bulletins')
+export class BulletinsController {
   constructor(private readonly gradesService: GradesService) {}
 
-  @Roles('Enseignant', 'Admin')
-  @Post()
-  async create(@Body() body: BulkGradeDto) { // 👈 Typage strict
-    // On détecte automatiquement si c'est du bulk grâce au DTO
-    if (body.notes && Array.isArray(body.notes)) {
-        return this.gradesService.saveBulk(body);
-    }
-    return { message: "Format invalide. Utilisez le format bulk." };
-  }
-
   @Roles('Parent', 'Élève', 'Admin', 'Enseignant')
-  @Get('student/:studentId')
-  findByStudent(@Param('studentId') studentId: string) {
-    return this.gradesService.findByStudent(Number(studentId));
+  @Get(':studentId')
+  async getBulletin(@Param('studentId') studentId: string) {
+    // Logique temporaire pour valider la compilation
+    // Vous pourrez connecter la vraie logique de génération de bulletin ici plus tard
+    return { message: `Bulletin pour l'étudiant ${studentId}` };
   }
 }
