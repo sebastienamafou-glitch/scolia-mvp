@@ -1,3 +1,5 @@
+// scolia-frontend/src/pages/HelpPage.tsx
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -27,7 +29,7 @@ const HelpPage: React.FC = () => {
         </button>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Logo width={32} height={32} showText={false} />
-            <h1 style={{ margin: 0, fontSize: '1.2rem', color: '#0A2240' }}>Centre d'Aide Scolia</h1>
+            <h1 style={{ margin: 0, fontSize: '1.2rem', color: '#0A2240' }}>Centre d'Aide Scolia V2</h1>
         </div>
       </header>
 
@@ -44,7 +46,7 @@ const HelpPage: React.FC = () => {
             <TabButton id="admin" label="Directeur" icon={<FaUserTie />} active={activeTab} onClick={setActiveTab} />
             <TabButton id="prof" label="Enseignant" icon={<FaChalkboardTeacher />} active={activeTab} onClick={setActiveTab} />
             <TabButton id="parent" label="Parents & Élèves" icon={<FaUsers />} active={activeTab} onClick={setActiveTab} />
-            <TabButton id="support" label="Support & FAQ" icon={<FaLifeRing />} active={activeTab} onClick={setActiveTab} />
+            <TabButton id="support" label="FAQ & Support" icon={<FaLifeRing />} active={activeTab} onClick={setActiveTab} />
         </div>
 
         {/* CONTENU */}
@@ -52,45 +54,60 @@ const HelpPage: React.FC = () => {
             
             {activeTab === 'superadmin' && (
                 <section>
-                    <h2 style={titleStyle}>👑 Guide Super Admin (Développeur)</h2>
+                    <h2 style={titleStyle}>👑 Guide Super Admin (Propriétaire)</h2>
                     <p><em>Réservé au gestionnaire technique de la plateforme.</em></p>
                     
-                    <h3>1. Créer une nouvelle école (Onboarding)</h3>
+                    <h3>A. Créer une nouvelle école (Onboarding)</h3>
                     <p>Depuis le tableau de bord <strong>Platform</strong> :</p>
                     <ol>
-                        <li>Cliquez sur <strong>"Nouveau Client"</strong>.</li>
-                        <li>Renseignez le nom de l'école et la ville.</li>
-                        <li>Créez le compte du <strong>Directeur</strong> (Nom, Email, Mot de passe provisoire).</li>
-                        <li>Validez. Le directeur peut désormais se connecter.</li>
+                        <li>Cliquez sur le bouton vert <strong>"Nouveau Client"</strong>.</li>
+                        <li>Renseignez le nom de l'école et le nom du directeur.</li>
+                        <li>Validez. Une fenêtre s'ouvrira avec l'Email (<code>nom.prenom@scolia.ci</code>) et le Mot de passe.</li>
+                        <li><strong>Important :</strong> Copiez ces accès immédiatement pour les transmettre au client.</li>
                     </ol>
 
-                    <h3>2. Gérer les abonnements</h3>
-                    <p>Vous pouvez suspendre une école en cliquant sur le bouton <strong>"Couper"</strong> dans la liste des clients.</p>
+                    <h3>B. Gérer les Options (Feature Flipping)</h3>
+                    <p>Activez ou désactivez les modules payants via les interrupteurs :</p>
+                    <ul>
+                        <li>💳 <strong>Cartes :</strong> Module de génération des cartes scolaires.</li>
+                        <li>🤖 <strong>IA :</strong> Générateur d'emploi du temps automatique.</li>
+                        <li>🚨 <strong>Radar :</strong> Analyse prédictive des risques.</li>
+                        <li>📱 <strong>SMS :</strong> Envoi de notifications SMS.</li>
+                    </ul>
+
+                    <h3>C. Suspendre un mauvais payeur</h3>
+                    <p>Cliquez sur le bouton rouge <strong>"Couper"</strong> pour bloquer l'accès instantanément.</p>
                 </section>
             )}
 
             {activeTab === 'admin' && (
                 <section>
-                    <h2 style={titleStyle}>🎓 Guide Administrateur (Directeur)</h2>
+                    <h2 style={titleStyle}>🎓 Guide Directeur (Admin École)</h2>
                     
-                    <h3>1. Configuration Initiale</h3>
-                    <p>Allez dans le module <strong>Gestion des Classes</strong> en bas de votre tableau de bord pour créer la structure de l'école (6ème A, 5ème B...).</p>
+                    <h3>A. Configuration Initiale</h3>
+                    <p>Lors de votre première connexion :</p>
+                    <ol>
+                        <li>Allez dans l'onglet <strong>"Paramètres École"</strong>.</li>
+                        <li>Ajoutez le Logo de votre école et une description.</li>
+                        <li>Allez ensuite dans <strong>"Gestion des Classes"</strong> pour créer la structure (6ème A, 5ème B...). <em>Sans classe, impossible d'inscrire des élèves.</em></li>
+                    </ol>
 
-                    <h3>2. Créer des Utilisateurs</h3>
-                    <p>Utilisez le formulaire "Ajouter un utilisateur" :</p>
+                    <h3>B. Inscrire des Élèves</h3>
                     <ul>
-                        <li><strong>Enseignants :</strong> Créez les comptes profs.</li>
-                        <li><strong>Élèves :</strong> Créez les élèves en les assignant à une classe et <strong>en les liant à un Parent</strong>.</li>
+                        <li><strong>Méthode 1 (Unitaire) :</strong> Bouton "+ Nouveau", choisissez le rôle "Élève", sa classe et son parent.</li>
+                        <li><strong>Méthode 2 (Masse) :</strong> Utilisez le bouton <strong>"Importer CSV"</strong> avec le modèle Excel fourni. <em>Attention : Le nom de la classe dans le fichier doit correspondre exactement à une classe créée.</em></li>
                     </ul>
 
-                    <h3>3. Gestion Financière</h3>
-                    <p>Pour définir la scolarité d'un élève :</p>
+                    <h3>C. Gestion Financière</h3>
+                    <p>Pour définir la scolarité d'un élève, cliquez sur son nom dans la liste. Dans la section "Configuration Scolarité", définissez le montant dû.</p>
+
+                    <h3>D. Mot de passe oublié (Parent/Prof)</h3>
+                    <p>Si un utilisateur perd son accès :</p>
                     <ol>
-                        <li>Cliquez sur l'élève dans la liste.</li>
-                        <li>Dans sa fiche, allez à la section <strong>Configuration Scolarité</strong>.</li>
-                        <li>Définissez le montant dû et la date limite.</li>
+                        <li>Trouvez-le dans votre liste.</li>
+                        <li>Cliquez sur le <strong>cadenas jaune</strong> 🔓 à droite.</li>
+                        <li>Le système vous donnera un code temporaire (ex: <code>x8k2m</code>) à transmettre.</li>
                     </ol>
-                    <p>Pour <strong>Valider un paiement</strong>, utilisez le module "Validation des Paiements" en haut du dashboard.</p>
                 </section>
             )}
 
@@ -98,19 +115,18 @@ const HelpPage: React.FC = () => {
                 <section>
                     <h2 style={titleStyle}>👨‍🏫 Guide Enseignant</h2>
                     
-                    <h3>1. Faire l'Appel</h3>
-                    <p>Cliquez sur l'onglet <strong>"Faire l'Appel"</strong>, choisissez votre classe, et marquez les absents. C'est instantané.</p>
+                    <h3>1. Faire l'Appel (Quotidien)</h3>
+                    <p>Cliquez sur l'onglet <strong>"Faire l'Appel"</strong>, choisissez votre classe, cochez les absents et validez. Les parents reçoivent une notification instantanée.</p>
 
                     <h3>2. Saisir des Notes</h3>
                     <ol>
                         <li>Onglet <strong>"Saisir des Notes"</strong>.</li>
-                        <li>Choisissez la Classe et la Matière.</li>
-                        <li>Entrez le titre du devoir (ex: "Interro 1") et le barème.</li>
-                        <li>Notez les élèves et validez. Les parents sont notifiés immédiatement.</li>
+                        <li>Choisissez la Classe, la Matière et le titre du devoir.</li>
+                        <li>Notez les élèves sur 20 et validez. La moyenne est recalculée automatiquement.</li>
                     </ol>
 
-                    <h3>3. Évaluer les Compétences</h3>
-                    <p>Utilisez l'onglet <strong>"Compétences"</strong> pour noter les "Soft Skills" (Autonomie, Discipline...) avec des étoiles.</p>
+                    <h3>3. Déclarer une absence</h3>
+                    <p>Utilisez le bouton rouge <strong>"Déclarer Absence"</strong>. Le directeur sera prévenu immédiatement pour organiser votre remplacement.</p>
                 </section>
             )}
 
@@ -122,35 +138,38 @@ const HelpPage: React.FC = () => {
                     <p>Sur votre tableau de bord, cliquez sur le prénom de votre enfant pour voir :</p>
                     <ul>
                         <li>Ses dernières notes en temps réel.</li>
-                        <li>Son bulletin (Moyenne et Appréciation).</li>
-                        <li>Le bouton pour <strong>Télécharger le Bulletin PDF</strong>.</li>
+                        <li>Ses absences et retards.</li>
+                        <li>Son bulletin (téléchargeable en PDF).</li>
                     </ul>
 
                     <h3>2. Paiement de la Scolarité</h3>
-                    <p>Si un solde est dû :</p>
+                    <p>Si vous payez par Mobile Money sur le numéro de l'école :</p>
                     <ol>
-                        <li>Effectuez votre transfert Mobile Money (Orange/MTN/Moov) sur le numéro de l'école.</li>
-                        <li>Dans l'application, entrez le montant et la <strong>Référence de la transaction</strong>.</li>
-                        <li>Cliquez sur "Soumettre". L'administration validera votre paiement.</li>
+                        <li>Effectuez votre transfert.</li>
+                        <li>Notez l'ID de Transaction reçu par SMS.</li>
+                        <li>Dans Scolia, entrez le montant et cet ID, puis cliquez sur "Soumettre".</li>
                     </ol>
-                    <p style={{ color: '#D32F2F', backgroundColor: '#FFEBEE', padding: '10px', borderRadius: '5px' }}>
-                        ⚠️ <strong>Note :</strong> Si le paiement est insuffisant, l'accès au bulletin peut être temporairement bloqué.
-                    </p>
+                    <p>L'école validera votre paiement et votre solde sera mis à jour.</p>
                 </section>
             )}
 
             {activeTab === 'support' && (
                 <section>
-                    <h2 style={titleStyle}>🆘 Support et FAQ</h2>
+                    <h2 style={titleStyle}>🆘 FAQ & Support</h2>
                     
                     <div style={{ marginBottom: '20px' }}>
-                        <strong>J'ai oublié mon mot de passe.</strong><br/>
-                        Contactez l'administration de votre école pour qu'elle réinitialise votre mot de passe.
+                        <strong>🔒 Pourquoi certains boutons ont un cadenas ?</strong><br/>
+                        Cela signifie que votre école n'a pas souscrit à cette option (ex: Radar de Risque). Contactez le service commercial Scolia pour l'activer.
                     </div>
 
                     <div style={{ marginBottom: '20px' }}>
-                        <strong>Je ne vois pas mon enfant.</strong><br/>
-                        Assurez-vous que l'administration a bien lié votre compte Parent à la fiche de l'Élève avec la bonne adresse email.
+                        <strong>🔎 Je ne vois pas ma classe dans la liste.</strong><br/>
+                        Demandez au Directeur de créer la classe dans les paramètres <em>avant</em> d'essayer d'y ajouter des élèves.
+                    </div>
+
+                    <div style={{ marginBottom: '20px' }}>
+                        <strong>📄 L'import CSV ne marche pas.</strong><br/>
+                        Vérifiez que votre fichier est bien au format <strong>CSV (Séparateur virgule)</strong> et encodé en <strong>UTF-8</strong> pour les accents.
                     </div>
 
                     <div style={{ marginTop: '30px', borderTop: '1px solid #eee', paddingTop: '20px' }}>
