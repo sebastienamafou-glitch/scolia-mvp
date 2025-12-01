@@ -1,16 +1,13 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm'; // 👈 AJOUTEZ CETTE LIGNE
-import { AttendanceController } from './attendance.controller';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { AttendanceService } from './attendance.service';
-import { AuthModule } from '../auth/auth.module';
-import { Student } from '../students/entities/student.entity';
+import { AttendanceController } from './attendance.controller';
+import { Attendance } from './entities/attendance.entity';
 
 @Module({
-  imports: [
-    AuthModule,
-    TypeOrmModule.forFeature([Student]) 
-  ],
+  imports: [TypeOrmModule.forFeature([Attendance])], // 👈 C'est la ligne magique qui manque
   controllers: [AttendanceController],
   providers: [AttendanceService],
+  exports: [AttendanceService]
 })
 export class AttendanceModule {}
