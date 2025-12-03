@@ -25,12 +25,17 @@ export class CreateUserDto {
   @IsString()
   role: string;
 
-  // --- TOLÉRANCE POUR LES NOMBRES (Accepte les textes convertibles) ---
+  // --- TOLÉRANCE POUR LES NOMBRES ---
   @IsOptional()
   fraisScolarite?: any; // On accepte tout pour éviter l'erreur de type
 
   @IsOptional()
   schoolId?: number; 
+
+  // 👇 LA CORRECTION EST ICI : On déclare classId pour qu'il ne soit pas supprimé
+  @IsOptional()
+  classId?: any; 
+  // ---------------------------------------------------------------------------
 
   // --- CHAMPS SECONDAIRES ---
   @IsOptional()
@@ -46,8 +51,7 @@ export class CreateUserDto {
 
   // --- TOLÉRANCE DATE ---
   @IsOptional()
-  // On accepte les chaînes simples (ex: "03 / 09 / 2012") sans exiger le format ISO strict
-  dateNaissance?: string;
+  dateNaissance?: string; // On accepte le format texte (ex: "03 / 09 / 2012")
 
   @IsOptional()
   @IsString()
@@ -65,8 +69,7 @@ export class CreateUserDto {
   @IsString()
   infosMedicales?: string;
   
-  // --- CHAMP TOLÉRANT (Le "Fourre-tout") ---
-  // Permet de recevoir le champ combiné du formulaire sans planter
+  // --- CHAMP TOLÉRANT ---
   @IsOptional()
   contactUrgence?: string; 
 }

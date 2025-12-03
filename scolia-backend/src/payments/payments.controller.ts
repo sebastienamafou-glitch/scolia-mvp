@@ -1,3 +1,5 @@
+// scolia-backend/src/payments/payments.controller.ts
+
 import { 
     Controller, 
     Get, 
@@ -27,6 +29,21 @@ export class PaymentsController {
     return this.paymentsService.getFeeByStudent(Number(studentId), schoolId);
   }
 
+  // 👇👇👇 NOUVELLE ROUTE AJOUTÉE (CORRECTION ERREUR 404) 👇👇👇
+  @Roles('Admin')
+  @Post('fees') 
+  async updateFees(@Request() req, @Body() body: { studentId: number, totalAmount: number, dateLimit?: string }) {
+      if (!req.user.schoolId) throw new ForbiddenException();
+
+      // On redirige vers la méthode existante du service
+      return this.paymentsService.setStudentTuition(
+          body.studentId, 
+          body.totalAmount, 
+          req.user.schoolId
+      );
+  }
+  // -------------------------------------------------------------
+
   // 2. POST /payments/submit (Parent)
   @Roles('Parent')
   @Post('submit')
@@ -47,12 +64,10 @@ export class PaymentsController {
   async validateTransaction(@Request() req, @Param('id') transactionId: string) {
     if (!req.user.schoolId) throw new ForbiddenException("Accès Admin refusé.");
     
-    // ✅ CORRECTION : On passe req.user.sub (ID Admin) comme 3ème argument
-    // au lieu de 'action' (string) qui causait l'erreur de type.
     return this.paymentsService.validateTransaction(
         Number(transactionId),
         req.user.schoolId,
-        req.user.sub // L'ID de l'admin qui valide
+        req.user.sub 
     );
   }
 
@@ -64,14 +79,12 @@ export class PaymentsController {
       return this.paymentsService.findPending(req.user.schoolId);
   }
 
-  // 5. POST /payments/set-tuition (Admin - Définir montant)
+  // 5. POST /payments/set-tuition (Admin - Autre méthode)
   @Roles('Admin')
   @Post('set-tuition')
   async setTuition(@Request() req, @Body() body: { studentId: number, amount: number }) {
       if (!req.user.schoolId) throw new ForbiddenException();
       
-      // ✅ CORRECTION : On appelle la bonne méthode 'setStudentTuition'
-      // (L'erreur "Property setFee does not exist" venait de là)
       return this.paymentsService.setStudentTuition(
           body.studentId, 
           body.amount, 
