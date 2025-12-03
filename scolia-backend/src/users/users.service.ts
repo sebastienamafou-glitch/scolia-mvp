@@ -3,10 +3,10 @@
 import { Injectable, OnModuleInit, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Not } from 'typeorm'; 
-import { User } from './entities/user.entity'; // ✅ Import Unique
+import { User } from './entities/user.entity';
 import { Student } from '../students/entities/student.entity'; 
 import * as bcrypt from 'bcrypt';
-import { EventEmitter2 } from '@nestjs/event-emitter'; // 👈 Import Event
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Injectable()
 export class UsersService implements OnModuleInit {
@@ -18,7 +18,7 @@ export class UsersService implements OnModuleInit {
     private usersRepository: Repository<User>,
     @InjectRepository(Student)
     private studentsRepository: Repository<Student>,
-    private eventEmitter: EventEmitter2, // 👈 Injection de l'émetteur (plus de PaymentsService)
+    private eventEmitter: EventEmitter2,
   ) {}
 
   async onModuleInit() {
@@ -65,7 +65,7 @@ export class UsersService implements OnModuleInit {
     return candidateEmail;
   }
 
-  // --- CRÉATION ---
+  // --- CRÉATION (CORRIGÉE) ---
 
   async create(createUserDto: any): Promise<any> {
     let email = createUserDto.email;
@@ -83,10 +83,12 @@ export class UsersService implements OnModuleInit {
         email,
         passwordHash,
         school: { id: Number(schoolId) },
-        role: createUserDto.role
+        role: createUserDto.role,
+        // ✅ CORRECTION ICI : On attache la classe à l'utilisateur User
+        class: classId ? { id: Number(classId) } : null,
     });
 
-    // ✅ Double cast pour satisfaire TypeScript
+    // Double cast pour satisfaire TypeScript
     const savedUser = (await this.usersRepository.save(newUser)) as unknown as User;
 
     if (savedUser.role === 'Élève') {
@@ -95,13 +97,14 @@ export class UsersService implements OnModuleInit {
                 nom: savedUser.nom,
                 prenom: savedUser.prenom,
                 userId: savedUser.id, 
+                // On garde aussi la classe sur le profil Student par sécurité
                 class: classId ? { id: Number(classId) } : undefined,
             });
             
             const savedStudent = await this.studentsRepository.save(newStudent);
             this.logger.log(`✅ Profil Étudiant créé (ID: ${savedStudent.id})`);
 
-            // 📢 ÉMISSION DE L'ÉVÉNEMENT (Découplage)
+            // ÉMISSION DE L'ÉVÉNEMENT
             this.eventEmitter.emit('student.created', {
                 studentId: savedStudent.id,
                 userId: savedUser.id,
@@ -131,11 +134,15 @@ export class UsersService implements OnModuleInit {
     const user = await this.usersRepository.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException("Utilisateur introuvable");
     if (adminSchoolId && user.schoolId !== adminSchoolId) throw new ForbiddenException("Modification interdite.");
+    
+    // Logique de mise à jour de la classe existante
     if (data.classId) { user.class = { id: Number(data.classId) } as any; delete data.classId; }
+    
     delete data.password; delete data.passwordHash; delete data.email; delete data.role; delete data.schoolId;
     Object.assign(user, data);
     return this.usersRepository.save(user);
   }
+
   async updatePassword(userId: number, plainPassword: string): Promise<void> { const newHash = await bcrypt.hash(plainPassword, 10); await this.usersRepository.update(userId, { passwordHash: newHash }); }
   async updateResetToken(userId: number, token: string, exp: Date) { return this.usersRepository.update(userId, { resetToken: token, resetTokenExp: exp }); }
   async updateNotificationPreferences(userId: number, prefs: any) {
