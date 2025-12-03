@@ -16,7 +16,8 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true, 
-    forbidNonWhitelisted: true, 
+    // 👇 MODIFICATION ICI : On passe à false pour ne pas bloquer les champs inconnus
+    forbidNonWhitelisted: false, 
     transform: true,
     disableErrorMessages: process.env.NODE_ENV === 'production', 
   }));
@@ -27,7 +28,6 @@ async function bootstrap() {
       process.env.FRONTEND_URL, 
   ];
 
-  // 👇 CORRECTION ICI : On utilise "as string[]" pour garantir le type à TypeScript
   const whitelist = frontendDomains.filter(url => url && url.length > 0) as string[];
 
   app.enableCors({
