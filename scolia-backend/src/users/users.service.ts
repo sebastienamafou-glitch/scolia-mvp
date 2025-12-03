@@ -104,12 +104,15 @@ export class UsersService implements OnModuleInit {
             const savedStudent = await this.studentsRepository.save(newStudent);
             this.logger.log(`✅ Profil Étudiant créé (ID: ${savedStudent.id})`);
 
-            // ÉMISSION DE L'ÉVÉNEMENT
+            // ÉMISSION DE L'ÉVÉNEMENT (Avec sécurité Anti-NaN)
             this.eventEmitter.emit('student.created', {
                 studentId: savedStudent.id,
                 userId: savedUser.id,
                 schoolId: savedUser.schoolId ?? 0,
-                fraisScolarite: fraisScolarite ? Number(fraisScolarite) : undefined
+                // 👇 CORRECTION ICI : On nettoie le montant avant de l'envoyer
+                fraisScolarite: (fraisScolarite && !isNaN(parseFloat(fraisScolarite))) 
+                    ? parseFloat(fraisScolarite) 
+                    : 0
             });
 
         } catch (e) { 
