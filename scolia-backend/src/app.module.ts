@@ -65,7 +65,7 @@ import { ImportModule } from './import/import.module';
             Fee, Transaction, Competence, SkillEvaluation, TimetableEvent,
             Attendance, Notification
         ],
-        synchronize: false, // Mettre à true UNE SEULE FOIS pour créer les tables
+        synchronize: true, // Mettre à true UNE SEULE FOIS pour créer les tables
       }),
       inject: [ConfigService],
     }),
