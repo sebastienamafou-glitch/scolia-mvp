@@ -66,7 +66,7 @@ export class PaymentsService {
     return transaction;
   }
 
-  // 👇 METHODE CORRIGÉE
+  // 👇 METHODE MISE A JOUR (Accepte la dateLimit)
   async setStudentTuition(studentId: number, totalAmount: number, dateLimit: string | null, schoolId: number): Promise<Fee> {
     let fee = await this.feesRepository.findOne({ where: { studentId } });
     
@@ -79,12 +79,11 @@ export class PaymentsService {
             school: { id: schoolId }, 
             totalAmount: safeAmount, 
             amountPaid: 0,
-            // ✅ CORRECTION ICI : On transforme null en undefined pour satisfaire TypeScript
-            dateLimit: dateLimit || undefined 
+            dateLimit: dateLimit || undefined // Transformation null -> undefined pour TypeScript
         });
     } else {
         fee.totalAmount = safeAmount;
-        if (dateLimit) fee.dateLimit = dateLimit;
+        if (dateLimit) fee.dateLimit = dateLimit; // Mise à jour de la date
         if (schoolId) fee.school = { id: schoolId } as any;
     }
     return this.feesRepository.save(fee);
