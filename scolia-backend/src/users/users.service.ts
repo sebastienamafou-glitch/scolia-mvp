@@ -2,7 +2,7 @@
 
 import { Injectable, OnModuleInit, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Not } from 'typeorm'; 
+import { Repository, Not, DataSource } from 'typeorm'; // 👈 Ajout de DataSource
 import { User } from './entities/user.entity';
 import { Student } from '../students/entities/student.entity'; 
 import * as bcrypt from 'bcrypt';
@@ -19,6 +19,7 @@ export class UsersService implements OnModuleInit {
     @InjectRepository(Student)
     private studentsRepository: Repository<Student>,
     private eventEmitter: EventEmitter2,
+    private dataSource: DataSource, // 👈 Injection pour gérer les transactions
   ) {}
 
   async onModuleInit() {
@@ -65,62 +66,72 @@ export class UsersService implements OnModuleInit {
     return candidateEmail;
   }
 
-  // --- CRÉATION (CORRIGÉE) ---
+  // --- CRÉATION SÉCURISÉE (TRANSACTIONNELLE) ---
 
   async create(createUserDto: any): Promise<any> {
-    let email = createUserDto.email;
-    if (!email || email.indexOf('@') === -1) {
-       email = await this.generateUniqueEmail(createUserDto.prenom, createUserDto.nom);
-    }
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    const plainPassword = this.generateRandomPassword(8);
-    const passwordHash = await bcrypt.hash(plainPassword, 10);
-
-    const { password, fraisScolarite, classId, schoolId, ...userData } = createUserDto;
-
-    const newUser = this.usersRepository.create({
-        ...userData,
-        email,
-        passwordHash,
-        school: { id: Number(schoolId) },
-        role: createUserDto.role,
-        // ✅ CORRECTION ICI : On attache la classe à l'utilisateur User
-        class: classId ? { id: Number(classId) } : null,
-    });
-
-    // Double cast pour satisfaire TypeScript
-    const savedUser = (await this.usersRepository.save(newUser)) as unknown as User;
-
-    if (savedUser.role === 'Élève') {
-        try {
-            const newStudent = this.studentsRepository.create({
+    try {
+        let email = createUserDto.email;
+        if (!email || email.indexOf('@') === -1) {
+           email = await this.generateUniqueEmail(createUserDto.prenom, createUserDto.nom);
+        }
+    
+        const plainPassword = this.generateRandomPassword(8);
+        const passwordHash = await bcrypt.hash(plainPassword, 10);
+    
+        const { password, fraisScolarite, classId, schoolId, ...userData } = createUserDto;
+    
+        // 1. Création de l'Utilisateur (User) dans la transaction
+        const newUser = queryRunner.manager.create(User, {
+            ...userData,
+            email,
+            passwordHash,
+            school: { id: Number(schoolId) },
+            role: createUserDto.role,
+            class: classId ? { id: Number(classId) } : null,
+        });
+    
+        const savedUser = await queryRunner.manager.save(newUser);
+    
+        // 2. Si c'est un élève, création du profil Student
+        if (savedUser.role === 'Élève') {
+            const newStudent = queryRunner.manager.create(Student, {
                 nom: savedUser.nom,
                 prenom: savedUser.prenom,
                 userId: savedUser.id, 
-                // On garde aussi la classe sur le profil Student par sécurité
                 class: classId ? { id: Number(classId) } : undefined,
             });
             
-            const savedStudent = await this.studentsRepository.save(newStudent);
+            const savedStudent = await queryRunner.manager.save(newStudent);
             this.logger.log(`✅ Profil Étudiant créé (ID: ${savedStudent.id})`);
 
-            // ÉMISSION DE L'ÉVÉNEMENT (Avec sécurité Anti-NaN)
+            // Émission de l'événement (après succès transaction)
             this.eventEmitter.emit('student.created', {
                 studentId: savedStudent.id,
                 userId: savedUser.id,
                 schoolId: savedUser.schoolId ?? 0,
-                // 👇 CORRECTION ICI : On nettoie le montant avant de l'envoyer
+                // Protection Anti-NaN
                 fraisScolarite: (fraisScolarite && !isNaN(parseFloat(fraisScolarite))) 
                     ? parseFloat(fraisScolarite) 
                     : 0
             });
-
-        } catch (e) { 
-            this.logger.error("Erreur critique création profil élève", e);
         }
-    }
 
-    return { ...savedUser, plainPassword };
+        // Si tout est bon, on valide tout !
+        await queryRunner.commitTransaction();
+        return { ...savedUser, plainPassword };
+
+    } catch (err) {
+        // En cas d'erreur, on annule TOUT (même la création du User)
+        this.logger.error("❌ Erreur transaction création utilisateur. Rollback.", err);
+        await queryRunner.rollbackTransaction();
+        throw err; // On renvoie l'erreur au frontend
+    } finally {
+        await queryRunner.release();
+    }
   }
 
   // --- LECTURE ---
@@ -137,8 +148,6 @@ export class UsersService implements OnModuleInit {
     const user = await this.usersRepository.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException("Utilisateur introuvable");
     if (adminSchoolId && user.schoolId !== adminSchoolId) throw new ForbiddenException("Modification interdite.");
-    
-    // Logique de mise à jour de la classe existante
     if (data.classId) { user.class = { id: Number(data.classId) } as any; delete data.classId; }
     
     delete data.password; delete data.passwordHash; delete data.email; delete data.role; delete data.schoolId;

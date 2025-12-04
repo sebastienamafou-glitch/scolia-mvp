@@ -11,7 +11,7 @@ import { BulletinEditor } from '../components/BulletinEditor';
 import { StudentCard } from '../components/StudentCard';
 import { SchoolNews } from '../components/SchoolNews';
 import { TransactionValidator } from '../components/TransactionValidator';
-import { RiskRadarWidget } from '../components/RiskRadarWidget'; // Module Payant
+import { RiskRadarWidget } from '../components/RiskRadarWidget';
 import { SkillsManager } from '../components/SkillsManager';
 import { TimetableManager } from '../components/TimetableManager';
 import { Footer } from '../components/Footer';
@@ -23,19 +23,13 @@ import {
     FaCog, FaUnlockAlt, FaLock 
 } from 'react-icons/fa';
 
-// --- TYPES MIS À JOUR (COMPATIBILITÉ V2) ---
-
 interface User {
   id: number;
   nom: string;
   prenom: string;
   email: string;
   role: string;
-  // ✅ CORRECTION : Adaptation à la relation TypeORM V2, on utilise 'class'
-  class?: {
-      id: number;
-      name: string;
-  }; 
+  class?: { id: number; name: string; }; 
   photo?: string;
   dateNaissance?: string;
   adresse?: string;
@@ -44,7 +38,6 @@ interface User {
   infosMedicales?: string;
 }
 
-// Interface étendue avec les modules
 interface SchoolInfo {
     id: number;
     name: string;
@@ -59,7 +52,6 @@ interface SchoolInfo {
     };
 }
 
-// 👈 NOUVEAU : Interface pour le sélecteur de classes
 interface ClassOption {
     id: number;
     name: string;
@@ -68,40 +60,33 @@ interface ClassOption {
 const AdminDashboard: React.FC = () => {
   const { logout } = useAuth();
   
-  // États Données
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [mySchool, setMySchool] = useState<SchoolInfo | null>(null);
-  const [availableClasses, setAvailableClasses] = useState<ClassOption[]>([]); // 👈 NOUVEL ÉTAT
+  const [availableClasses, setAvailableClasses] = useState<ClassOption[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
   
-  // États Chargement
   const [loading, setLoading] = useState(true);
   const [schoolLoading, setSchoolLoading] = useState(true);
 
-  // États UI (Tableau Utilisateurs)
   const [activeTab, setActiveTab] = useState<string>('Tous');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [showCreateForm, setShowCreateForm] = useState(false);
   
-  // Formulaire Paramètres École
   const [schoolForm, setSchoolForm] = useState({ name: '', address: '', logo: '', description: '' });
   
-  // Formulaire Création Utilisateur (Utilise classId)
   const [newUser, setNewUser] = useState({
     password: '', role: 'Enseignant', 
     nom: '', prenom: '', 
-    classId: '', // 👈 Utilise classId pour l'ID de la classe
+    classId: '', 
     parentId: '', photo: '',
     dateNaissance: '', adresse: '',
     contactUrgenceNom: '', contactUrgenceTel: '', infosMedicales: ''
   });
 
-  // --- INITIALISATION ---
   useEffect(() => {
     const init = async () => {
-        // Charge les classes, utilisateurs et école au démarrage
         await Promise.all([fetchUsers(), fetchMySchool(), fetchClasses()]);
         setLoading(false);
     };
@@ -117,7 +102,6 @@ const AdminDashboard: React.FC = () => {
     }
   };
   
-  // 👈 NOUVEAU : Récupérer la liste des classes
   const fetchClasses = async () => {
       try {
           const res = await api.get('/classes');
@@ -129,13 +113,13 @@ const AdminDashboard: React.FC = () => {
     setSchoolLoading(true);
     try {
         const res = await api.get('/schools/my-school');
+        // Parsing propre : Si c'est une string, on parse, sinon on garde l'objet
         let mod = res.data.modules;
-        // Parsing sécurisé immédiat des modules
         if (typeof mod === 'string') {
-            try { mod = JSON.parse(mod);
-            } catch(e) {}
+             mod = JSON.parse(mod);
         }
-        res.data.modules = mod; // Injecte les valeurs parsées
+        res.data.modules = mod || { risk_radar: false, ai_planning: false, sms: false, cards: false };
+        
         setMySchool(res.data);
         setSchoolForm({
             name: res.data.name || '',
@@ -150,7 +134,6 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  // --- ACTIONS ÉCOLE ---
   const handleUpdateSchool = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -162,9 +145,6 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  // --- ACTIONS UTILISATEURS ---
-  
-  // Import CSV
   const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -183,20 +163,17 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  // Création Manuelle
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const payload: any = { ...newUser };
       
-      // Nettoyage des champs selon le rôle
       if (payload.role !== 'Élève') {
           delete payload.classId;
           delete payload.parentId; delete payload.dateNaissance;
           delete payload.adresse; delete payload.contactUrgenceNom;
           delete payload.contactUrgenceTel; delete payload.infosMedicales;
       } else {
-          // ✅ PERFECTION : Conversion des IDs de classe et parent en nombres
           payload.parentId = payload.parentId ? Number(payload.parentId) : undefined;
           payload.classId = payload.classId ? Number(payload.classId) : undefined;
       }
@@ -208,7 +185,6 @@ const AdminDashboard: React.FC = () => {
       alert(`✅ Utilisateur créé !\n\n📧 Login : ${createdUser.email}\n🔑 MDP : ${passwordDisplay}`);
       
       fetchUsers();
-      // Reset du formulaire
       setNewUser({ 
           password: '', role: 'Enseignant', nom: '', prenom: '', 
           classId: '', parentId: '', photo: '', dateNaissance: '', adresse: '',
@@ -220,19 +196,16 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  // Reset Password (Mise à jour V2 : Génération et affichage du nouveau mot de passe par PATCH)
   const handleResetPassword = async (user: User) => {
     if (!window.confirm(`Générer un nouveau mot de passe pour ${user.prenom} ${user.nom} ?`)) return;
     try {
         const res = await api.patch(`/users/${user.id}/reset-password`);
-        // On affiche le mot de passe reçu du backend
         prompt(`✅ Nouveau mot de passe pour ${user.nom} :`, res.data.plainPassword);
     } catch (error) {
         alert("Erreur lors de la demande.");
     }
   };
 
-  // --- FILTRES & PAGINATION ---
   const filteredUsers = allUsers.filter(user => {
     const roleMatch = activeTab === 'Tous' || user.role === activeTab;
     const searchLower = searchQuery.toLowerCase();
@@ -248,18 +221,15 @@ const AdminDashboard: React.FC = () => {
   const currentUsers = filteredUsers.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
 
-  // --- KPI ---
   const countStudents = allUsers.filter(u => u.role === 'Élève').length;
   const countTeachers = allUsers.filter(u => u.role === 'Enseignant').length;
   const countParents = allUsers.filter(u => u.role === 'Parent').length;
   const countAdmins = allUsers.filter(u => u.role === 'Admin').length;
   const availableParents = allUsers.filter(user => user.role === 'Parent');
   
-  // Raccourci Modules (Utilise l'objet déjà parsé dans fetchMySchool)
   const defaultModules: SchoolInfo['modules'] = { risk_radar: false, ai_planning: false, sms: false, cards: false };
-  const safeModules = mySchool?.modules && typeof mySchool.modules === 'object' ? { ...defaultModules, ...mySchool.modules } : defaultModules;
+  const safeModules = mySchool?.modules ? { ...defaultModules, ...mySchool.modules } : defaultModules;
   
-  // Ecran de chargement
   if (schoolLoading || loading) {
       return (
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', flexDirection: 'column', backgroundColor: '#f0f2f5', color: '#0A2240', fontFamily: 'sans-serif' }}>
@@ -273,7 +243,7 @@ const AdminDashboard: React.FC = () => {
   return (
     <div style={{ backgroundColor: '#f0f2f5', minHeight: '100vh', color: '#333', fontFamily: 'sans-serif' }}>
       
-      {/* HEADER DYNAMIQUE */}
+      {/* HEADER */}
       <header style={{ backgroundColor: 'white', padding: '15px 30px', borderBottom: '1px solid #ddd', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 100 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             {mySchool?.logo ? (
@@ -297,23 +267,16 @@ const AdminDashboard: React.FC = () => {
 
       <div style={{ maxWidth: '1200px', margin: '30px auto', padding: '0 20px' }}>
 
-        
-        {/* 🚀 MODULE PAYANT 1 : RADAR DE RISQUE */}
+        {/* RISK RADAR */}
         {activeTab !== 'Paramètres' && (
             <div style={{ marginBottom: '30px' }}>
-                {safeModules.risk_radar ?
-                (
-                    <RiskRadarWidget />
-                ) : (
-                    <UpsellBanner 
-                        title="Radar de Risque & Rétention" 
-                        description="Détectez automatiquement les élèves en décrochage scolaire ou financier avant qu'il ne soit trop tard." 
-                    />
+                {safeModules.risk_radar ? ( <RiskRadarWidget /> ) : (
+                    <UpsellBanner title="Radar de Risque & Rétention" description="Détectez automatiquement les élèves en décrochage." />
                 )}
             </div>
         )}
 
-        {/* SECTION KPI (Toujours visible) */}
+        {/* KPI */}
         {activeTab !== 'Paramètres' && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '30px' }}>
                 <KpiCard title="Élèves Inscrits" count={countStudents} icon={<FaUserGraduate />} color="#3498db" />
@@ -323,7 +286,7 @@ const AdminDashboard: React.FC = () => {
             </div>
         )}
 
-        {/* GESTION QUOTIDIENNE (Transactions & News) */}
+        {/* GESTION QUOTIDIENNE */}
         {activeTab !== 'Paramètres' && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '30px' }}>
                 <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
@@ -335,10 +298,9 @@ const AdminDashboard: React.FC = () => {
             </div>
         )}
 
-        {/* TABLEAU DE BORD PRINCIPAL (Utilisateurs & Params) */}
+        {/* TABLEAU DE BORD PRINCIPAL */}
         <div style={{ backgroundColor: 'white', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
             
-            {/* TABS */}
             <div style={{ padding: '20px', borderBottom: '1px solid #eee', display: 'flex', flexWrap: 'wrap', gap: '20px', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '5px' }}>
                     {['Tous', 'Élève', 'Enseignant', 'Parent', 'Admin'].map(role => (
@@ -368,7 +330,6 @@ const AdminDashboard: React.FC = () => {
                     </button>
                 </div>
 
-                {/* OUTILS DE RECHERCHE */}
                 {activeTab !== 'Paramètres' && (
                     <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                         <div style={{ position: 'relative' }}>
@@ -390,7 +351,6 @@ const AdminDashboard: React.FC = () => {
                 )}
             </div>
 
-            {/* CONTENU TABS */}
             {activeTab === 'Paramètres' ? (
                 <div style={{ padding: '30px' }}>
                     <h2 style={{ color: '#0A2240', marginTop: 0 }}>Personnaliser mon Établissement</h2>
@@ -404,7 +364,6 @@ const AdminDashboard: React.FC = () => {
                 </div>
             ) : (
                 <>
-                    {/* FORMULAIRE CRÉATION UTILISATEUR */}
                     {showCreateForm && (
                         <div style={{ padding: '20px', backgroundColor: '#fafafa', borderBottom: '1px solid #eee' }}>
                             <form onSubmit={handleCreate} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
@@ -419,19 +378,12 @@ const AdminDashboard: React.FC = () => {
                                 
                                 {newUser.role === 'Élève' && (
                                     <div style={{ gridColumn: '1 / -1', backgroundColor: '#E3F2FD', padding: '15px', borderRadius: '8px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
-                                        
-                                        {/* ✅ SÉLECTEUR DE CLASSE MISE À JOUR (Utilise classId et availableClasses) */}
-                                        <select 
-                                            value={newUser.classId} 
-                                            onChange={e => setNewUser({...newUser, classId: e.target.value})} 
-                                            style={inputStyle}
-                                        >
+                                        <select value={newUser.classId} onChange={e => setNewUser({...newUser, classId: e.target.value})} style={inputStyle}>
                                             <option value="">-- Choisir une Classe --</option>
                                             {availableClasses.map(cls => (
                                                 <option key={cls.id} value={cls.id}>{cls.name}</option>
                                             ))}
                                         </select>
-                                        
                                         <select value={newUser.parentId} onChange={e => setNewUser({...newUser, parentId: e.target.value})} style={inputStyle}>
                                             <option value="">-- Lier à un Parent --</option>
                                             {availableParents.map(p => <option key={p.id} value={p.id}>{p.nom} {p.prenom}</option>)}
@@ -445,7 +397,6 @@ const AdminDashboard: React.FC = () => {
                         </div>
                     )}
 
-                    {/* TABLE UTILISATEURS */}
                     <div style={{ overflowX: 'auto', width: '100%' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem', minWidth: '700px' }}>
                             <thead style={{ backgroundColor: '#f8f9fa', color: '#666' }}>
@@ -480,7 +431,6 @@ const AdminDashboard: React.FC = () => {
                         </table>
                     </div>
 
-                    {/* PAGINATION */}
                     <div style={{ padding: '15px', borderTop: '1px solid #eee', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '15px' }}>
                         <span style={{ fontSize: '0.9rem', color: '#666' }}>Page {currentPage} sur {totalPages}</span>
                         <div style={{ display: 'flex', gap: '5px' }}>
@@ -492,21 +442,16 @@ const AdminDashboard: React.FC = () => {
             )}
         </div>
 
-        {/* --- MODULES GESTION (Bas de page) --- */}
         {activeTab !== 'Paramètres' && (
             <>
                 <div style={{ marginTop: '40px', display: 'grid', gap: '30px' }}>
-                    <ClassManager />
                     
-                    {/* 🚀 MODULE PAYANT 2 : EMPLOI DU TEMPS IA */}
+                    {/* 👇 CORRECTION MAJEURE ICI : On passe la fonction de rafraichissement */}
+                    <ClassManager onClassCreated={fetchClasses} />
+                    
                     <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px' }}>
                         <h2 style={{ color: '#0A2240', marginTop: 0 }}>📅 Gestion des Emplois du Temps</h2>
-                        {safeModules.ai_planning ?
-                        (
-                            <TimetableManager />
-                        ) : (
-                            <UpsellBannerSmall title="Générateur IA d'Emploi du temps" />
-                        )}
+                        {safeModules.ai_planning ? ( <TimetableManager /> ) : ( <UpsellBannerSmall title="Générateur IA d'Emploi du temps" /> )}
                     </div>
 
                     <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px' }}>
@@ -523,16 +468,11 @@ const AdminDashboard: React.FC = () => {
         )}
 
       </div>
-
-      {/* MODALE ÉLÈVE */}
       {selectedStudent && <StudentCard student={selectedStudent} onClose={() => setSelectedStudent(null)} />}
-
       <Footer />
     </div>
   );
 };
-
-// --- STYLES & PETITS COMPOSANTS ---
 
 const KpiCard = ({ title, count, icon, color }: any) => (
     <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: '15px' }}>
@@ -544,7 +484,6 @@ const KpiCard = ({ title, count, icon, color }: any) => (
     </div>
 );
 
-// Bannière Pub pour Module Verrouillé (Grand format)
 const UpsellBanner = ({ title, description }: any) => (
     <div style={{ background: 'linear-gradient(90deg, #FFF3E0 0%, #FFFFFF 100%)', border: '1px dashed #F77F00', padding: '20px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '20px', boxShadow: '0 4px 10px rgba(247, 127, 0, 0.1)' }}>
         <div style={{ backgroundColor: '#FFE0B2', padding: '15px', borderRadius: '50%', color: '#E65100', fontSize: '1.5rem' }}><FaLock /></div>
@@ -558,7 +497,6 @@ const UpsellBanner = ({ title, description }: any) => (
     </div>
 );
 
-// Bannière Pub pour Module Verrouillé (Petit format)
 const UpsellBannerSmall = ({ title }: any) => (
     <div style={{ padding: '30px', textAlign: 'center', color: '#888', backgroundColor: '#fafafa', borderRadius: '8px', border: '1px dashed #ccc' }}>
         <FaLock size={24} color="#F77F00" style={{ marginBottom: '10px' }} />
