@@ -5,7 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Fee } from './entities/fee.entity';
 import { Transaction } from './entities/transaction.entity';
-import { OnEvent } from '@nestjs/event-emitter'; // 👈 Import pour écouter
+import { OnEvent } from '@nestjs/event-emitter';
 
 @Injectable()
 export class PaymentsService {
@@ -18,14 +18,14 @@ export class PaymentsService {
     private transactionsRepository: Repository<Transaction>,
   ) {}
 
-  // 👂 ÉCOUTEUR D'ÉVÉNEMENT : Se déclenche quand un élève est créé
   @OnEvent('student.created')
   async handleStudentCreation(payload: { studentId: number, schoolId: number, fraisScolarite?: number }) {
       this.logger.log(`🏗️ Création auto du compte paiement pour l'élève #${payload.studentId}`);
       await this.createPaymentAccount(payload.studentId);
       
       if (payload.fraisScolarite) {
-          await this.setStudentTuition(payload.studentId, payload.fraisScolarite, payload.schoolId);
+          // On passe null pour la date par défaut lors de la création auto
+          await this.setStudentTuition(payload.studentId, payload.fraisScolarite, null, payload.schoolId);
       }
   }
 
@@ -66,12 +66,25 @@ export class PaymentsService {
     return transaction;
   }
 
-  async setStudentTuition(studentId: number, totalAmount: number, schoolId: number): Promise<Fee> {
+  // 👇 METHODE CORRIGÉE
+  async setStudentTuition(studentId: number, totalAmount: number, dateLimit: string | null, schoolId: number): Promise<Fee> {
     let fee = await this.feesRepository.findOne({ where: { studentId } });
+    
+    // Conversion sécurisée
+    const safeAmount = isNaN(Number(totalAmount)) ? 0 : Number(totalAmount);
+
     if (!fee) {
-        fee = this.feesRepository.create({ studentId, school: { id: schoolId }, totalAmount: Number(totalAmount), amountPaid: 0 });
+        fee = this.feesRepository.create({ 
+            studentId, 
+            school: { id: schoolId }, 
+            totalAmount: safeAmount, 
+            amountPaid: 0,
+            // ✅ CORRECTION ICI : On transforme null en undefined pour satisfaire TypeScript
+            dateLimit: dateLimit || undefined 
+        });
     } else {
-        fee.totalAmount = Number(totalAmount);
+        fee.totalAmount = safeAmount;
+        if (dateLimit) fee.dateLimit = dateLimit;
         if (schoolId) fee.school = { id: schoolId } as any;
     }
     return this.feesRepository.save(fee);
