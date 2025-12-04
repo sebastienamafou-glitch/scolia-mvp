@@ -91,7 +91,13 @@ export class User {
   @RelationId((user: User) => user.class)
   classId: number;
 
-  // 3. Le Parent
-  @Column({ nullable: true })
+  // 3. Le Parent (CORRECTION ICI)
+  // Relation ManyToOne vers User lui-même (Un élève a un parent qui est aussi un User)
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'parentId' })
+  parent: User;
+
+  // Miroir automatique de l'ID
+  @RelationId((user: User) => user.parent)
   parentId: number;
 }

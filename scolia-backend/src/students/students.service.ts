@@ -22,7 +22,7 @@ export class StudentsService {
         school: { id: schoolId } // Sécurité Multi-Tenant
       },
       order: { nom: 'ASC' },
-      relations: ['class', 'parent'] // On charge les infos liées utiles
+      relations: ['class', 'parent'] // ✅ Cela fonctionne maintenant car 'parent' existe dans l'Entity
     });
   }
 
@@ -38,7 +38,8 @@ export class StudentsService {
   async findByParent(parentId: number): Promise<User[]> {
     return this.usersRepository.find({
       where: { 
-        parentId: parentId,
+        // ✅ CORRECTION : Utilisation de la relation pour le filtrage
+        parent: { id: parentId }, 
         role: 'Élève' 
       },
       relations: ['class'], // On veut voir la classe de l'enfant
