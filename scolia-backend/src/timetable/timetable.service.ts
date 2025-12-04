@@ -49,7 +49,7 @@ export class TimetableService {
   // --- GÉNÉRATION IA (CORRIGÉE) ---
   async generateWithAI(classId: number, constraints: any, schoolId: number) {
     // ✅ CORRECTION : Utilisation du modèle actuel
-    const model = this.genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = this.genAI.getGenerativeModel({ model: "gemini-1.5-flash-001" });
 
     const prompt = `
       Agis comme un planificateur scolaire expert. Crée un emploi du temps JSON pour une classe.
