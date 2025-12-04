@@ -12,40 +12,44 @@ export class StudentsService {
     private usersRepository: Repository<User>,
   ) {}
 
-  // --- 1. RECHERCHE PAR CLASSE (Sécurisée & Relationnelle) ---
-  // On récupère les Users qui ont le rôle 'Élève' ET qui sont liés à la Class ID et School ID
+  // --- 1. RECHERCHE PAR CLASSE ---
   async findByClass(classId: number, schoolId: number): Promise<User[]> {
     return this.usersRepository.find({
       where: { 
         role: 'Élève',
-        class: { id: classId }, // Utilise la relation SQL
-        school: { id: schoolId } // Sécurité Multi-Tenant
+        class: { id: classId },
+        school: { id: schoolId }
       },
       order: { nom: 'ASC' },
-      relations: ['class', 'parent'] // ✅ Cela fonctionne maintenant car 'parent' existe dans l'Entity
+      relations: ['class', 'parent'] 
     });
   }
 
   // --- 2. RECHERCHE PAR ID ---
   async findOne(id: number): Promise<User | null> {
      return this.usersRepository.findOne({ 
-         where: { id, role: 'Élève' }, // On s'assure que c'est bien un élève
+         where: { id, role: 'Élève' },
          relations: ['class', 'school', 'parent'] 
      });
   }
 
-  // --- 3. RECHERCHE PAR PARENT ---
+  // --- 3. RECHERCHE PAR PARENT (CORRIGÉE) ---
   async findByParent(parentId: number): Promise<User[]> {
     return this.usersRepository.find({
       where: { 
-        // ✅ CORRECTION : Utilisation de la relation pour le filtrage
         parent: { id: parentId }, 
         role: 'Élève' 
       },
-      relations: ['class'], // On veut voir la classe de l'enfant
+      relations: ['class', 'school'], // ✅ On charge la relation school
       select: {
-          id: true, nom: true, prenom: true, email: true, photo: true, schoolId: true,
-          class: { id: true, name: true } // Sélection partielle propre
+          id: true, 
+          nom: true, 
+          prenom: true, 
+          email: true, 
+          photo: true,
+          // schoolId: true,  ❌ SUPPRIMÉ : Causait l'erreur
+          school: { id: true }, // ✅ AJOUTÉ : On récupère l'ID via la relation
+          class: { id: true, name: true }
       }
     });
   }

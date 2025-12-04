@@ -1,9 +1,9 @@
 // scolia-backend/src/attendance/attendance.service.ts
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Attendance } from './entities/attendance.entity'; // 👈 Import de la nouvelle entité
+import { Attendance } from './entities/attendance.entity';
 
 @Injectable()
 export class AttendanceService {
@@ -15,17 +15,21 @@ export class AttendanceService {
   ) {}
 
   async saveAttendance(teacherId: number, classId: string, records: any[]): Promise<any> {
-    // Transformation des données pour la BDD
+    // ✅ CORRECTION : Validation des données entrantes
+    if (!records || !Array.isArray(records)) {
+        this.logger.warn(`Tentative de sauvegarde d'appel vide ou invalide pour classe ${classId}`);
+        throw new BadRequestException("Aucune donnée d'appel fournie.");
+    }
+
     const entities = records.map(record => {
         return this.attendanceRepo.create({
             classId: Number(classId),
             studentId: record.studentId,
             status: record.status,
-            date: new Date() // Date du jour
+            date: new Date()
         });
     });
 
-    // Sauvegarde en une seule fois (Bulk)
     await this.attendanceRepo.save(entities);
 
     const absences = records.filter(r => r.status !== 'Présent').length;
@@ -34,7 +38,6 @@ export class AttendanceService {
     return { success: true, count: entities.length };
   }
   
-  // Implémentation de la lecture pour les parents
   async findByStudent(studentId: number) {
       return this.attendanceRepo.find({
           where: { studentId },

@@ -1,6 +1,6 @@
 // scolia-backend/src/timetable/timetable.service.ts
 
-import { Injectable, InternalServerErrorException, Logger, ForbiddenException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TimetableEvent } from './entities/timetable-event.entity';
@@ -22,15 +22,10 @@ export class TimetableService {
     this.genAI = new GoogleGenerativeAI(apiKey || '');
   }
 
-  // 🔒 SÉCURITÉ : On filtre par classId ET schoolId
-  // Si un élève change l'ID dans l'URL pour voir une autre école, ça renverra vide.
   async findByClass(classId: number, schoolId: number): Promise<TimetableEvent[]> {
     try {
         const events = await this.timetableRepo.find({ 
-            where: { 
-                classId: classId,
-                schoolId: schoolId // 👈 Verrouillage Multi-Tenant
-            },
+            where: { classId: classId, schoolId: schoolId },
         });
 
         if (!events || events.length === 0) return [];
@@ -51,9 +46,10 @@ export class TimetableService {
     }
   }
 
-  // --- GÉNÉRATION IA (ROBUSTE) ---
+  // --- GÉNÉRATION IA (CORRIGÉE) ---
   async generateWithAI(classId: number, constraints: any, schoolId: number) {
-    const model = this.genAI.getGenerativeModel({ model: "gemini-pro" });
+    // ✅ CORRECTION : Utilisation du modèle actuel
+    const model = this.genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const prompt = `
       Agis comme un planificateur scolaire expert. Crée un emploi du temps JSON pour une classe.
@@ -67,7 +63,6 @@ export class TimetableService {
       const result = await model.generateContent(prompt);
       const text = result.response.text();
 
-      // Nettoyage JSON via Regex
       const jsonRegex = /\[[\s\S]*\]/; 
       const match = text.match(jsonRegex);
 
@@ -80,7 +75,6 @@ export class TimetableService {
           throw new Error("JSON mal formé.");
       }
 
-      // 🧹 ROBUSTESSE : Dictionnaire de normalisation des jours
       const dayMapping: Record<string, string> = {
           'monday': 'Lundi', 'mon': 'Lundi', 'lundi': 'Lundi',
           'tuesday': 'Mardi', 'tue': 'Mardi', 'mardi': 'Mardi',
@@ -90,22 +84,20 @@ export class TimetableService {
           'saturday': 'Samedi', 'sat': 'Samedi', 'samedi': 'Samedi'
       };
 
-      // Suppression de l'ancien emploi du temps
       await this.timetableRepo.delete({ classId });
 
       const events = scheduleData.map((slot: any) => {
-          // Normalisation : on met en minuscule et on cherche dans le dico
           const rawDay = (slot.day || '').toLowerCase().trim();
-          const cleanDay = dayMapping[rawDay] || slot.day; // Fallback si non trouvé (ex: "Lundi" tel quel)
+          const cleanDay = dayMapping[rawDay] || slot.day; 
 
           return this.timetableRepo.create({
-              dayOfWeek: cleanDay, // Jour propre
+              dayOfWeek: cleanDay,
               startTime: slot.start,
               endTime: slot.end,
               subject: slot.subject,
               room: slot.room || 'Salle',
               classId: classId,
-              schoolId: schoolId, // On force l'ID école de l'admin
+              schoolId: schoolId,
               teacherId: null
           });
       });
