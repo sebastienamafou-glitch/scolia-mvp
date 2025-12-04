@@ -19,7 +19,7 @@ export class PaymentsController {
     return this.paymentsService.getFeeByStudent(Number(studentId), schoolId);
   }
 
-  // 👇 ROUTE CORRIGÉE
+  // 👇 ROUTE CORRIGÉES
   @Roles('Admin')
   @Post('fees') 
   async updateFees(@Request() req, @Body() body: { studentId: number, totalAmount: any, dateLimit?: string }) {

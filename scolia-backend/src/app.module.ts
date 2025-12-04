@@ -47,7 +47,7 @@ import { ImportModule } from './import/import.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    // ✅ Activation des événements globaux
+    // ✅ Activation des événements globauxs
     EventEmitterModule.forRoot(),
     
     TypeOrmModule.forRootAsync({
