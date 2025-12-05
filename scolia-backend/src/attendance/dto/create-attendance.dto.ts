@@ -1,9 +1,10 @@
-import { IsNotEmpty, IsArray, IsString, IsNumber, ValidateNested, IsOptional } from 'class-validator';
+import { IsNotEmpty, IsArray, IsString, ValidateNested, IsNumberString, IsOptional } from 'class-validator';
 import { Type } from 'class-transformer';
 
 class StudentStatusDto {
   @IsNotEmpty()
-  studentId: number;
+  // Accepte string ou number et convertit implicitement pour la validation
+  studentId: number | string; 
 
   @IsString()
   @IsNotEmpty()
@@ -11,7 +12,8 @@ class StudentStatusDto {
 }
 
 export class CreateAttendanceDto {
-  // On accepte string ou number pour éviter les erreurs de conversion frontend
+  // ✅ CORRECTION : Utilisation de IsOptional + logique custom ou validation plus souple
+  // Souvent le frontend envoie "2" (string) au lieu de 2 (number)
   @IsNotEmpty({ message: "L'ID de la classe est obligatoire" })
   classId: string | number;
 

@@ -40,7 +40,13 @@ import { TimetableModule } from './timetable/timetable.module';
 import { SkillsModule } from './skills/skills.module';
 import { AttendanceModule } from './attendance/attendance.module'; 
 import { ImportModule } from './import/import.module'; 
-import { BulletinsModule } from './bulletins/bulletins.module'; // ✅ Import correct
+import { BulletinsModule } from './bulletins/bulletins.module';
+
+// ✅ CORRECTION : Import des contrôleurs manquants (cause des 404)
+import { GradesController } from './grades/grades.controller';
+import { NotificationsController } from './notifications/notifications.controller';
+// Note: On importe aussi les contrôleurs existants si besoin d'injection directe, 
+// mais ici on priorise ceux qui posaient problème.
 
 @Module({
   imports: [
@@ -86,11 +92,15 @@ import { BulletinsModule } from './bulletins/bulletins.module'; // ✅ Import co
     AnalyticsModule, 
     TimetableModule,
     AttendanceModule,
-    ImportModule, // ✅ Virgule ajoutée ici
+    ImportModule, 
     BulletinsModule, 
-
   ],
-  controllers: [AppController],
+  controllers: [
+    AppController,
+    // ✅ CORRECTION : Enregistrement manuel des contrôleurs pour forcer le mapping des routes
+    GradesController,
+    NotificationsController
+  ],
   providers: [
     AppService,
     {
