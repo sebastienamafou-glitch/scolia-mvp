@@ -1,7 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { FaRobot, FaMobileAlt, FaChartLine, FaCheckCircle, FaUserGraduate, FaSchool, FaChalkboardTeacher } from 'react-icons/fa';
-import { Logo } from '../components/Logo'; // Assure-toi que le chemin est bon
+import { FaRobot, FaMobileAlt, FaChartLine, FaCheckCircle, FaUserGraduate, FaSchool, FaChalkboardTeacher, FaDollarSign, FaEnvelope } from 'react-icons/fa';
+
+// ✅ CORRECTION : L'importation du logo est maintenue
+import LogoWebappCi from './pages/logowebbapci.png'; 
 
 // Styles CSS-in-JS (déplacés en dehors pour la clarté)
 const navLinkStyle: React.CSSProperties = { 
@@ -71,17 +73,116 @@ const Stat = ({ number, label }: any) => (
     </div>
 );
 
+const PricingCard = ({ title, price, target, features, isFeatured }: any) => (
+    <div style={{ 
+        padding: '30px', 
+        backgroundColor: isFeatured ? '#0A2240' : 'white', 
+        color: isFeatured ? 'white' : '#333',
+        borderRadius: '12px', 
+        boxShadow: isFeatured ? '0 10px 20px rgba(0,0,0,0.2)' : '0 4px 15px rgba(0,0,0,0.05)', 
+        border: isFeatured ? '3px solid #F77F00' : '1px solid #eee',
+        textAlign: 'center',
+        transform: isFeatured ? 'scale(1.05)' : 'scale(1)',
+        transition: 'all 0.3s ease-in-out'
+    }}>
+        <h3 style={{ fontSize: '1.8rem', color: isFeatured ? '#F77F00' : '#0A2240', marginBottom: '5px' }}>{title}</h3>
+        <p style={{ fontSize: '0.9rem', color: isFeatured ? 'rgba(255,255,255,0.7)' : '#666', marginBottom: '20px' }}>{target}</p>
+        
+        <div style={{ margin: '30px 0' }}>
+            <span style={{ fontSize: '3rem', fontWeight: '800' }}>{price}</span>
+            <span style={{ fontSize: '1rem', opacity: 0.7 }}>/mois</span>
+        </div>
+        
+        <p style={{ fontSize: '1rem', fontWeight: 'bold', borderBottom: isFeatured ? '1px solid rgba(255,255,255,0.2)' : '1px solid #ddd', paddingBottom: '10px', marginBottom: '15px' }}>
+            Fonctionnalités Incluses :
+        </p>
+
+        <ul style={{ listStyle: 'none', padding: 0, textAlign: 'left', minHeight: '150px' }}>
+            {features.map((f: string, i: number) => (
+                <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '10px', fontSize: '0.9rem', opacity: isFeatured ? 0.9 : 1 }}>
+                    <FaCheckCircle color={isFeatured ? '#F77F00' : '#0A2240'} size={14} style={{ flexShrink: 0, marginTop: '3px' }}/> {f}
+                </li>
+            ))}
+        </ul>
+
+        <Link to="/login" style={{
+            ...primaryButtonStyle,
+            backgroundColor: isFeatured ? '#F77F00' : '#0A2240',
+            marginTop: '20px',
+            width: '100%',
+            textAlign: 'center'
+        }}>
+            Choisir cette offre
+        </Link>
+    </div>
+);
+
+// ✅ NOUVEAU COMPOSANT : Utilise directement la variable importée LogoWebappCi
+const LogoDisplay = ({ width = 40, height = 40, showText = false, color = '#0A2240' }: { width?: number, height?: number, showText?: boolean, color?: string }) => (
+    <div style={{ display: 'flex', alignItems: 'center' }}>
+        <img 
+            src={LogoWebappCi} // Utilise la variable importée
+            alt="WebappCi Logo" 
+            style={{ width: width, height: height, objectFit: 'contain' }} 
+        />
+        
+        {showText && (
+            <span style={{ marginLeft: '10px', fontSize: '1.2rem', fontWeight: 'bold', color: color }}>Scolia</span>
+        )}
+    </div>
+);
+
 
 const LandingPage: React.FC = () => {
+  // Données de la grille tarifaire (extraites du PDF)
+  const pricingData = [
+    {
+      title: "STARTER",
+      price: "30.000 FCFA",
+      target: "Petits Collèges (<300 élèves)",
+      features: [
+        "Gestion des Notes, Bulletins PDF",
+        "Paiements Cash/Mobile",
+        "App Parents"
+      ],
+      isFeatured: false
+    },
+    {
+      title: "PRO",
+      price: "60.000 FCFA",
+      target: "Collèges/Lycées (300-800)",
+      features: [
+        "Tout Starter",
+        "Radar de Risque",
+        "Cartes Scolaires",
+        "Support WhatsApp"
+      ],
+      isFeatured: true
+    },
+    {
+      title: "ELITE",
+      price: "100.000 FCFA",
+      target: "Groupes Scolaires (> 800)",
+      features: [
+        "Tout Pro",
+        "IA Emploi du Temps",
+        "Multi-sites",
+        "Formation continue"
+      ],
+      isFeatured: false
+    }
+  ];
+
   return (
     <div style={{ fontFamily: '"Inter", sans-serif', color: '#333', overflowX: 'hidden' }}>
       
       {/* --- NAVBAR --- */}
       <nav style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 5%', backgroundColor: 'white', position: 'sticky', top: 0, zIndex: 1000, boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-        <Logo width={40} height={40} showText={true} />
+        <LogoDisplay width={40} height={40} showText={true} />
         <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
             <a href="#features" style={navLinkStyle}>Fonctionnalités</a>
             <a href="#roles" style={navLinkStyle}>Pour qui ?</a>
+            <a href="#pricing" style={navLinkStyle}>Tarifs</a>
             
             <Link to="/login" style={secondaryLinkButtonStyle}>Connexion</Link> 
             
@@ -166,22 +267,100 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* --- FOOTER --- */}
+      {/* --- GRILLE TARIFAIRE --- */}
+      <section id="pricing" style={{ padding: '80px 5%', backgroundColor: '#f9f9f9' }}>
+          <h2 style={{ textAlign: 'center', fontSize: '2rem', color: '#0A2240', marginBottom: '20px' }}>
+              Une Offre Adaptée à Chaque Établissement
+          </h2>
+          <p style={{ textAlign: 'center', fontSize: '1.1rem', color: '#666', marginBottom: '60px' }}>
+              Choisissez l'abonnement mensuel sans engagement qui correspond à la taille de votre école.
+          </p>
+
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '50px' }}>
+              <div style={{ padding: '20px', backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #eee', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', textAlign: 'center' }}>
+                  <FaDollarSign color="#0A2240" size={20} style={{ marginRight: '10px' }} />
+                  <span style={{ fontWeight: 'bold', color: '#0A2240' }}>Ticket d'Entrée (Frais de Mise en Service) : </span>
+                  <span style={{ color: '#F77F00', fontWeight: 'bold' }}>150.000 FCFA</span> (Paiement unique à la signature).
+                  <p style={{ fontSize: '0.8rem', color: '#666', margin: '5px 0 0 0' }}>
+                      Inclut la création de l'instance (Cloud), le paramétrage de l'école (Logo, Classes), l'import CSV et la formation de 2h.
+                  </p>
+              </div>
+          </div>
+
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px', alignItems: 'center' }}>
+              {pricingData.map((data) => (
+                  <PricingCard key={data.title} {...data} />
+              ))}
+          </div>
+          
+          <p style={{ textAlign: 'center', fontSize: '0.9rem', color: '#999', marginTop: '40px' }}>
+              * Les prix d'abonnement affichés sont mensuels. Une facturation trimestrielle ou annuelle est disponible avec remise.
+          </p>
+
+      </section>
+
+
+      {/* --- FOOTER AVEC COLONNES ET ADRESSE SUPPORT --- */}
       <footer style={{ 
           backgroundColor: '#0A2240', 
           color: 'white', 
-          padding: '40px 5%', 
-          textAlign: 'center',
-          display: 'flex', // ✅ Ajout du flex pour l'alignement
-          justifyContent: 'center', // ✅ Centrage du contenu
-          alignItems: 'center', // ✅ Alignement vertical
-          gap: '15px' // ✅ Espace entre le logo et le texte
+          padding: '60px 5% 20px 5%', 
       }}>
-        {/* ✅ Ajout du logo */}
-        <Logo width={30} height={30} showText={false} /> 
-        
-        {/* ✅ Remplacement de Scolia par WebappCi */}
-        <p style={{ margin: 0 }}>&copy; {new Date().getFullYear()} **WebappCi**. Tous droits réservés.</p>
+        <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: '1.5fr repeat(2, 1fr)', 
+            gap: '50px', 
+            maxWidth: '1200px', 
+            margin: '0 auto',
+            textAlign: 'left',
+            paddingBottom: '30px',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+        }}>
+            {/* Colonne 1 : Branding et Copyright */}
+            <div>
+                <LogoDisplay width={40} height={40} showText={true} color="white" />
+                <p style={{ fontSize: '0.9rem', opacity: 0.8, marginTop: '15px' }}>
+                    Solution Scolaire Propulsée par l'IA.
+                </p>
+                <p style={{ margin: '30px 0 0 0', fontSize: '0.8rem', opacity: 0.5 }}>
+                    &copy; {new Date().getFullYear()} <span style={{ color: '#F77F00', fontWeight: 'bold' }}>WebappCi</span>. Tous droits réservés.
+                </p>
+            </div>
+            
+            {/* Colonne 2 : Produit/Tarifs */}
+            <div>
+                <h4 style={{ color: '#F77F00', fontSize: '1.1rem', marginBottom: '15px' }}>Produit</h4>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                    <li style={{ marginBottom: '10px' }}><a href="#features" style={{ color: 'white', textDecoration: 'none', opacity: 0.8 }}>Fonctionnalités</a></li>
+                    <li style={{ marginBottom: '10px' }}><a href="#pricing" style={{ color: 'white', textDecoration: 'none', opacity: 0.8 }}>Grille Tarifaire</a></li>
+                    <li style={{ marginBottom: '10px' }}><a href="/login" style={{ color: 'white', textDecoration: 'none', opacity: 0.8 }}>Essai Gratuit</a></li>
+                </ul>
+            </div>
+
+            {/* Colonne 3 : Contact & Légal */}
+            <div>
+                <h4 style={{ color: '#F77F00', fontSize: '1.1rem', marginBottom: '15px' }}>Contact & Légal</h4>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                    <li style={{ marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <FaEnvelope size={14} color="#F77F00" style={{ flexShrink: 0 }} />
+                        <a href="mailto:contact@scolia.ci" style={{ color: 'white', textDecoration: 'none', opacity: 0.8, fontSize: '0.9rem' }}>
+                            contact@scolia.ci
+                        </a>
+                    </li>
+                    <li style={{ marginBottom: '10px' }}><Link to="/privacy" style={{ color: 'white', textDecoration: 'none', opacity: 0.8 }}>Politique de Confidentialité</Link></li>
+                    <li style={{ marginBottom: '10px' }}><Link to="/terms" style={{ color: 'white', textDecoration: 'none', opacity: 0.8 }}>Conditions Générales</Link></li>
+                    <li style={{ marginBottom: '10px' }}><Link to="/help" style={{ color: 'white', textDecoration: 'none', opacity: 0.8 }}>Centre d'aide</Link></li>
+                </ul>
+            </div>
+        </div>
+
+        {/* Section finale du copyright et WebappCi */}
+        <div style={{ textAlign: 'center', paddingTop: '20px' }}>
+            <p style={{ margin: 0, fontSize: '0.75rem', opacity: 0.5 }}>
+                Développé par WebappCi pour révolutionner l'éducation en Afrique de l'Ouest.
+            </p>
+        </div>
       </footer>
     </div>
   );
