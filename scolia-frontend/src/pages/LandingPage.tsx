@@ -33,6 +33,18 @@ const secondaryButtonStyle: React.CSSProperties = {
     display: 'inline-block',
 };
 
+// NOUVEAU STYLE pour le lien Connexion dans la navbar (style de bouton discret)
+const secondaryLinkButtonStyle: React.CSSProperties = {
+    color: '#0A2240',
+    backgroundColor: '#EFEFEF', // Fond légèrement grisé
+    padding: '8px 15px',
+    borderRadius: '8px',
+    textDecoration: 'none',
+    fontWeight: 'bold',
+    transition: 'background 0.3s',
+    display: 'inline-block'
+}
+
 const FeatureCard = ({ icon, title, description }: any) => (
     <div style={{ padding: '30px', backgroundColor: 'white', borderRadius: '10px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', textAlign: 'center' }}>
         <div style={{ color: '#0A2240', marginBottom: '15px' }}>{icon}</div>
@@ -71,8 +83,10 @@ const LandingPage: React.FC = () => {
         <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
             <a href="#features" style={navLinkStyle}>Fonctionnalités</a>
             <a href="#roles" style={navLinkStyle}>Pour qui ?</a>
-            {/* Les liens Link to="/login" sont corrects, ils s'appuient sur le router désormais fixé dans App.tsx */}
-            <Link to="/login" style={{ textDecoration: 'none', color: '#0A2240', fontWeight: 'bold' }}>Connexion</Link>
+            
+            {/* ✅ CORRECTION / AMÉLIORATION : Utilisation du nouveau style de bouton pour Connexion */}
+            <Link to="/login" style={secondaryLinkButtonStyle}>Connexion</Link> 
+            
             <Link to="/login" style={primaryButtonStyle}>Essai Gratuit</Link>
         </div>
       </nav>
