@@ -4,7 +4,7 @@ import { FaRobot, FaMobileAlt, FaChartLine, FaCheckCircle, FaUserGraduate, FaSch
 import { Logo } from '../components/Logo'; // Assurez-vous que le chemin est bon
 
 // ✅ IMPORT DU LOGO (Assurez-vous d'avoir renommé et placé votre image dans src/assets/)
-import waciLogo from '../assets/waci-logo.png'; 
+import waciLogo from '../assets/webappci-logo.png'; 
 
 const LandingPage: React.FC = () => {
   return (
