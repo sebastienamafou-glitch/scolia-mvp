@@ -12,7 +12,9 @@ export class StudentsController {
   @Roles('Parent')
   @Get('my-children')
   async getMyChildren(@Request() req) {
-    const parentId = req.user.sub; 
+    const parentId = req.user.sub; // ID du parent connecté (User ID)
+    
+    // Retourne des objets Student (avec dateNaissance)
     return this.studentsService.findByParent(parentId);
   }
 
@@ -20,9 +22,8 @@ export class StudentsController {
   @Get('class/:classId') 
   async getStudentsByClass(@Request() req, @Param('classId') classId: string) {
     const schoolId = req.user.schoolId;
-    if (!schoolId) throw new ForbiddenException("Accès refusé.");
+    if (!schoolId) throw new ForbiddenException("Accès refusé : École non identifiée.");
 
-    // ✅ CORRECTION : On passe schoolId
     return this.studentsService.findByClass(Number(classId), schoolId);
   }
 
@@ -33,9 +34,10 @@ export class StudentsController {
     const student = await this.studentsService.findOne(+id);
     if (!student) throw new NotFoundException(`Élève introuvable`);
     
-    // Protection Multi-Tenant simple
+    // Protection Multi-Tenant
+    // req.user.schoolId peut être null pour un SuperAdmin, sinon on vérifie
     if (req.user.schoolId && student.schoolId !== req.user.schoolId) {
-        throw new ForbiddenException("Cet élève n'est pas dans votre école.");
+        throw new ForbiddenException("Cet élève n'appartient pas à votre établissement.");
     }
     
     return student;
