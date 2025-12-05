@@ -55,7 +55,7 @@ export class TimetableService {
 
     const modelsToTry = ["gemini-1.5-flash-001", "gemini-pro"];
     
-    // ✅ CORRECTION ICI : On type explicitement en 'any' pour éviter l'erreur 'type never'
+    // ✅ CORRECTION ICI : "any" permet d'éviter l'erreur ts(2339) sur le .map() plus bas
     let scheduleData: any = null; 
 
     for (const modelName of modelsToTry) {
@@ -69,7 +69,7 @@ export class TimetableService {
             const match = text.match(jsonRegex);
             if (match) {
                 scheduleData = JSON.parse(match[0]);
-                break; // Succès, on sort de la boucle
+                break; // Succès
             }
         } catch (e) {
             this.logger.warn(`⚠️ Échec avec ${modelName}: ${e.message}`);
@@ -92,7 +92,7 @@ export class TimetableService {
 
         await this.timetableRepo.delete({ classId });
 
-        // Maintenant TypeScript sait que scheduleData est 'any', donc .map() fonctionne
+        // Maintenant TypeScript est content car scheduleData est 'any'
         const events = scheduleData.map((slot: any) => {
             const rawDay = (slot.day || '').toLowerCase().trim();
             const cleanDay = dayMapping[rawDay] || slot.day; 
