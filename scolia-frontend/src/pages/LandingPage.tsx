@@ -3,8 +3,29 @@ import { Link } from 'react-router-dom';
 import { FaRobot, FaMobileAlt, FaChartLine, FaCheckCircle, FaUserGraduate, FaSchool, FaChalkboardTeacher, FaLightbulb } from 'react-icons/fa';
 import { Logo } from '../components/Logo'; // Assure-toi que le chemin est bon
 
-// --- STYLES CSS-in-JS (Conservés et Améliorés) ---
-// Couleurs Principales (Basées sur le thème Scolia : Bleu '#0A2240', Orange '#F77F00')
+// --- NOUVEAU COMPOSANT : Logo WebappCi ---
+// NOTE: L'image que vous avez fournie (IMG_1383-removebg-preview(1).png) doit être accessible via un chemin.
+// Pour cet exemple, j'utilise un chemin local/relatif. Assurez-vous que l'image est placée 
+// dans le dossier 'public' ou 'assets' et que le chemin est correct.
+const WebappCiLogo: React.FC<{ width?: number, height?: number }> = ({ width = 80, height = 24 }) => (
+    <div style={{ display: 'inline-block', opacity: 0.7 }}>
+        {/* REMPLACER CE CHEMIN PAR LE CHEMIN RÉEL VERS VOTRE IMAGE DANS LE PROJET */}
+        <img 
+            src="/images/webappci-logo.png" // <--- IMPORTANT : Mettre le chemin correct ici
+            alt="Développé par WebappCi"
+            style={{ 
+                width: width, 
+                height: 'auto', 
+                objectFit: 'contain',
+                // Styles subtils pour s'intégrer dans le footer sombre
+                filter: 'grayscale(100%) brightness(150%)', 
+                transition: 'filter 0.3s'
+            }}
+        />
+    </div>
+);
+
+// --- STYLES CSS-in-JS (Conservés) ---
 const colors = {
     blue: '#0A2240',
     orange: '#F77F00',
@@ -211,13 +232,23 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* --- FOOTER --- */}
+      {/* --- FOOTER (AVEC LOGO WEBAPPCI) --- */}
       <footer style={{ backgroundColor: colors.blue, color: colors.lightText, padding: '40px 5%', textAlign: 'center' }}>
-        <p style={{ opacity: 0.8 }}>&copy; {new Date().getFullYear()} Scolia. Tous droits réservés. | Abidjan, Côte d'Ivoire</p>
-        <div style={{ marginTop: '15px', display: 'flex', justifyContent: 'center', gap: '20px', fontSize: '0.9rem' }}>
-            <a href="#" style={{ color: colors.lightText, opacity: 0.6, textDecoration: 'none' }}>Mentions Légales</a>
-            <span style={{ opacity: 0.4 }}>|</span>
-            <a href="mailto:contact@scolia.ci" style={{ color: colors.lightText, opacity: 0.6, textDecoration: 'none' }}>Contact</a>
+        <p style={{ opacity: 0.8, marginBottom: '10px' }}>&copy; {new Date().getFullYear()} Scolia. Tous droits réservés. | Abidjan, Côte d'Ivoire</p>
+        <div style={{ 
+            marginTop: '20px', 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '15px' 
+        }}>
+            <p style={{ opacity: 0.6, fontSize: '0.9rem' }}>
+                Propulsé par 
+            </p>
+            <WebappCiLogo width={100} height={30} />
+            <span style={{ opacity: 0.4, fontSize: '0.9rem' }}>|</span>
+            <a href="mailto:contact@scolia.ci" style={{ color: colors.lightText, opacity: 0.6, textDecoration: 'none', fontSize: '0.9rem' }}>Support</a>
         </div>
       </footer>
     </div>
