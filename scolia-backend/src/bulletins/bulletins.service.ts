@@ -61,9 +61,9 @@ export class BulletinsService {
     return {
         studentId: finalStudentId,
         period: period,
-        averages: averages,
+        subjects: averages, 
         globalAverage: globalAverage,
-        appreciation: "Travail régulier, continuez ainsi !" // Placeholder
+        appreciation: "Travail régulier, continuez ainsi !"
     };
   }
 }
