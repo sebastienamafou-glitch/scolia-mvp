@@ -1,5 +1,3 @@
-// scolia-frontend/src/pages/ParentDashboard.tsx
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
@@ -219,7 +217,8 @@ const ParentDashboard: React.FC = () => {
                                     {/* SECTION GAUCHE : CARTE SCOLAIRE */}
                                     <div style={{ flex: '0 0 auto' }}>
                                         <h3 style={{ marginTop: 0, color: '#0A2240', marginBottom: '15px' }}>🆔 Carte Scolaire</h3>
-                                        {/* 👇 CORRECTION MAJEURE ICI : Protection contre date undefined */}
+                                        
+                                        {/* 👇 SÉCURITÉ : Protection contre date undefined */}
                                         <DigitalIdCard 
                                             student={{
                                                 id: currentChild.id,
@@ -227,8 +226,7 @@ const ParentDashboard: React.FC = () => {
                                                 prenom: currentChild.prenom,
                                                 photo: currentChild.photo,
                                                 classe: currentChild.class?.name,
-                                                // Si dateNaissance est null/undefined, on passe une chaine vide ou une date par défaut
-                                                // pour éviter le crash .toLocaleString() dans le composant enfant
+                                                // Utilisation d'une chaîne vide si la date est manquante
                                                 dateNaissance: currentChild.dateNaissance || '', 
                                                 schoolName: "Scolia Academy"
                                             }}
@@ -301,6 +299,7 @@ const ParentDashboard: React.FC = () => {
 
                                                     <div className="no-print"> 
                                                         <h4 style={{ margin: '0 0 10px 0', color: '#555' }}>💰 Gestion Scolarité</h4>
+                                                        {/* Formulaire de paiement */}
                                                         <PaymentSubmissionForm 
                                                             studentId={currentChild.id}
                                                             onTransactionSubmitted={handlePaymentSubmitted}

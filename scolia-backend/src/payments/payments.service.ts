@@ -1,11 +1,9 @@
-// scolia-backend/src/payments/payments.service.ts
-
 import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Fee } from './entities/fee.entity';
 import { Transaction } from './entities/transaction.entity';
-import { Student } from '../students/entities/student.entity'; // ✅ Import nécessaire
+import { Student } from '../students/entities/student.entity';
 import { OnEvent } from '@nestjs/event-emitter';
 
 @Injectable()
@@ -18,13 +16,13 @@ export class PaymentsService {
     @InjectRepository(Transaction)
     private transactionsRepository: Repository<Transaction>,
     @InjectRepository(Student)
-    private studentRepository: Repository<Student>, // ✅ Injection pour la résolution d'ID
+    private studentRepository: Repository<Student>,
   ) {}
 
   // Utilitaire pour trouver le Student ID réel à partir d'un ID (qui peut être User ou Student)
   private async resolveStudentId(id: number): Promise<number | null> {
       const student = await this.studentRepository.findOne({ 
-          where: [ { id: id }, { userId: id } ] // Cherche par ID ou par UserID
+          where: [ { id: id }, { userId: id } ] 
       });
       return student ? student.id : null;
   }
@@ -32,7 +30,6 @@ export class PaymentsService {
   @OnEvent('student.created')
   async handleStudentCreation(payload: { studentId: number, schoolId: number, fraisScolarite?: number }) {
       this.logger.log(`🏗️ Création auto du compte paiement pour l'élève #${payload.studentId}`);
-      // Ici payload.studentId est supposé être le bon (provenant de la création Student)
       await this.createPaymentAccount(payload.studentId);
       
       if (payload.fraisScolarite) {
@@ -40,19 +37,34 @@ export class PaymentsService {
       }
   }
 
-  async getFeeByStudent(id: number, schoolId: number): Promise<Fee | null> {
+  // 👇 CORRECTION ICI : Ne retourne jamais null pour éviter le crash "undefined" au frontend
+  async getFeeByStudent(id: number, schoolId: number): Promise<Fee> {
     const realStudentId = await this.resolveStudentId(id);
-    if (!realStudentId) return null;
-    return this.feesRepository.findOne({ where: { studentId: realStudentId, school: { id: schoolId } }, relations: ['student'] });
+    
+    // Valeur par défaut sécurisée
+    const emptyFee = { 
+        totalAmount: 0, 
+        amountPaid: 0, 
+        studentId: realStudentId || 0,
+        schoolId: schoolId 
+    } as Fee;
+
+    if (!realStudentId) return emptyFee;
+
+    const fee = await this.feesRepository.findOne({ 
+        where: { studentId: realStudentId, school: { id: schoolId } }, 
+        relations: ['student'] 
+    });
+
+    // Si pas de frais trouvés, on renvoie l'objet vide (0 FCFA) au lieu de null
+    return fee || emptyFee;
   }
 
   async submitTransaction(userIdOrStudentId: number, amount: number, reference: string, schoolId: number): Promise<Transaction> {
     if (!reference || amount <= 0) throw new BadRequestException("Données invalides.");
     
-    // Note: Transaction lie à User (studentId dans TransactionEntity est souvent l'User ID)
-    // On garde l'ID tel quel pour la transaction si l'entité Transaction pointe vers User
     const newTransaction = this.transactionsRepository.create({ 
-        studentId: userIdOrStudentId, // Ici on stocke l'ID reçu (souvent User ID)
+        studentId: userIdOrStudentId, 
         amount, 
         mobileMoneyReference: reference, 
         schoolId, 
@@ -70,8 +82,6 @@ export class PaymentsService {
     if (!transaction) throw new NotFoundException("Transaction introuvable.");
     if (transaction.status !== 'Pending') throw new BadRequestException("Déjà traitée.");
 
-    // ✅ RÉSOLUTION DE L'ID POUR LA TABLE FEE
-    // La transaction contient souvent un User ID, mais Fee requiert un Student ID
     const realStudentId = await this.resolveStudentId(transaction.studentId);
     
     if (!realStudentId) {
@@ -89,6 +99,7 @@ export class PaymentsService {
     }
 
     if (fee) {
+        // Conversion explicite en Number pour éviter la concaténation de chaînes
         const newPaid = Number(fee.amountPaid) + Number(transaction.amount);
         fee.amountPaid = newPaid;
         await this.feesRepository.save(fee);
@@ -116,17 +127,14 @@ export class PaymentsService {
     } else {
         fee.totalAmount = safeAmount;
         if (dateLimit) fee.dateLimit = dateLimit;
-        // Correction du cast 'any'
         if (schoolId) fee.school = { id: schoolId } as any; 
     }
     return this.feesRepository.save(fee);
   }
 
   async createPaymentAccount(studentId: number) {
-      // On suppose ici que studentId est déjà un ID valide de la table Student
       const exists = await this.feesRepository.findOne({ where: { studentId } });
       if (!exists) {
-          // Création sécurisée avec ID école par défaut null (sera mis à jour plus tard)
           await this.feesRepository.save({ studentId, totalAmount: 0, amountPaid: 0 });
       }
   }
