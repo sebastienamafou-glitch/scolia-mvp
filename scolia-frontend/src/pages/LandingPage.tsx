@@ -33,7 +33,6 @@ const secondaryButtonStyle: React.CSSProperties = {
     display: 'inline-block',
 };
 
-// NOUVEAU STYLE pour le lien Connexion dans la navbar (style de bouton discret)
 const secondaryLinkButtonStyle: React.CSSProperties = {
     color: '#0A2240',
     backgroundColor: '#EFEFEF', // Fond légèrement grisé
@@ -84,7 +83,6 @@ const LandingPage: React.FC = () => {
             <a href="#features" style={navLinkStyle}>Fonctionnalités</a>
             <a href="#roles" style={navLinkStyle}>Pour qui ?</a>
             
-            {/* ✅ CORRECTION / AMÉLIORATION : Utilisation du nouveau style de bouton pour Connexion */}
             <Link to="/login" style={secondaryLinkButtonStyle}>Connexion</Link> 
             
             <Link to="/login" style={primaryButtonStyle}>Essai Gratuit</Link>
@@ -169,8 +167,21 @@ const LandingPage: React.FC = () => {
       </section>
 
       {/* --- FOOTER --- */}
-      <footer style={{ backgroundColor: '#0A2240', color: 'white', padding: '40px 5%', textAlign: 'center' }}>
-        <p>&copy; {new Date().getFullYear()} Scolia. Tous droits réservés.</p>
+      <footer style={{ 
+          backgroundColor: '#0A2240', 
+          color: 'white', 
+          padding: '40px 5%', 
+          textAlign: 'center',
+          display: 'flex', // ✅ Ajout du flex pour l'alignement
+          justifyContent: 'center', // ✅ Centrage du contenu
+          alignItems: 'center', // ✅ Alignement vertical
+          gap: '15px' // ✅ Espace entre le logo et le texte
+      }}>
+        {/* ✅ Ajout du logo */}
+        <Logo width={30} height={30} showText={false} /> 
+        
+        {/* ✅ Remplacement de Scolia par WebappCi */}
+        <p style={{ margin: 0 }}>&copy; {new Date().getFullYear()} **WebappCi**. Tous droits réservés.</p>
       </footer>
     </div>
   );
