@@ -1,5 +1,3 @@
-// scolia-backend/src/timetable/timetable.service.ts
-
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -48,8 +46,8 @@ export class TimetableService {
 
   // --- GÉNÉRATION IA (CORRIGÉE) ---
   async generateWithAI(classId: number, constraints: any, schoolId: number) {
-    // ✅ CORRECTION : Utilisation du modèle actuel
-    const model = this.genAI.getGenerativeModel({ model: "gemini-1.5-flash-001" });
+    // ✅ CORRECTION : Utilisation du nom de modèle valide
+    const model = this.genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const prompt = `
       Agis comme un planificateur scolaire expert. Crée un emploi du temps JSON pour une classe.

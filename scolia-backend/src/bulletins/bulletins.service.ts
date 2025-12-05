@@ -16,7 +16,7 @@ export class BulletinsService {
   ) {}
 
   async generateBulletin(studentId: number, period: string) {
-    // 1. Smart Lookup : On s'assure d'avoir le bon ID élève (User ID vs Student ID)
+    // 1. Smart Lookup : On s'assure d'avoir le bon ID élève
     let finalStudentId = studentId;
     const student = await this.studentRepo.findOne({ 
         where: [ { id: studentId }, { userId: studentId } ] 
@@ -30,11 +30,10 @@ export class BulletinsService {
       order: { matiere: 'ASC' }
     });
 
-    // 🚨 CORRECTION CRUCIALE ICI 🚨
-    // Si aucune note n'est trouvée, on renvoie "subjects" (vide) et non "averages"
+    // ✅ CORRECTION CRUCIALE : On renvoie "subjects" même si vide
     if (!grades.length) {
         return { 
-            subjects: [], // ✅ C'est ce nom que le frontend attend pour faire son .map()
+            subjects: [], 
             globalAverage: 0, 
             comments: "Aucune note disponible." 
         };
@@ -44,7 +43,7 @@ export class BulletinsService {
     const subjects: { [key: string]: number[] } = {};
     
     grades.forEach(grade => {
-        // Filtrage simple par période
+        // Filtrage simple par matière
         if (!subjects[grade.matiere]) subjects[grade.matiere] = [];
         subjects[grade.matiere].push(Number(grade.value));
     });
@@ -54,7 +53,7 @@ export class BulletinsService {
         const avg = notes.reduce((a, b) => a + b, 0) / notes.length;
         return {
             matiere: subject,
-            moyenne: parseFloat(avg.toFixed(2)), // Arrondi 2 décimales
+            moyenne: parseFloat(avg.toFixed(2)),
             professeur: "Non assigné" 
         };
     });
@@ -66,7 +65,7 @@ export class BulletinsService {
     return {
         studentId: finalStudentId,
         period: period,
-        subjects: averages, // ✅ Le bon nom de propriété pour le Frontend
+        subjects: averages, // ✅ On renvoie bien la liste nommée "subjects"
         globalAverage: globalAverage,
         appreciation: "Travail régulier, continuez ainsi !"
     };

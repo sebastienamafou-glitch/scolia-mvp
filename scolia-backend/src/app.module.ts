@@ -1,12 +1,9 @@
-// scolia-backend/src/app.module.ts
-
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { EventEmitterModule } from '@nestjs/event-emitter'; // 👈 NOUVEAU
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler'; 
 import { APP_GUARD } from '@nestjs/core'; 
-import { BulletinsModule } from './bulletins/bulletins.module'; // 👈 Importez-le
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -43,11 +40,11 @@ import { TimetableModule } from './timetable/timetable.module';
 import { SkillsModule } from './skills/skills.module';
 import { AttendanceModule } from './attendance/attendance.module'; 
 import { ImportModule } from './import/import.module'; 
+import { BulletinsModule } from './bulletins/bulletins.module'; // ✅ Import correct
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    // ✅ Activation des événements globauxs
     EventEmitterModule.forRoot(),
     
     TypeOrmModule.forRootAsync({
@@ -65,7 +62,7 @@ import { ImportModule } from './import/import.module';
             Fee, Transaction, Competence, SkillEvaluation, TimetableEvent,
             Attendance, Notification
         ],
-        synchronize: false, // Mettre à true UNE SEULE FOIS pour créer les tables
+        synchronize: true,
       }),
       inject: [ConfigService],
     }),
@@ -89,8 +86,8 @@ import { ImportModule } from './import/import.module';
     AnalyticsModule, 
     TimetableModule,
     AttendanceModule,
-    ImportModule,
-    BulletinsModule, // 👈 Ajoutez-le dans la liste imports
+    ImportModule, // ✅ Virgule ajoutée ici
+    BulletinsModule, 
 
   ],
   controllers: [AppController],
