@@ -2,7 +2,7 @@ import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, OneToMany, OneToOne,
 import { User } from '../../users/entities/user.entity';
 import { Class } from '../../classes/entities/class.entity';
 import { Grade } from '../../grades/entities/grade.entity';
-import { School } from '../../schools/entities/school.entity'; // 👈 Import School
+import { School } from '../../schools/entities/school.entity'; // 👈 Import Ajouté
 
 @Entity()
 export class Student {
@@ -16,8 +16,9 @@ export class Student {
   prenom: string;
 
   // --- CHAMPS D'INFORMATION ---
+  
   @Column({ type: 'date', nullable: true })
-  dateNaissance: Date; // ✅ C'est ce champ que le Frontend cherche !
+  dateNaissance: Date; // ✅ Le champ que le front cherche désespérément
 
   @Column({ nullable: true })
   adresse: string;
@@ -34,12 +35,8 @@ export class Student {
   @Column({ type: 'text', nullable: true })
   infosMedicales: string;
 
-  @Column({ nullable: true }) // nullable: true car certains n'ont pas encore de photo
-  photo: string;
+  // --------------------------------------
 
-  // --- RELATIONS ---
-
-  // Lien vers le compte Login (User)
   @OneToOne(() => User)
   @JoinColumn({ name: 'userId' })
   user: User;
@@ -47,25 +44,25 @@ export class Student {
   @Column({ nullable: true })
   userId: number;
 
+  // --------------------------------------
+
   @ManyToOne(() => Class, (classe) => classe.students)
-  @JoinColumn({ name: 'classId' })
   class: Class;
 
-  @Column({ nullable: true })
-  classId: number;
-
-  // Lien avec le compte Parent (User)
-  @ManyToOne(() => User)
+  @ManyToOne(() => User) // Relation vers le Parent
   @JoinColumn({ name: 'parentId' })
   parent: User;
-
+  
   @Column({ nullable: true })
   parentId: number;
 
   @OneToMany(() => Grade, (grade) => grade.student)
   grades: Grade[];
 
-  // ✅ AJOUT : Relation School indispensable pour le multi-tenant
+  @Column({ nullable: true }) 
+  photo: string;
+
+  // ✅ CORRECTION : Ajout de la relation School manquante
   @ManyToOne(() => School)
   @JoinColumn({ name: 'schoolId' })
   school: School;

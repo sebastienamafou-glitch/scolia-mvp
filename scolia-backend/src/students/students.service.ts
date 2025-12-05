@@ -10,7 +10,7 @@ import { User } from '../users/entities/user.entity';
 export class StudentsService {
   constructor(
     @InjectRepository(Student)
-    private studentsRepository: Repository<Student>, // ✅ Changement principal
+    private studentsRepository: Repository<Student>, // ✅ Changement de Repository
     @InjectRepository(User)
     private usersRepository: Repository<User>,
   ) {}
@@ -20,10 +20,10 @@ export class StudentsService {
     return this.studentsRepository.find({
       where: { 
         class: { id: classId },
-        school: { id: schoolId } // Sécurité multi-école
+        school: { id: schoolId } 
       },
       order: { nom: 'ASC' },
-      relations: ['class', 'parent', 'user'] // On charge les relations utiles
+      relations: ['class', 'parent', 'user'] 
     });
   }
 
@@ -35,16 +35,14 @@ export class StudentsService {
      });
   }
 
-  // --- 3. RECHERCHE PAR PARENT ---
-  // C'est cette fonction qui corrige ton bug frontend
+  // --- 3. RECHERCHE PAR PARENT (Celle utilisée par le Dashboard) ---
   async findByParent(parentId: number): Promise<Student[]> {
+    // On cherche dans la table STUDENT où le champ 'parent' correspond à l'ID
     return this.studentsRepository.find({
       where: { 
-        parent: { id: parentId } // On cherche les étudiants liés à ce parent
+        parent: { id: parentId } 
       },
-      relations: ['class', 'school'], // ✅ On charge School et Class
-      // Pas besoin de 'select' complexe, TypeORM renvoie tout l'objet Student par défaut
-      // ce qui inclut 'dateNaissance' !
+      relations: ['class', 'school'], // On charge les relations nécessaires
       order: { prenom: 'ASC' }
     });
   }
