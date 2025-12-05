@@ -1,34 +1,51 @@
 // scolia-backend/src/auth/auth.service.ts
 
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Logger, UnauthorizedException } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt'; 
-// 👇 Import du MailService (Assurez-vous de l'avoir créé comme vu précédemment)
 import { MailService } from '../mail/mail.service'; 
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
-    private mailService: MailService, // 👈 Injection du service mail
+    private mailService: MailService,
   ) {}
 
   async validateUser(email: string, pass: string): Promise<any> {
-    const user = await this.usersService.findOneByEmail(email);
+    // 1. Normalisation de l'email (minuscule) pour éviter les erreurs de casse
+    const cleanEmail = email.toLowerCase().trim();
     
-    if (user && user.passwordHash && (await bcrypt.compare(pass, user.passwordHash))) {
+    const user = await this.usersService.findOneByEmail(cleanEmail);
+    
+    if (!user) {
+        this.logger.warn(`Tentative de connexion échouée : Email introuvable (${cleanEmail})`);
+        return null;
+    }
+
+    if (!user.passwordHash) {
+        this.logger.error(`Utilisateur ${cleanEmail} n'a pas de mot de passe défini.`);
+        return null;
+    }
+
+    const isMatch = await bcrypt.compare(pass, user.passwordHash);
+    
+    if (isMatch) {
       const { passwordHash, ...result } = user; 
       return result;
+    } else {
+      this.logger.warn(`Tentative de connexion échouée : Mot de passe incorrect pour ${cleanEmail}`);
+      return null;
     }
-    
-    return null;
   }
 
   async login(user: any) {
-    // 🛡️ SÉCURISATION : On récupère l'ID école depuis l'objet relation OU la propriété directe
-    // Cela corrige le bug où schoolId pouvait être undefined même si user.school existait
+    if (!user) throw new UnauthorizedException("Identifiants incorrects");
+
     const finalSchoolId = user.school?.id || user.schoolId;
 
     const payload = { 
@@ -43,24 +60,20 @@ export class AuthService {
     };
   }
 
-  // 👇 AJOUT : Demande de réinitialisation (envoi email)
   async forgotPassword(email: string) {
-    const user = await this.usersService.findOneByEmail(email);
+    const user = await this.usersService.findOneByEmail(email.toLowerCase().trim());
     if (!user) {
       throw new NotFoundException("Aucun utilisateur avec cet email.");
     }
 
-    // Token temporaire (15 min) avec un type spécifique 'reset'
     const payload = { sub: user.id, type: 'reset' };
     const token = this.jwtService.sign(payload, { expiresIn: '15m' });
 
-    // Envoi de l'email
     await this.mailService.sendResetPasswordEmail(user.email, token);
 
     return { message: 'Email de réinitialisation envoyé.' };
   }
 
-  // 👇 AJOUT : Validation et modification du mot de passe
   async resetPassword(token: string, newPassword: string) {
     try {
       const payload = this.jwtService.verify(token);
@@ -70,8 +83,6 @@ export class AuthService {
       }
 
       const userId = payload.sub;
-      
-      // Mise à jour via le UsersService
       await this.usersService.updatePassword(userId, newPassword);
 
       return { message: 'Mot de passe modifié avec succès.' };

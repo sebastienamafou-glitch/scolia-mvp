@@ -2,7 +2,7 @@
 
 import { Injectable, OnModuleInit, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Not, DataSource } from 'typeorm'; // 👈 Ajout de DataSource
+import { Repository, Not, DataSource } from 'typeorm'; 
 import { User } from './entities/user.entity';
 import { Student } from '../students/entities/student.entity'; 
 import * as bcrypt from 'bcrypt';
@@ -19,7 +19,7 @@ export class UsersService implements OnModuleInit {
     @InjectRepository(Student)
     private studentsRepository: Repository<Student>,
     private eventEmitter: EventEmitter2,
-    private dataSource: DataSource, // 👈 Injection pour gérer les transactions
+    private dataSource: DataSource,
   ) {}
 
   async onModuleInit() {
@@ -77,6 +77,8 @@ export class UsersService implements OnModuleInit {
         let email = createUserDto.email;
         if (!email || email.indexOf('@') === -1) {
            email = await this.generateUniqueEmail(createUserDto.prenom, createUserDto.nom);
+        } else {
+           email = email.toLowerCase(); // Force lowercase
         }
     
         const plainPassword = this.generateRandomPassword(8);
@@ -84,7 +86,6 @@ export class UsersService implements OnModuleInit {
     
         const { password, fraisScolarite, classId, schoolId, ...userData } = createUserDto;
     
-        // 1. Création de l'Utilisateur (User) dans la transaction
         const newUser = queryRunner.manager.create(User, {
             ...userData,
             email,
@@ -96,7 +97,6 @@ export class UsersService implements OnModuleInit {
     
         const savedUser = await queryRunner.manager.save(newUser);
     
-        // 2. Si c'est un élève, création du profil Student
         if (savedUser.role === 'Élève') {
             const newStudent = queryRunner.manager.create(Student, {
                 nom: savedUser.nom,
@@ -108,27 +108,23 @@ export class UsersService implements OnModuleInit {
             const savedStudent = await queryRunner.manager.save(newStudent);
             this.logger.log(`✅ Profil Étudiant créé (ID: ${savedStudent.id})`);
 
-            // Émission de l'événement (après succès transaction)
             this.eventEmitter.emit('student.created', {
                 studentId: savedStudent.id,
                 userId: savedUser.id,
                 schoolId: savedUser.schoolId ?? 0,
-                // Protection Anti-NaN
                 fraisScolarite: (fraisScolarite && !isNaN(parseFloat(fraisScolarite))) 
                     ? parseFloat(fraisScolarite) 
                     : 0
             });
         }
 
-        // Si tout est bon, on valide tout !
         await queryRunner.commitTransaction();
         return { ...savedUser, plainPassword };
 
     } catch (err) {
-        // En cas d'erreur, on annule TOUT (même la création du User)
         this.logger.error("❌ Erreur transaction création utilisateur. Rollback.", err);
         await queryRunner.rollbackTransaction();
-        throw err; // On renvoie l'erreur au frontend
+        throw err;
     } finally {
         await queryRunner.release();
     }
@@ -138,7 +134,16 @@ export class UsersService implements OnModuleInit {
   
   async findAll(): Promise<User[]> { return this.usersRepository.find({ relations: ['class'], order: { nom: 'ASC', prenom: 'ASC' } }); }
   async findAllBySchool(schoolId: number): Promise<User[]> { return this.usersRepository.find({ where: { school: { id: schoolId }, role: Not('SuperAdmin') }, relations: ['class'], order: { nom: 'ASC', prenom: 'ASC' } }); }
-  async findOneByEmail(email: string): Promise<User | null> { return this.usersRepository.createQueryBuilder("user").where("user.email = :email", { email }).addSelect("user.passwordHash").leftJoinAndSelect("user.school", "school").getOne(); }
+  
+  async findOneByEmail(email: string): Promise<User | null> { 
+      // Important : on s'assure de récupérer le passwordHash même s'il est caché par défaut
+      return this.usersRepository.createQueryBuilder("user")
+        .where("user.email = :email", { email })
+        .addSelect("user.passwordHash") // 👈 CRUCIAL POUR L'AUTH
+        .leftJoinAndSelect("user.school", "school")
+        .getOne(); 
+  }
+  
   async findStudentsByParentId(parentId: number): Promise<User[]> { return this.usersRepository.find({ where: { role: 'Élève', parentId }, relations: ['class'] }); }
   async findOneById(id: number): Promise<User | null> { return this.usersRepository.findOne({ where: { id }, relations: ['class', 'school'] }); }
   
