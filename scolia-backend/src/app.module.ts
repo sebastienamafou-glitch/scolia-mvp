@@ -6,7 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { EventEmitterModule } from '@nestjs/event-emitter'; // 👈 NOUVEAU
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler'; 
 import { APP_GUARD } from '@nestjs/core'; 
-
+import { BulletinsModule } from './bulletins/bulletins.module'; // 👈 Importez-le
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -89,7 +89,9 @@ import { ImportModule } from './import/import.module';
     AnalyticsModule, 
     TimetableModule,
     AttendanceModule,
-    ImportModule
+    ImportModule,
+    BulletinsModule, // 👈 Ajoutez-le dans la liste imports
+
   ],
   controllers: [AppController],
   providers: [
