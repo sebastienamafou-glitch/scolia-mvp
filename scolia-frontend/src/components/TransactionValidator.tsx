@@ -47,7 +47,7 @@ export const TransactionValidator: React.FC = () => {
             
             setStatusMessage(`Transaction ${id} ${action === 'validate' ? 'validée' : 'rejetée'} !`);
             
-            // Optimistic UI update
+            // Optimistic UI update : on retire immédiatement l'élément de la liste
             setPendingTransactions(prev => prev.filter(t => t.id !== id));
             
         } catch (e) {

@@ -15,10 +15,14 @@ export const TeacherAlertForm: React.FC = () => {
         setSuccess('');
 
         try {
+            // Conversion sécurisée : si vide ou <= 0, on envoie undefined (ou null selon votre backend)
+            const durationNum = duration ? Number(duration) : 0;
+
             const body = {
                 type: alertType,
                 details: details || `Déclaration de ${alertType.toLowerCase()}.`,
-                duration: alertType === 'Retard' ? Number(duration) : undefined,
+                // Si c'est un retard, on s'assure d'envoyer un chiffre, sinon undefined
+                duration: alertType === 'Retard' && durationNum > 0 ? durationNum : undefined,
             };
 
             const res = await api.post('/notifications/alert-teacher', body);
@@ -26,9 +30,11 @@ export const TeacherAlertForm: React.FC = () => {
             setSuccess(res.data.message || 'Notification envoyée avec succès.');
             setDetails('');
             setDuration('');
-        } catch (error) {
-            console.error(error);
-            alert("Erreur lors de l'envoi de l'alerte. Vérifiez la connexion.");
+        } catch (error: any) {
+            console.error("Erreur envoi alerte:", error);
+            // Affiche l'erreur du backend si disponible (utile vu votre capture d'écran)
+            const msg = error.response?.data?.message || "Erreur lors de l'envoi. Vérifiez la console.";
+            alert(msg);
         } finally {
             setLoading(false);
         }
@@ -79,10 +85,11 @@ export const TeacherAlertForm: React.FC = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <input
                             type="number"
-                            placeholder="Durée du retard"
+                            placeholder="Durée (minutes)"
                             value={duration}
                             onChange={e => setDuration(e.target.value)}
                             required
+                            min="1"
                             style={{ ...inputStyle, maxWidth: '200px' }}
                         />
                         <span style={{ color: '#666' }}>minutes</span>

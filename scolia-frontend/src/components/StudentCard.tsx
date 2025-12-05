@@ -25,7 +25,7 @@ export const StudentCard: React.FC<StudentCardProps> = ({ student, onClose }) =>
                 setAmountDue(res.data.amountDue);
                 setAmountPaid(res.data.amountPaid);
                 
-                // Correction: Sécurité si date nulle
+                // CORRECTION : Vérifie que la date existe avant de parser
                 if (res.data.dueDate) {
                     const date = new Date(res.data.dueDate);
                     if (!isNaN(date.getTime())) {
@@ -34,8 +34,8 @@ export const StudentCard: React.FC<StudentCardProps> = ({ student, onClose }) =>
                 }
             }
         } catch (e) {
-            // C'est normal si pas de frais définis au début
-            console.log("Pas encore de frais définis ou erreur chargement.");
+            // C'est normal si pas encore de frais définis
+            console.log("Info paiement non trouvée (nouveau dossier ?)");
         } finally {
             setLoadingFee(false);
         }

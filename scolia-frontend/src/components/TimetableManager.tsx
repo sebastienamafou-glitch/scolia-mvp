@@ -16,7 +16,7 @@ interface TimetableSlot {
   room?: string;
 }
 
-// Helper pour nettoyer les strings
+// Helper pour nettoyer les strings (avec check d'existence)
 const normalize = (str: string) => str ? str.toLowerCase().trim() : '';
 
 const dayMapping: Record<string, string> = {
