@@ -53,9 +53,9 @@ export class TimetableService {
       FORMAT JSON STRICT : [{"day": "Lundi", "start": "08:00", "end": "09:00", "subject": "Maths", "room": "A1"}, ...]
     `;
 
-    const modelsToTry = ["gemini-1.5-flash-001", "gemini-pro"];
+    // ✅ CORRECTION ICI : Noms de modèles valides (sans le suffixe -001 qui cause le 404)
+    const modelsToTry = ["gemini-1.5-flash", "gemini-pro"];
     
-    // ✅ CORRECTION ICI : "any" permet d'éviter l'erreur ts(2339) sur le .map() plus bas
     let scheduleData: any = null; 
 
     for (const modelName of modelsToTry) {
@@ -71,13 +71,13 @@ export class TimetableService {
                 scheduleData = JSON.parse(match[0]);
                 break; // Succès
             }
-        } catch (e) {
+        } catch (e: any) {
             this.logger.warn(`⚠️ Échec avec ${modelName}: ${e.message}`);
         }
     }
 
     if (!scheduleData) {
-        throw new InternalServerErrorException("Echec génération IA : Aucun modèle disponible.");
+        throw new InternalServerErrorException("Echec génération IA : Aucun modèle disponible ou réponse invalide.");
     }
 
     try {
@@ -92,7 +92,6 @@ export class TimetableService {
 
         await this.timetableRepo.delete({ classId });
 
-        // Maintenant TypeScript est content car scheduleData est 'any'
         const events = scheduleData.map((slot: any) => {
             const rawDay = (slot.day || '').toLowerCase().trim();
             const cleanDay = dayMapping[rawDay] || slot.day; 

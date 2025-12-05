@@ -24,12 +24,12 @@ export class GradesController {
   @Roles('Élève', 'Parent')
   @Get('my-grades')
   async getMyGrades(@Request() req) {
-    this.logger.log(`Récupération des notes pour l'utilisateur ${req.user.sub}`);
+    // ✅ CORRECTION : Lecture sécurisée de l'ID utilisateur
+    // On vérifie plusieurs champs possibles (sub, userId, id) pour être sûr
+    const userId = req.user?.sub || req.user?.userId || req.user?.id || 'Inconnu';
+    this.logger.log(`Récupération des notes pour l'utilisateur ID: ${userId}`);
     
-    // ✅ CORRECTION POUR LE FRONTEND :
-    // On ajoute 'date' (ISO format) et 'coefficient' car le frontend essaie de faire .toLocaleString() dessus.
-    // Idéalement, remplacez ceci par un appel réel à la BDD : this.gradesService.findByStudent(...)
-    
+    // Simule une réponse BDD pour éviter que le front ne plante
     return [
       { 
         id: 1,
@@ -37,7 +37,7 @@ export class GradesController {
         grade: 15, 
         total: 20,
         coefficient: 2,
-        date: new Date().toISOString(), // Empêche le crash "toLocaleString undefined"
+        date: new Date().toISOString(), 
         comment: 'Bon travail'
       },
       { 
@@ -46,7 +46,7 @@ export class GradesController {
         grade: 12.5, 
         total: 20,
         coefficient: 1,
-        date: new Date(Date.now() - 86400000).toISOString(), // Hier
+        date: new Date(Date.now() - 86400000).toISOString(),
         comment: 'Peut mieux faire'
       },
       { 
@@ -55,7 +55,7 @@ export class GradesController {
         grade: 18, 
         total: 20,
         coefficient: 1,
-        date: new Date(Date.now() - 172800000).toISOString(), // Avant-hier
+        date: new Date(Date.now() - 172800000).toISOString(),
         comment: 'Excellent'
       }
     ];
