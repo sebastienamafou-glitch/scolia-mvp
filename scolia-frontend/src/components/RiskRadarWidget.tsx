@@ -19,12 +19,12 @@ export const RiskRadarWidget: React.FC = () => {
 
   useEffect(() => {
     api.get('/analytics/risk-radar')
-       .then(res => setStudents(res.data || [])) // Sécurité : array vide si null
+       .then(res => setStudents(res.data || [])) 
        .catch(err => console.error("Erreur Risk Radar:", err))
        .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div>Analyse des données...</div>;
+  if (loading) return <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>Analyse des données...</div>;
   if (!students || students.length === 0) return null; 
 
   return (
@@ -56,7 +56,7 @@ export const RiskRadarWidget: React.FC = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                     <img 
                         src={student.photo || `https://ui-avatars.com/api/?name=${student.prenom}+${student.nom}&background=random`} 
-                        alt="" style={{ width: '45px', height: '45px', borderRadius: '50%' }} 
+                        alt="" style={{ width: '45px', height: '45px', borderRadius: '50%', objectFit: 'cover' }} 
                     />
                     <div>
                         <div style={{ fontWeight: 'bold', color: '#333' }}>{student.nom} {student.prenom}</div>
@@ -65,7 +65,6 @@ export const RiskRadarWidget: React.FC = () => {
                 </div>
 
                 <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
-                    {/* SÉCURITÉ ICI : || [] pour éviter le crash sur map */}
                     {(student.reasons || []).map((r, i) => (
                         <span key={i} style={{ 
                             fontSize: '0.75rem', padding: '4px 8px', borderRadius: '4px', 
@@ -79,10 +78,10 @@ export const RiskRadarWidget: React.FC = () => {
                 <div style={{ display: 'flex', gap: '10px' }}>
                     {student.parentPhone && (
                         <>
-                            <a href={`tel:${student.parentPhone}`} style={iconBtnStyle}>
+                            <a href={`tel:${student.parentPhone}`} style={iconBtnStyle} title="Appeler">
                                 <FaPhone />
                             </a>
-                            <a href={`https://wa.me/${student.parentPhone}`} target="_blank" rel="noreferrer" style={{...iconBtnStyle, backgroundColor: '#dcfce7', color: '#16a34a'}}>
+                            <a href={`https://wa.me/${student.parentPhone}`} target="_blank" rel="noreferrer" style={{...iconBtnStyle, backgroundColor: '#dcfce7', color: '#16a34a'}} title="WhatsApp">
                                 <FaWhatsapp />
                             </a>
                         </>
@@ -95,4 +94,8 @@ export const RiskRadarWidget: React.FC = () => {
   );
 };
 
-const iconBtnStyle = { padding: '8px', borderRadius: '50%', backgroundColor: '#f3f4f6', color: '#333', border: 'none', cursor: 'pointer', display:'flex', alignItems:'center', justifyContent:'center' };
+const iconBtnStyle: React.CSSProperties = { 
+    padding: '8px', borderRadius: '50%', backgroundColor: '#f3f4f6', 
+    color: '#333', border: 'none', cursor: 'pointer', 
+    display:'flex', alignItems:'center', justifyContent:'center' 
+};

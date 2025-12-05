@@ -15,6 +15,8 @@ export const StudentCard: React.FC<StudentCardProps> = ({ student, onClose }) =>
   const [loadingFee, setLoadingFee] = useState(false);
 
   useEffect(() => {
+    if (!student?.id) return;
+    
     const loadFee = async () => {
         setLoadingFee(true);
         try {
@@ -22,17 +24,24 @@ export const StudentCard: React.FC<StudentCardProps> = ({ student, onClose }) =>
             if (res.data) {
                 setAmountDue(res.data.amountDue);
                 setAmountPaid(res.data.amountPaid);
-                const date = new Date(res.data.dueDate);
-                setDueDate(date.toISOString().split('T')[0]);
+                
+                // Correction: Sécurité si date nulle
+                if (res.data.dueDate) {
+                    const date = new Date(res.data.dueDate);
+                    if (!isNaN(date.getTime())) {
+                        setDueDate(date.toISOString().split('T')[0]);
+                    }
+                }
             }
         } catch (e) {
-            console.log("Pas encore de frais définis");
+            // C'est normal si pas de frais définis au début
+            console.log("Pas encore de frais définis ou erreur chargement.");
         } finally {
             setLoadingFee(false);
         }
     };
     loadFee();
-  }, [student.id]);
+  }, [student?.id]);
 
   const handleSaveFee = async () => {
     if (!amountDue || !dueDate) return alert("Veuillez remplir le montant et la date limite.");
@@ -69,7 +78,6 @@ export const StudentCard: React.FC<StudentCardProps> = ({ student, onClose }) =>
         <div style={{ padding: '25px' }}>
         
             <div style={{ marginBottom: '30px', borderBottom: '1px solid #eee', paddingBottom: '20px' }}>
-                {/* ✅ CORRECTION V2 : On ne lit QUE la relation objet 'class' */}
                 <p><strong>Classe :</strong> {student.class?.name || 'Non assigné'}</p> 
                 <p><strong>Email :</strong> {student.email}</p>
 
@@ -81,7 +89,7 @@ export const StudentCard: React.FC<StudentCardProps> = ({ student, onClose }) =>
             <div style={{ backgroundColor: '#F9F9F9', padding: '20px', borderRadius: '10px', border: '1px solid #ddd' }}>
                 <h3 style={{ color: '#F77F00', marginTop: 0 }}>💰 Configuration Scolarité</h3>
                 
-                {loadingFee ? <p>Chargement...</p> : (
+                {loadingFee ? <p>Chargement des infos financières...</p> : (
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                         
                         <div>
