@@ -1,10 +1,11 @@
-// scolia-backend/src/skills/skills.controller.ts
-
 import { Controller, Get, Post, Body, UseGuards, Request, ForbiddenException } from '@nestjs/common';
 import { SkillsService } from './skills.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/guard/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+// 👇 IMPORTS DTO
+import { CreateSkillDto } from './dto/create-skill.dto';
+import { BulkEvaluateDto } from './dto/bulk-evaluate.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('skills')
@@ -13,10 +14,10 @@ export class SkillsController {
 
   @Roles('Admin')
   @Post()
-  async create(@Request() req, @Body() body: { name: string; category: string; description?: string }) {
+  async create(@Request() req, @Body() dto: CreateSkillDto) { // 👈 Utilisation DTO
     const schoolId = req.user.schoolId;
     if (!schoolId) throw new ForbiddenException("École non identifiée.");
-    return this.skillsService.create(body, schoolId);
+    return this.skillsService.create(dto, schoolId);
   }
 
   @Roles('Admin', 'Enseignant')
@@ -27,21 +28,14 @@ export class SkillsController {
     return this.skillsService.findAllBySchool(schoolId);
   }
 
-  // Route unitaire (Legacy)
-  @Roles('Enseignant')
-  @Post('evaluate')
-  async evaluate(@Request() req, @Body() body: any) {
-    return this.skillsService.evaluate({ ...body, teacherId: req.user.sub });
-  }
-
-  // ✅ NOUVELLE ROUTE BULK (Indispensable pour le frontend)
   @Roles('Enseignant')
   @Post('evaluate/bulk')
-  async evaluateBulk(@Request() req, @Body() body: { studentId: number, evaluations: { competenceId: number, level: number }[] }) {
+  async evaluateBulk(@Request() req, @Body() dto: BulkEvaluateDto) { // 👈 Utilisation DTO
+    // Le DTO garantit maintenant que dto.studentId est un nombre et que le tableau est valide
     return this.skillsService.evaluateBulk(
-        body.studentId, 
-        body.evaluations, 
-        req.user.sub // ID du prof
+        dto.studentId, 
+        dto.evaluations, 
+        req.user.sub 
     );
   }
 }

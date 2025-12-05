@@ -22,12 +22,23 @@ export class AnalyticsService {
         relations: ['grades', 'class', 'parent'] 
     });
 
-    // 2. OPTIMISATION : Récupérer tous les frais de l'école en UNE SEULE requête
+    // 2. OPTIMISATION : Récupérer tous les frais de l'école
     const allFees = await this.feeRepo.find({ where: { school: { id: schoolId } } });
     
-    // Création d'un dictionnaire pour un accès instantané (O(1)) par ID élève
-    const feesMap = new Map<number, Fee>();
-    allFees.forEach(fee => feesMap.set(fee.studentId, fee));
+    // ✅ CORRECTION ICI : Aggregation des montants
+    // On crée une Map qui stocke un OBJET cumulatif { totalAmount, amountPaid }
+    const feesMap = new Map<number, { totalAmount: number, amountPaid: number }>();
+
+    allFees.forEach(fee => {
+        // Si l'élève existe déjà dans la map, on récupère ses totaux, sinon on initialise à 0
+        const currentStats = feesMap.get(fee.studentId) || { totalAmount: 0, amountPaid: 0 };
+
+        // On additionne les nouveaux montants aux anciens
+        feesMap.set(fee.studentId, {
+            totalAmount: currentStats.totalAmount + Number(fee.totalAmount),
+            amountPaid: currentStats.amountPaid + Number(fee.amountPaid)
+        });
+    });
 
     const atRiskList: any[] = [];
 
@@ -35,15 +46,15 @@ export class AnalyticsService {
       let riskScore = 0;
       const reasons: string[] = [];
 
-      // --- ANALYSE FINANCIÈRE (Instantanée grâce à la Map) ---
-      const fee = feesMap.get(student.id);
+      // --- ANALYSE FINANCIÈRE ---
+      // On récupère les stats cumulées depuis la Map
+      const feeStats = feesMap.get(student.id);
       
-      if (fee && Number(fee.totalAmount) > 0) { 
-          const paid = Number(fee.amountPaid);
-          const total = Number(fee.totalAmount);
-          const percentPaid = (paid / total) * 100;
+      // On ne vérifie que si l'élève a des frais à payer (total > 0)
+      if (feeStats && feeStats.totalAmount > 0) { 
+          const percentPaid = (feeStats.amountPaid / feeStats.totalAmount) * 100;
           
-          // Seuil d'alerte : moins de 30% payé
+          // Seuil d'alerte : moins de 30% payé sur la totalité due
           if (percentPaid < 30) {
               riskScore += 1;
               reasons.push(`💸 Retard Paiement (${percentPaid.toFixed(0)}%)`);
@@ -69,14 +80,14 @@ export class AnalyticsService {
               prenom: student.prenom,
               classe: student.class?.name || 'Sans classe',
               photo: (student as any).photo || '', 
-              parentPhone: student.parent?.email, // Ou tel si dispo
+              parentPhone: student.parent?.email, // Utilise l'email à défaut du téléphone
               riskLevel: riskScore >= 2 ? 'HIGH' : 'MEDIUM',
               reasons: reasons
           });
       }
     }
 
-    // Tri par gravité
+    // Tri par gravité (HIGH d'abord)
     return atRiskList.sort((a, b) => (a.riskLevel === 'HIGH' ? -1 : 1));
   }
 }

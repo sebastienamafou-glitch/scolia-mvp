@@ -19,7 +19,7 @@ interface Student {
   nom: string;
   class?: { name: string };
   photo?: string;
-  dateNaissance?: string; // 👈 AJOUTÉ POUR LA CARTE
+  dateNaissance?: string; // Peut être undefined ou null depuis l'API
 }
 
 interface BulletinData {
@@ -57,14 +57,14 @@ const ParentDashboard: React.FC = () => {
   // 1. Initialisation
   useEffect(() => {
     const initNotif = async () => {
-        const token = await requestForToken();
-        if (token) {
-            try {
+        try {
+            const token = await requestForToken();
+            if (token) {
                 await api.post('/notifications/subscribe', { token });
                 console.log("✅ Notifications Push activées !");
-            } catch (e) {
-                console.error("Erreur abonnement notif", e);
             }
+        } catch (e) {
+            console.error("Erreur abonnement notif (non bloquant)", e);
         }
     };
     initNotif();
@@ -117,7 +117,7 @@ const ParentDashboard: React.FC = () => {
             <Logo width={40} height={40} showText={false} />
             <div>
                 <h1 style={{ color: '#0A2240', margin: 0, fontSize: '1.2rem' }}>Espace Parents</h1>
-                <span style={{ fontSize: '0.9rem', color: '#666' }}>Famille {user?.nom}</span>
+                <span style={{ fontSize: '0.9rem', color: '#666' }}>Famille {user?.nom || '...'}</span>
             </div>
         </div>
         <button onClick={logout} style={{ backgroundColor: '#F77F00', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
@@ -177,11 +177,10 @@ const ParentDashboard: React.FC = () => {
                                     <span style={{ opacity: 0.8, fontSize: '0.9rem' }}>Classe : {currentChild.class?.name || 'Non assigné'}</span>
                                 </div>
                                 
-                                {/* Moyenne + Bouton PDF (Gérés conditionnellement) */}
+                                {/* Moyenne + Bouton PDF */}
                                 {bulletin && (
                                     <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
                                         
-                                        {/* Affichage Conditionnel : Cacher la moyenne si bloqué */}
                                         {bulletin.isBlocked ? (
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'rgba(255,255,255,0.1)', padding: '5px 12px', borderRadius: '20px' }}>
                                                 <FaLock /> <span>Accès restreint</span>
@@ -195,7 +194,6 @@ const ParentDashboard: React.FC = () => {
                                             </div>
                                         )}
                                         
-                                        {/* BOUTON D'IMPRESSION (Caché si bloqué) */}
                                         {!bulletin.isBlocked && (
                                             <button 
                                                 onClick={() => handlePrint && handlePrint()}
@@ -216,12 +214,12 @@ const ParentDashboard: React.FC = () => {
                             {/* CONTENU PRINCIPAL */}
                             <div style={{ padding: '25px' }}>
                                 
-                                {/* 👇 AJOUT : Layout Flexible pour intégrer la Carte Scolaire */}
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '40px', alignItems: 'flex-start' }}>
                                     
                                     {/* SECTION GAUCHE : CARTE SCOLAIRE */}
                                     <div style={{ flex: '0 0 auto' }}>
                                         <h3 style={{ marginTop: 0, color: '#0A2240', marginBottom: '15px' }}>🆔 Carte Scolaire</h3>
+                                        {/* 👇 CORRECTION MAJEURE ICI : Protection contre date undefined */}
                                         <DigitalIdCard 
                                             student={{
                                                 id: currentChild.id,
@@ -229,7 +227,9 @@ const ParentDashboard: React.FC = () => {
                                                 prenom: currentChild.prenom,
                                                 photo: currentChild.photo,
                                                 classe: currentChild.class?.name,
-                                                dateNaissance: currentChild.dateNaissance,
+                                                // Si dateNaissance est null/undefined, on passe une chaine vide ou une date par défaut
+                                                // pour éviter le crash .toLocaleString() dans le composant enfant
+                                                dateNaissance: currentChild.dateNaissance || '', 
                                                 schoolName: "Scolia Academy"
                                             }}
                                         />
@@ -249,11 +249,8 @@ const ParentDashboard: React.FC = () => {
                                                     
                                                     {bulletin.isBlocked ? (
                                                         <div style={{ 
-                                                            backgroundColor: '#FFEBEE', 
-                                                            color: '#D32F2F', 
-                                                            padding: '30px', 
-                                                            borderRadius: '10px', 
-                                                            textAlign: 'center',
+                                                            backgroundColor: '#FFEBEE', color: '#D32F2F', 
+                                                            padding: '30px', borderRadius: '10px', textAlign: 'center',
                                                             border: '1px solid #FFCDD2'
                                                         }}>
                                                             <FaLock size={40} style={{ marginBottom: '15px', opacity: 0.5 }} />
@@ -273,9 +270,7 @@ const ParentDashboard: React.FC = () => {
                                                                             <span style={{ 
                                                                                 fontWeight: 'bold', 
                                                                                 color: sub.moyenne >= 10 ? '#008F39' : '#D32F2F',
-                                                                                padding: '4px 8px',
-                                                                                borderRadius: '6px',
-                                                                                border: '1px solid #eee'
+                                                                                padding: '4px 8px', borderRadius: '6px', border: '1px solid #eee'
                                                                             }}>
                                                                                 {sub.moyenne}/20
                                                                             </span>
