@@ -2,7 +2,7 @@ import { Controller, Post, Body, UseGuards, Request } from '@nestjs/common';
 import { NotesService } from './notes.service';
 import { CreateNotesDto } from './dto/create-note.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../auth/guard/roles.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles, UserRole } from '../auth/roles.decorator'; // ✅ Enum
 
 @UseGuards(JwtAuthGuard, RolesGuard)
