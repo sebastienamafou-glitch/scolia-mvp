@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import api from '../services/api';
+import toast from 'react-hot-toast'; // Import Toast
 import { FaPaperPlane } from 'react-icons/fa';
 
 // Utilise un named export pour correspondre à l'import dans TeacherDashboard.tsx
@@ -8,12 +9,10 @@ export const TeacherAlertForm: React.FC = () => {
     const [details, setDetails] = useState('');
     const [duration, setDuration] = useState('');
     const [loading, setLoading] = useState(false);
-    const [success, setSuccess] = useState('');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
-        setSuccess('');
 
         try {
             const body = {
@@ -24,11 +23,15 @@ export const TeacherAlertForm: React.FC = () => {
 
             const res = await api.post('/notifications/alert-teacher', body);
             
-            setSuccess(res.data.message);
+            // UX: Toast Succès
+            toast.success(res.data.message || 'Alerte envoyée à l\'administration.');
+            
+            // Reset form
             setDetails('');
             setDuration('');
         } catch (error) {
-            alert("Erreur lors de l'envoi de l'alerte. Vérifiez la console serveur.");
+            console.error(error);
+            toast.error("Erreur lors de l'envoi de l'alerte.");
         } finally {
             setLoading(false);
         }
@@ -38,12 +41,6 @@ export const TeacherAlertForm: React.FC = () => {
         <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
             <h2 style={{ marginTop: 0, color: '#dc3545' }}>⚠️ Déclaration d'Indisponibilité</h2>
             
-            {success && (
-                <div style={{ padding: '15px', backgroundColor: '#E8F5E9', color: '#388E3C', borderRadius: '8px', marginBottom: '20px', fontWeight: 'bold' }}>
-                    {success}
-                </div>
-            )}
-
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 
                 {/* Type d'Alerte */}

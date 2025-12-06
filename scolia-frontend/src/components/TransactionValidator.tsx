@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
+import toast from 'react-hot-toast';
 
 interface Student {
     nom: string;
@@ -18,7 +19,6 @@ interface Transaction {
 export const TransactionValidator: React.FC = () => {
     const [pendingTransactions, setPendingTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
-    const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
     useEffect(() => {
         fetchTransactions();
@@ -26,13 +26,12 @@ export const TransactionValidator: React.FC = () => {
 
     const fetchTransactions = async () => {
         setLoading(true);
-        setStatusMessage(null);
         try {
-            // Utilise la nouvelle route GET /payments/pending
             const res = await api.get('/payments/pending');
             setPendingTransactions(res.data);
         } catch (e) {
-            setStatusMessage("Erreur de chargement des transactions.");
+            console.error(e);
+            toast.error("Erreur de chargement des transactions.");
         } finally {
             setLoading(false);
         }
@@ -43,22 +42,20 @@ export const TransactionValidator: React.FC = () => {
             return;
         }
 
+        const toastId = toast.loading("Traitement en cours...");
+
         try {
-            // Utilise la route PATCH /payments/validate/:id
             await api.patch(`/payments/validate/${id}`, { action }); 
             
-            setStatusMessage(`Transaction ${id} ${action === 'validate' ? 'validée' : 'rejetée'} !`);
+            toast.success(`Transaction ${id} ${action === 'validate' ? 'validée' : 'rejetée'} !`, { id: toastId });
             
-            // ✅ AMÉLIORATION OPTIMISTIC UI : Suppression locale immédiate
+            // ✅ Optimistic UI : Suppression locale immédiate
             setPendingTransactions(prev => prev.filter(t => t.id !== id));
             
-            // Laisser un délai pour que le message de succès s'affiche, puis recharger si nécessaire.
-            // Le fetchTransactions() immédiat n'est plus nécessaire.
-            
         } catch (e) {
-            // En cas d'échec de l'API, on doit recharger pour remettre l'élément dans la liste
-            setStatusMessage("Opération échouée. Vérifiez le solde de l'élève ou le serveur.");
-            fetchTransactions(); 
+            console.error(e);
+            toast.error("Opération échouée. Vérifiez le serveur.", { id: toastId });
+            fetchTransactions(); // On recharge en cas d'erreur pour être sûr
         }
     };
 
@@ -70,8 +67,6 @@ export const TransactionValidator: React.FC = () => {
                 💰 Validation des Paiements ({pendingTransactions.length})
             </h2>
             
-            {statusMessage && <div style={{ color: '#D32F2F', marginBottom: '15px' }}>{statusMessage}</div>}
-
             {pendingTransactions.length === 0 ? (
                 <p style={{ color: '#555', fontStyle: 'italic' }}>Aucune transaction en attente de validation.</p>
             ) : (

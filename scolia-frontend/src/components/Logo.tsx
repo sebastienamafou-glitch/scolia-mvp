@@ -1,45 +1,61 @@
-import React from 'react';
-// Assurez-vous d'avoir votre image de logo ici, sinon ajustez le chemin
-// Si vous n'avez pas d'image, le composant affichera une boîte colorée par défaut
+import React, { useState } from 'react';
 import logoImg from '../assets/logo.png'; 
 
 interface LogoProps {
   width?: number;
   height?: number;
   showText?: boolean;
-  textColor?: string; // 👈 AJOUT DE LA PROPRIÉTÉ
+  textColor?: string; 
 }
 
 export const Logo: React.FC<LogoProps> = ({ 
   width = 50, 
   height = 50, 
   showText = true, 
-  textColor = '#0A2240' // Couleur par défaut (Bleu nuit)
+  textColor = '#0A2240' 
 }) => {
+  // Gestion propre de l'erreur d'image sans innerHTML
+  const [imgError, setImgError] = useState(false);
+
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-      {/* Image du Logo */}
-      <img 
-        src={logoImg} 
-        alt="Scolia" 
-        style={{ 
-          width: `${width}px`, 
-          height: `${height}px`, 
-          objectFit: 'contain' 
-        }} 
-        // Fallback si l'image n'est pas trouvée (carré orange)
-        onError={(e) => {
-            e.currentTarget.style.display = 'none';
-            e.currentTarget.parentElement!.innerHTML = `<div style="width:${width}px; height:${height}px; background-color:#F77F00; border-radius:50%; display:flex; align-items:center; justify-content:center; color:white; font-weight:bold;">S</div>` + (showText ? `<span style="margin-left:10px; font-size:1.5rem; font-weight:bold; color:${textColor}">Scolia</span>` : '');
-        }}
-      />
+      
+      {/* Rendu Conditionnel : Soit l'image, soit le fallback */}
+      {!imgError ? (
+          <img 
+            src={logoImg} 
+            alt="Scolia" 
+            style={{ 
+              width: `${width}px`, 
+              height: `${height}px`, 
+              objectFit: 'contain' 
+            }} 
+            onError={() => setImgError(true)}
+          />
+      ) : (
+          // Fallback natif React
+          <div style={{
+              width: `${width}px`, 
+              height: `${height}px`, 
+              backgroundColor: '#F77F00', 
+              borderRadius: '50%', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              color: 'white', 
+              fontWeight: 'bold',
+              fontSize: `${height * 0.5}px` // Taille police proportionnelle
+          }}>
+              S
+          </div>
+      )}
 
       {/* Texte du Logo */}
       {showText && (
         <span style={{ 
           fontSize: '1.5rem', 
           fontWeight: 'bold', 
-          color: textColor, // 👈 UTILISATION DE LA COULEUR ICI
+          color: textColor, 
           fontFamily: '"Poppins", sans-serif'
         }}>
           Scolia

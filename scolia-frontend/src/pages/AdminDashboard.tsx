@@ -5,13 +5,15 @@ import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Logo } from '../components/Logo';
 import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast'; // 👈 IMPORT UX
+
 // Imports des modules fonctionnels
 import { ClassManager } from '../components/ClassManager';
 import { BulletinEditor } from '../components/BulletinEditor';
 import { StudentCard } from '../components/StudentCard';
 import { SchoolNews } from '../components/SchoolNews';
 import { TransactionValidator } from '../components/TransactionValidator';
-import { RiskRadarWidget } from '../components/RiskRadarWidget'; // Module Payant
+import { RiskRadarWidget } from '../components/RiskRadarWidget';
 import { SkillsManager } from '../components/SkillsManager';
 import { TimetableManager } from '../components/TimetableManager';
 import { Footer } from '../components/Footer';
@@ -23,7 +25,7 @@ import {
     FaCog, FaUnlockAlt, FaLock 
 } from 'react-icons/fa';
 
-// --- TYPES MIS À JOUR (COMPATIBILITÉ V2) ---
+// --- TYPES ---
 
 interface User {
   id: number;
@@ -31,7 +33,6 @@ interface User {
   prenom: string;
   email: string;
   role: string;
-  // ✅ CORRECTION : Adaptation à la relation TypeORM V2, on utilise 'class'
   class?: {
       id: number;
       name: string;
@@ -44,7 +45,6 @@ interface User {
   infosMedicales?: string;
 }
 
-// Interface étendue avec les modules
 interface SchoolInfo {
     id: number;
     name: string;
@@ -59,7 +59,6 @@ interface SchoolInfo {
     };
 }
 
-// 👈 NOUVEAU : Interface pour le sélecteur de classes
 interface ClassOption {
     id: number;
     name: string;
@@ -71,14 +70,14 @@ const AdminDashboard: React.FC = () => {
   // États Données
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [mySchool, setMySchool] = useState<SchoolInfo | null>(null);
-  const [availableClasses, setAvailableClasses] = useState<ClassOption[]>([]); // 👈 NOUVEL ÉTAT
+  const [availableClasses, setAvailableClasses] = useState<ClassOption[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
   
   // États Chargement
   const [loading, setLoading] = useState(true);
   const [schoolLoading, setSchoolLoading] = useState(true);
 
-  // États UI (Tableau Utilisateurs)
+  // États UI
   const [activeTab, setActiveTab] = useState<string>('Tous');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -88,11 +87,11 @@ const AdminDashboard: React.FC = () => {
   // Formulaire Paramètres École
   const [schoolForm, setSchoolForm] = useState({ name: '', address: '', logo: '', description: '' });
   
-  // Formulaire Création Utilisateur (Utilise classId)
+  // Formulaire Création Utilisateur
   const [newUser, setNewUser] = useState({
     password: '', role: 'Enseignant', 
     nom: '', prenom: '', 
-    classId: '', // 👈 Utilise classId pour l'ID de la classe
+    classId: '',
     parentId: '', photo: '',
     dateNaissance: '', adresse: '',
     contactUrgenceNom: '', contactUrgenceTel: '', infosMedicales: ''
@@ -101,7 +100,6 @@ const AdminDashboard: React.FC = () => {
   // --- INITIALISATION ---
   useEffect(() => {
     const init = async () => {
-        // Charge les classes, utilisateurs et école au démarrage
         await Promise.all([fetchUsers(), fetchMySchool(), fetchClasses()]);
         setLoading(false);
     };
@@ -114,10 +112,10 @@ const AdminDashboard: React.FC = () => {
       setAllUsers(response.data);
     } catch (error) {
       console.error("Erreur chargement utilisateurs", error);
+      toast.error("Erreur lors du chargement des utilisateurs.");
     }
   };
   
-  // 👈 NOUVEAU : Récupérer la liste des classes
   const fetchClasses = async () => {
       try {
           const res = await api.get('/classes');
@@ -130,12 +128,11 @@ const AdminDashboard: React.FC = () => {
     try {
         const res = await api.get('/schools/my-school');
         let mod = res.data.modules;
-        // Parsing sécurisé immédiat des modules
         if (typeof mod === 'string') {
             try { mod = JSON.parse(mod);
             } catch(e) {}
         }
-        res.data.modules = mod; // Injecte les valeurs parsées
+        res.data.modules = mod; 
         setMySchool(res.data);
         setSchoolForm({
             name: res.data.name || '',
@@ -145,6 +142,7 @@ const AdminDashboard: React.FC = () => {
         });
     } catch (e) {
         console.error("Erreur chargement école", e);
+        toast.error("Impossible de charger les infos de l'école.");
     } finally {
         setSchoolLoading(false);
     }
@@ -155,10 +153,10 @@ const AdminDashboard: React.FC = () => {
     e.preventDefault();
     try {
         await api.patch('/schools/my-school', schoolForm);
-        alert('✅ Informations mises à jour !');
+        toast.success('✅ Informations mises à jour !');
         fetchMySchool();
     } catch (e) {
-        alert("Erreur lors de la mise à jour.");
+        toast.error("Erreur lors de la mise à jour.");
     }
   };
 
@@ -169,17 +167,19 @@ const AdminDashboard: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const toastId = toast.loading("Importation en cours...");
     const formData = new FormData();
     formData.append('file', file);
+    
     try {
       const res = await api.post('/import/users', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      alert(`✅ Import réussi ! ${res.data.message || ''}`);
+      toast.success(`✅ Import réussi ! ${res.data.message || ''}`, { id: toastId });
       fetchUsers();
     } catch (error) {
       console.error(error);
-      alert("Erreur lors de l'importation. Vérifiez le format CSV.");
+      toast.error("Erreur lors de l'importation. Vérifiez le format CSV.", { id: toastId });
     }
   };
 
@@ -189,26 +189,30 @@ const AdminDashboard: React.FC = () => {
     try {
       const payload: any = { ...newUser };
       
-      // Nettoyage des champs selon le rôle
       if (payload.role !== 'Élève') {
           delete payload.classId;
           delete payload.parentId; delete payload.dateNaissance;
           delete payload.adresse; delete payload.contactUrgenceNom;
           delete payload.contactUrgenceTel; delete payload.infosMedicales;
       } else {
-          // ✅ PERFECTION : Conversion des IDs de classe et parent en nombres
           payload.parentId = payload.parentId ? Number(payload.parentId) : undefined;
           payload.classId = payload.classId ? Number(payload.classId) : undefined;
       }
 
       const response = await api.post('/users', payload);
       const createdUser = response.data;
-      const passwordDisplay = createdUser.plainPassword || 'Généré par email';
+      const passwordDisplay = createdUser.plainPassword || 'Envoyé par email';
 
-      alert(`✅ Utilisateur créé !\n\n📧 Login : ${createdUser.email}\n🔑 MDP : ${passwordDisplay}`);
+      // Affichage propre des identifiants avec un Toast longue durée
+      toast((t) => (
+        <div>
+            <b>✅ Utilisateur créé !</b><br/>
+            Email: {createdUser.email}<br/>
+            Mdp: <strong>{passwordDisplay}</strong>
+        </div>
+      ), { duration: 8000, style: { background: '#E8F5E9', border: '1px solid #4CAF50' } });
       
       fetchUsers();
-      // Reset du formulaire
       setNewUser({ 
           password: '', role: 'Enseignant', nom: '', prenom: '', 
           classId: '', parentId: '', photo: '', dateNaissance: '', adresse: '',
@@ -216,19 +220,26 @@ const AdminDashboard: React.FC = () => {
       });
       setShowCreateForm(false);
     } catch (error) {
-      alert("Erreur création. Vérifiez les champs.");
+      toast.error("Erreur création. Vérifiez les champs obligatoires.");
     }
   };
 
-  // Reset Password (Mise à jour V2 : Génération et affichage du nouveau mot de passe par PATCH)
+  // Reset Password
   const handleResetPassword = async (user: User) => {
     if (!window.confirm(`Générer un nouveau mot de passe pour ${user.prenom} ${user.nom} ?`)) return;
     try {
         const res = await api.patch(`/users/${user.id}/reset-password`);
-        // On affiche le mot de passe reçu du backend
-        prompt(`✅ Nouveau mot de passe pour ${user.nom} :`, res.data.plainPassword);
+        
+        // UX : Toast persistant pour que l'admin ait le temps de copier
+        toast((t) => (
+            <div>
+                <b>🔑 Nouveau Mot de Passe :</b><br/>
+                Pour {user.nom} : <strong>{res.data.plainPassword}</strong>
+            </div>
+        ), { duration: 10000, icon: '🛡️' });
+
     } catch (error) {
-        alert("Erreur lors de la demande.");
+        toast.error("Erreur lors de la réinitialisation.");
     }
   };
 
@@ -255,11 +266,9 @@ const AdminDashboard: React.FC = () => {
   const countAdmins = allUsers.filter(u => u.role === 'Admin').length;
   const availableParents = allUsers.filter(user => user.role === 'Parent');
   
-  // Raccourci Modules (Utilise l'objet déjà parsé dans fetchMySchool)
   const defaultModules: SchoolInfo['modules'] = { risk_radar: false, ai_planning: false, sms: false, cards: false };
   const safeModules = mySchool?.modules && typeof mySchool.modules === 'object' ? { ...defaultModules, ...mySchool.modules } : defaultModules;
   
-  // Ecran de chargement
   if (schoolLoading || loading) {
       return (
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', flexDirection: 'column', backgroundColor: '#f0f2f5', color: '#0A2240', fontFamily: 'sans-serif' }}>
@@ -313,7 +322,7 @@ const AdminDashboard: React.FC = () => {
             </div>
         )}
 
-        {/* SECTION KPI (Toujours visible) */}
+        {/* SECTION KPI */}
         {activeTab !== 'Paramètres' && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '30px' }}>
                 <KpiCard title="Élèves Inscrits" count={countStudents} icon={<FaUserGraduate />} color="#3498db" />
@@ -323,7 +332,7 @@ const AdminDashboard: React.FC = () => {
             </div>
         )}
 
-        {/* GESTION QUOTIDIENNE (Transactions & News) */}
+        {/* GESTION QUOTIDIENNE */}
         {activeTab !== 'Paramètres' && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '30px' }}>
                 <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
@@ -335,7 +344,7 @@ const AdminDashboard: React.FC = () => {
             </div>
         )}
 
-        {/* TABLEAU DE BORD PRINCIPAL (Utilisateurs & Params) */}
+        {/* TABLEAU DE BORD PRINCIPAL */}
         <div style={{ backgroundColor: 'white', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
             
             {/* TABS */}
@@ -420,7 +429,6 @@ const AdminDashboard: React.FC = () => {
                                 {newUser.role === 'Élève' && (
                                     <div style={{ gridColumn: '1 / -1', backgroundColor: '#E3F2FD', padding: '15px', borderRadius: '8px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
                                         
-                                        {/* ✅ SÉLECTEUR DE CLASSE MISE À JOUR (Utilise classId et availableClasses) */}
                                         <select 
                                             value={newUser.classId} 
                                             onChange={e => setNewUser({...newUser, classId: e.target.value})} 
@@ -492,13 +500,12 @@ const AdminDashboard: React.FC = () => {
             )}
         </div>
 
-        {/* --- MODULES GESTION (Bas de page) --- */}
+        {/* --- MODULES GESTION --- */}
         {activeTab !== 'Paramètres' && (
             <>
                 <div style={{ marginTop: '40px', display: 'grid', gap: '30px' }}>
                     <ClassManager />
                     
-                    {/* 🚀 MODULE PAYANT 2 : EMPLOI DU TEMPS IA */}
                     <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px' }}>
                         <h2 style={{ color: '#0A2240', marginTop: 0 }}>📅 Gestion des Emplois du Temps</h2>
                         {safeModules.ai_planning ?
@@ -524,9 +531,7 @@ const AdminDashboard: React.FC = () => {
 
       </div>
 
-      {/* MODALE ÉLÈVE */}
       {selectedStudent && <StudentCard student={selectedStudent} onClose={() => setSelectedStudent(null)} />}
-
       <Footer />
     </div>
   );
@@ -544,7 +549,6 @@ const KpiCard = ({ title, count, icon, color }: any) => (
     </div>
 );
 
-// Bannière Pub pour Module Verrouillé (Grand format)
 const UpsellBanner = ({ title, description }: any) => (
     <div style={{ background: 'linear-gradient(90deg, #FFF3E0 0%, #FFFFFF 100%)', border: '1px dashed #F77F00', padding: '20px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '20px', boxShadow: '0 4px 10px rgba(247, 127, 0, 0.1)' }}>
         <div style={{ backgroundColor: '#FFE0B2', padding: '15px', borderRadius: '50%', color: '#E65100', fontSize: '1.5rem' }}><FaLock /></div>
@@ -558,7 +562,6 @@ const UpsellBanner = ({ title, description }: any) => (
     </div>
 );
 
-// Bannière Pub pour Module Verrouillé (Petit format)
 const UpsellBannerSmall = ({ title }: any) => (
     <div style={{ padding: '30px', textAlign: 'center', color: '#888', backgroundColor: '#fafafa', borderRadius: '8px', border: '1px dashed #ccc' }}>
         <FaLock size={24} color="#F77F00" style={{ marginBottom: '10px' }} />

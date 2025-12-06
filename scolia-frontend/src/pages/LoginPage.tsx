@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Logo } from '../components/Logo';
 // Import des icônes pour améliorer l'UX
 import { FaEnvelope, FaLock, FaEye, FaEyeSlash, FaArrowRight } from 'react-icons/fa';
+import toast from 'react-hot-toast'; // <--- NOUVEL IMPORT DE TOAST
 
 const LoginPage: React.FC = () => {
   const { login, isAuthenticated, userRole, isLoading } = useAuth();
@@ -25,9 +26,21 @@ const LoginPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    
+    // 1. Démarrer le toast de chargement
+    const loadingToastId = toast.loading("Tentative de connexion...");
+
     try {
       await login(email, password);
+      
+      // En cas de succès, le useEffect gère la redirection, mais on confirme via toast
+      toast.success("Connexion réussie ! Redirection en cours...", { id: loadingToastId });
+
     } catch (err) {
+      // 2. Arrêter le chargement et afficher un toast d'erreur
+      toast.error("Identifiants incorrects. Veuillez vérifier vos accès.", { id: loadingToastId });
+      
+      // 3. Maintenir la bannière d'erreur dans le formulaire pour une haute visibilité
       setError("Identifiants incorrects. Veuillez vérifier vos accès.");
     }
   };

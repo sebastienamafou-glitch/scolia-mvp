@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
+import toast from 'react-hot-toast';
 import { FaCalendarAlt, FaRobot, FaClock } from 'react-icons/fa';
 
 interface ClassOption {
@@ -37,7 +38,9 @@ export const TimetableManager: React.FC = () => {
 
   // Charger les classes
   useEffect(() => {
-    api.get('/classes').then(res => setClasses(res.data));
+    api.get('/classes')
+       .then(res => setClasses(res.data))
+       .catch(err => console.error("Erreur chargement classes", err));
   }, []);
 
   // Charger l'emploi du temps quand on sélectionne une classe
@@ -53,6 +56,7 @@ export const TimetableManager: React.FC = () => {
       setSchedule(res.data);
     } catch (e) {
       console.error(e);
+      toast.error("Impossible de charger l'emploi du temps.");
     } finally {
       setLoading(false);
     }
@@ -60,11 +64,15 @@ export const TimetableManager: React.FC = () => {
 
   const handleGenerateAI = async () => {
     if (!selectedClassId) return;
+    
+    // Le confirm natif est acceptable ici pour une action destructrice
     if (!window.confirm("Attention : Cela va effacer et régénérer l'emploi du temps actuel. Continuer ?")) return;
 
     setGenerating(true);
+    const toastId = toast.loading("L'IA génère le planning...");
+
     try {
-      // Contraintes par défaut (on pourrait faire un formulaire pour ça plus tard)
+      // Contraintes par défaut
       const constraints = {
         "Mathématiques": 4,
         "Français": 4,
@@ -76,10 +84,12 @@ export const TimetableManager: React.FC = () => {
       };
 
       await api.post(`/timetable/generate/${selectedClassId}`, constraints);
-      alert("✨ Emploi du temps généré avec succès !");
+      
+      toast.success("✨ Emploi du temps généré avec succès !", { id: toastId });
       loadSchedule(); // Rafraîchir l'affichage
     } catch (error) {
-      alert("Erreur lors de la génération IA.");
+      console.error(error);
+      toast.error("Erreur lors de la génération IA.", { id: toastId });
     } finally {
       setGenerating(false);
     }
@@ -134,7 +144,6 @@ export const TimetableManager: React.FC = () => {
                                     .filter(s => {
                                         const apiDay = normalize(s.dayOfWeek);
                                         const uiDay = normalize(day);
-                                        // On compare soit directement, soit via le mapping
                                         return apiDay === uiDay || dayMapping[apiDay] === uiDay;
                                     })
                                     .sort((a, b) => a.startTime.localeCompare(b.startTime))

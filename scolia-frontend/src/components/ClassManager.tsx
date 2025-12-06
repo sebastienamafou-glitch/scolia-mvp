@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
+import toast from 'react-hot-toast';
 
 interface ClassEntity {
   id: number;
@@ -24,6 +25,7 @@ export const ClassManager: React.FC = () => {
       setClasses(res.data);
     } catch (err) {
       console.error(err);
+      toast.error("Impossible de charger la liste des classes.");
     } finally {
       setLoading(false);
     }
@@ -31,13 +33,20 @@ export const ClassManager: React.FC = () => {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if(!newClass.name || !newClass.level) {
+        toast.error("Veuillez remplir tous les champs.");
+        return;
+    }
+
     try {
       await api.post('/classes', newClass);
-      alert('Classe créée !');
+      toast.success('Classe créée avec succès !');
       setNewClass({ name: '', level: '' });
-      fetchClasses();
+      fetchClasses(); // Recharger la liste
     } catch (err) {
-      alert("Erreur lors de la création.");
+      console.error(err);
+      toast.error("Erreur lors de la création de la classe.");
     }
   };
 
@@ -63,6 +72,7 @@ export const ClassManager: React.FC = () => {
             <select 
                 value={newClass.level}
                 onChange={e => setNewClass({...newClass, level: e.target.value})}
+                required
                 style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }}
             >
                 <option value="">-- Niveau --</option>
@@ -74,7 +84,7 @@ export const ClassManager: React.FC = () => {
                 <option value="Première">Première</option>
                 <option value="Terminale">Terminale</option>
             </select>
-            <button type="submit" style={{ backgroundColor: '#0A2240', color: 'white', padding: '10px', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
+            <button type="submit" style={{ backgroundColor: '#0A2240', color: 'white', padding: '10px', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
                 Ajouter
             </button>
         </form>

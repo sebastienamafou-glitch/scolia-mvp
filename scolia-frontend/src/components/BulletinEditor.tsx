@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
+import toast from 'react-hot-toast';
 
 // --- Types ---
 interface Student {
@@ -42,7 +43,9 @@ export const BulletinEditor: React.FC = () => {
 
   // 1. Charger les classes
   useEffect(() => {
-    api.get('/classes').then(res => setClasses(res.data)).catch(console.error);
+    api.get('/classes')
+       .then(res => setClasses(res.data))
+       .catch(() => toast.error("Impossible de charger les classes"));
   }, []);
 
   // 2. Charger les élèves quand la classe change
@@ -52,15 +55,13 @@ export const BulletinEditor: React.FC = () => {
         return;
     }
     
-    // 👇 AJOUT : Réinitialisation propre lors du changement de classe
-    setSelectedStudentId('');  // Réinitialise la sélection de l'élève
-    setBulletin(null);         // Vide le bulletin affiché
-    setAppreciation('');       // Vide l'appréciation
-    // ------------------
+    setSelectedStudentId('');
+    setBulletin(null);
+    setAppreciation('');
 
     api.get(`/students/class/${selectedClassId}`)
        .then(res => setStudents(res.data))
-       .catch(console.error);
+       .catch(() => toast.error("Erreur chargement élèves"));
   }, [selectedClassId]);
 
   // 3. Charger le bulletin (Moyennes + Appréciation) quand l'élève change
@@ -77,9 +78,10 @@ export const BulletinEditor: React.FC = () => {
     try {
         const res = await api.get(`/bulletins?studentId=${selectedStudentId}&period=${period}`);
         setBulletin(res.data);
-        setAppreciation(res.data.bulletinData.appreciation || ''); // Pré-remplir l'appréciation
+        setAppreciation(res.data.bulletinData?.appreciation || ''); 
     } catch (error) {
         console.error("Erreur chargement bulletin", error);
+        toast.error("Impossible de générer ou récupérer les données du bulletin.");
     } finally {
         setLoading(false);
     }
@@ -94,9 +96,10 @@ export const BulletinEditor: React.FC = () => {
             period: period,
             appreciation: appreciation
         });
-        alert('✅ Appréciation enregistrée !');
+        toast.success('✅ Appréciation et Bulletin enregistrés !');
     } catch (error) {
-        alert("Erreur lors de la sauvegarde.");
+        console.error(error);
+        toast.error("Erreur lors de la sauvegarde.");
     } finally {
         setSaving(false);
     }
@@ -110,14 +113,13 @@ export const BulletinEditor: React.FC = () => {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '30px', backgroundColor: '#F4F6F8', padding: '20px', borderRadius: '8px' }}>
         <div>
             <label style={{display: 'block', fontWeight: 'bold', marginBottom: '5px'}}>1. Classe</label>
-            <select style={{width: '100%', padding: '8px'}} onChange={e => setSelectedClassId(e.target.value)}>
+            <select style={{width: '100%', padding: '8px'}} onChange={e => setSelectedClassId(e.target.value)} value={selectedClassId}>
                 <option value="">-- Choisir --</option>
                 {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
         </div>
         <div>
             <label style={{display: 'block', fontWeight: 'bold', marginBottom: '5px'}}>2. Élève</label>
-            {/* L'attribut 'value' assure que la sélection est mise à jour lorsque selectedStudentId est réinitialisé */}
             <select style={{width: '100%', padding: '8px'}} value={selectedStudentId} onChange={e => setSelectedStudentId(e.target.value)} disabled={!selectedClassId}>
                 <option value="">-- Choisir l'élève --</option>
                 {students.map(s => <option key={s.id} value={s.id}>{s.nom} {s.prenom}</option>)}
@@ -134,7 +136,7 @@ export const BulletinEditor: React.FC = () => {
       </div>
 
       {/* AFFICHAGE DU BULLETIN */}
-      {loading && <p>Chargement des calculs...</p>}
+      {loading && <p style={{textAlign: 'center', color: '#666'}}>Chargement des calculs et notes...</p>}
       
       {!loading && bulletin && (
         <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '40px' }}>
@@ -154,7 +156,7 @@ export const BulletinEditor: React.FC = () => {
                             <tr key={sub.matiere} style={{borderBottom: '1px solid #eee'}}>
                                 <td style={{padding: '8px'}}>{sub.matiere}</td>
                                 <td style={{padding: '8px', textAlign: 'center', fontWeight: 'bold', color: sub.moyenne < 10 ? '#D32F2F' : '#008F39'}}>
-                                    {sub.moyenne} / 20
+                                    {Number(sub.moyenne).toFixed(2)} / 20
                                 </td>
                             </tr>
                         ))}
@@ -163,7 +165,7 @@ export const BulletinEditor: React.FC = () => {
                 
                 <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#E3F2FD', borderRadius: '8px', textAlign: 'center' }}>
                     <span style={{ fontSize: '1.2rem', color: '#0D47A1' }}>Moyenne Générale : </span>
-                    <strong style={{ fontSize: '1.5rem', color: '#0D47A1' }}>{bulletin.globalAverage} / 20</strong>
+                    <strong style={{ fontSize: '1.5rem', color: '#0D47A1' }}>{Number(bulletin.globalAverage).toFixed(2)} / 20</strong>
                 </div>
             </div>
 
@@ -180,7 +182,7 @@ export const BulletinEditor: React.FC = () => {
                 <button 
                     onClick={handleSave} 
                     disabled={saving}
-                    style={{ marginTop: '15px', padding: '15px', backgroundColor: '#F77F00', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+                    style={{ marginTop: '15px', padding: '15px', backgroundColor: '#F77F00', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: saving ? 'wait' : 'pointer' }}
                 >
                     {saving ? 'Sauvegarde...' : '💾 Enregistrer le Bulletin'}
                 </button>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
-// npm install react-icons (si pas fait)
+import toast from 'react-hot-toast';
 import { FaStar } from 'react-icons/fa';
 
 interface Competence {
@@ -41,6 +41,7 @@ export const SkillsEvaluator: React.FC<SkillsEvaluatorProps> = ({ classId }) => 
             if (resStudents.data.length > 0) setSelectedStudentId(resStudents.data[0].id.toString());
         } catch (e) {
             console.error("Erreur chargement données compétences");
+            toast.error("Erreur chargement des données.");
         }
     };
     init();
@@ -50,29 +51,25 @@ export const SkillsEvaluator: React.FC<SkillsEvaluatorProps> = ({ classId }) => 
     setRatings(prev => ({ ...prev, [competenceId]: level }));
   };
 
-  // NOUVELLE LOGIQUE : Envoi en bloc (Bulk Insert)
   const handleSubmit = async () => {
     if (!selectedStudentId) return;
     setLoading(true);
     try {
-        // Transformation des données en tableau
         const evaluations = Object.entries(ratings).map(([compId, level]) => ({
             competenceId: Number(compId),
             level: level
         }));
 
-        // UNE SEULE REQUÊTE ROBUSTE (Bulk Insert)
         await api.post('/skills/evaluate/bulk', {
             studentId: Number(selectedStudentId),
             evaluations: evaluations
         });
 
-        alert("✅ Compétences enregistrées !");
+        toast.success("✅ Compétences enregistrées !");
         setRatings({}); // Reset
     } catch (error) {
-        // Gérer les erreurs (par exemple, si la route backend n'existe pas encore)
         console.error("Erreur lors de l'enregistrement des compétences:", error);
-        alert("Erreur lors de l'enregistrement. Vérifiez que la route backend /skills/evaluate/bulk est prête.");
+        toast.error("Erreur lors de l'enregistrement.");
     } finally {
         setLoading(false);
     }

@@ -11,6 +11,7 @@ import { requestForToken } from '../firebase-config';
 import { FaLock } from 'react-icons/fa'; 
 import { Footer } from '../components/Footer';
 import { DigitalIdCard } from '../components/DigitalIdCard';
+import toast from 'react-hot-toast'; // Import UX
 
 // --- Types ---
 interface Student {
@@ -19,7 +20,7 @@ interface Student {
   nom: string;
   class?: { name: string };
   photo?: string;
-  dateNaissance?: string; // 👈 AJOUTÉ POUR LA CARTE
+  dateNaissance?: string; 
 }
 
 interface BulletinData {
@@ -61,7 +62,6 @@ const ParentDashboard: React.FC = () => {
         if (token) {
             try {
                 await api.post('/notifications/subscribe', { token });
-                console.log("✅ Notifications Push activées !");
             } catch (e) {
                 console.error("Erreur abonnement notif", e);
             }
@@ -87,6 +87,7 @@ const ParentDashboard: React.FC = () => {
       }
     } catch (error) {
       console.error("Erreur chargement enfants", error);
+      toast.error("Impossible de charger les informations des enfants.");
     } finally {
       setLoading(false);
     }
@@ -99,6 +100,7 @@ const ParentDashboard: React.FC = () => {
       setBulletin(res.data);
     } catch (error) {
       console.error("Erreur chargement bulletin", error);
+      // On ne spamme pas d'erreur si le bulletin n'existe juste pas encore
     }
   };
   
@@ -177,7 +179,7 @@ const ParentDashboard: React.FC = () => {
                                     <span style={{ opacity: 0.8, fontSize: '0.9rem' }}>Classe : {currentChild.class?.name || 'Non assigné'}</span>
                                 </div>
                                 
-                                {/* Moyenne + Bouton PDF (Gérés conditionnellement) */}
+                                {/* Moyenne + Bouton PDF */}
                                 {bulletin && (
                                     <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
                                         
@@ -216,7 +218,6 @@ const ParentDashboard: React.FC = () => {
                             {/* CONTENU PRINCIPAL */}
                             <div style={{ padding: '25px' }}>
                                 
-                                {/* 👇 AJOUT : Layout Flexible pour intégrer la Carte Scolaire */}
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '40px', alignItems: 'flex-start' }}>
                                     
                                     {/* SECTION GAUCHE : CARTE SCOLAIRE */}

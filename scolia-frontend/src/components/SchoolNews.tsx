@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import toast from 'react-hot-toast';
 
 interface NewsItem {
   id: number;
@@ -32,14 +33,20 @@ export const SchoolNews: React.FC = () => {
 
   const handlePublish = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPost.title || !newPost.content) return;
+    if (!newPost.title || !newPost.content) {
+        toast.error("Le titre et le contenu sont obligatoires.");
+        return;
+    }
+
     try {
         await api.post('/news', newPost);
         fetchNews(); // Rafraîchir la liste
         setNewPost({ title: '', content: '', isUrgent: false, targetRole: 'All' }); // Reset
         setShowForm(false);
-        alert("Annonce publiée !");
-    } catch (e) { alert("Erreur publication"); }
+        toast.success("Annonce publiée avec succès !");
+    } catch (e) { 
+        toast.error("Erreur lors de la publication.");
+    }
   };
 
   return (

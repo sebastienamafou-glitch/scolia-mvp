@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast'; // On garde l'import de la fonction, mais pas du composant Toaster
 
 // --- Types partagés ---
 interface Student {
@@ -101,7 +101,7 @@ export const AttendanceEntry: React.FC = () => {
 
   return (
     <div style={{ maxWidth: '700px', margin: '0 auto 40px auto', padding: '25px', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
-      <Toaster position="top-center" />
+      {/* ⚠️ SUPPRESSION DU <Toaster /> Local (Géré par App.tsx) */}
       <h2 style={{ color: '#0A2240', borderBottom: '2px solid #F77F00', paddingBottom: '10px' }}>🔔 Faire l'Appel</h2>
       
       {/* SÉLECTION CLASSE */}
@@ -261,7 +261,7 @@ export const NoteEntry: React.FC = () => {
 
     return (
         <div style={{ maxWidth: '700px', margin: '0 auto', padding: '25px', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
-            <Toaster position="top-center" />
+            {/* ⚠️ SUPPRESSION DU <Toaster /> Local */}
             <h2 style={{ color: '#0A2240', borderBottom: '2px solid #008F39', paddingBottom: '10px', marginBottom: '20px' }}>
                 📝 Saisir des Notes
             </h2>

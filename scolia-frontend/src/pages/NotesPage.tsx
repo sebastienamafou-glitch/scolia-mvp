@@ -3,23 +3,24 @@ import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import { Logo } from '../components/Logo';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast'; // Import UX
 
 // --- Types ---
 interface Grade {
   id: number;
-  value: number;       // La note (ex: 15)
-  total: number;       // Sur combien (ex: 20)
-  coef: number;        // Coefficient
-  type: string;        // 'Devoir', 'Interro', 'Partiel'
+  value: number;       
+  total: number;       
+  coef: number;        
+  type: string;        
   date: string;
-  subject: string;     // Matière (ex: Mathématiques)
+  subject: string;     
   comment?: string;
 }
 
 interface SubjectGroup {
   subjectName: string;
   grades: Grade[];
-  average: string; // Moyenne calculée
+  average: string; 
 }
 
 const NotesPage: React.FC = () => {
@@ -35,12 +36,10 @@ const NotesPage: React.FC = () => {
 
   const fetchGrades = async () => {
     try {
-      // Appel API pour récupérer les notes de l'élève connecté
-      // NOTE: Assurez-vous d'avoir une route '/grades/my-grades' dans votre GradesController
       const response = await api.get('/grades/my-grades');
       const grades: Grade[] = response.data;
 
-      // Traitement des données : Groupement par matière
+      // Traitement des données
       const groups: Record<string, Grade[]> = {};
       
       grades.forEach(grade => {
@@ -50,16 +49,13 @@ const NotesPage: React.FC = () => {
         groups[grade.subject].push(grade);
       });
 
-      // Calcul des moyennes et transformation en tableau
       const processedData: SubjectGroup[] = Object.keys(groups).map(subject => {
         const subjectGrades = groups[subject];
         
-        // Calcul Moyenne Pondérée
         let totalPoints = 0;
         let totalCoef = 0;
 
         subjectGrades.forEach(g => {
-          // On ramène tout sur 20 pour le calcul
           const normalizedValue = (g.value / g.total) * 20;
           totalPoints += normalizedValue * g.coef;
           totalCoef += g.coef;
@@ -78,19 +74,17 @@ const NotesPage: React.FC = () => {
 
     } catch (error) {
       console.error("Erreur chargement notes", error);
-      // Fallback : Données de test si l'API échoue pour l'instant
-      // mockData(); 
+      toast.error("Impossible de charger les notes.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Helper pour la couleur de la note
   const getScoreColor = (score: number, total: number) => {
     const ratio = score / total;
-    if (ratio >= 0.5) return '#2E7D32'; // Vert (Moyenne ou +)
-    if (ratio >= 0.4) return '#F57C00'; // Orange (Juste en dessous)
-    return '#C62828'; // Rouge
+    if (ratio >= 0.5) return '#2E7D32'; 
+    if (ratio >= 0.4) return '#F57C00'; 
+    return '#C62828'; 
   };
 
   return (
@@ -114,7 +108,6 @@ const NotesPage: React.FC = () => {
 
       <div style={{ maxWidth: '800px', margin: '30px auto', padding: '0 20px' }}>
         
-        {/* EN-TÊTE ÉLÈVE */}
         <div style={{ marginBottom: '30px' }}>
             <h2 style={{ margin: 0, color: '#0A2240' }}>Bonjour, {user?.prenom} 👋</h2>
             <p style={{ color: '#666' }}>Voici tes derniers résultats scolaires.</p>
@@ -129,11 +122,9 @@ const NotesPage: React.FC = () => {
         ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 
-                {/* CARTE PAR MATIÈRE */}
                 {groupedGrades.map((group, index) => (
                     <div key={index} style={{ backgroundColor: 'white', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
                         
-                        {/* Header Matière */}
                         <div style={{ backgroundColor: '#0A2240', color: 'white', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <span style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{group.subjectName}</span>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -144,7 +135,6 @@ const NotesPage: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Liste des notes */}
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
                             <thead style={{ backgroundColor: '#f9f9f9', borderBottom: '1px solid #eee' }}>
                                 <tr>
@@ -171,7 +161,7 @@ const NotesPage: React.FC = () => {
                                             <span style={{ 
                                                 fontWeight: 'bold', 
                                                 color: getScoreColor(grade.value, grade.total),
-                                                backgroundColor: getScoreColor(grade.value, grade.total) + '20', // Opacité 20%
+                                                backgroundColor: getScoreColor(grade.value, grade.total) + '20', 
                                                 padding: '5px 10px',
                                                 borderRadius: '15px'
                                             }}>

@@ -4,16 +4,14 @@ import { useAuth } from '../contexts/AuthContext';
 import { Logo } from '../components/Logo';
 import { FaSchool, FaCheckCircle, FaBan, FaSearch, FaPlus, FaPowerOff, FaTimes, FaChevronLeft, FaChevronRight, FaMapMarkerAlt } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
-import toast from 'react-hot-toast'; // Pour les notifications jolies
+import toast from 'react-hot-toast'; 
 
-// Interface mise à jour avec les modules
 interface School {
   id: number;
   name: string;
   address: string;
   isActive: boolean;
   createdAt: string;
-  // Configuration des modules
   modules: {
       cards: boolean;
       sms: boolean;
@@ -25,7 +23,6 @@ interface School {
 const PlatformDashboard: React.FC = () => {
   const { logout } = useAuth();
   
-  // Données
   const [allSchools, setAllSchools] = useState<School[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -58,15 +55,13 @@ const PlatformDashboard: React.FC = () => {
     }
   };
 
-  // --- LOGIQUE DE FILTRAGE ET RECHERCHE ---
+  // --- FILTRES ---
   const filteredSchools = allSchools.filter(school => {
-    // 1. Filtre par Statut
     const statusMatch = 
         filterStatus === 'Tous' || 
         (filterStatus === 'Active' && school.isActive) ||
         (filterStatus === 'Suspendue' && !school.isActive);
     
-    // 2. Filtre par Recherche (Nom ou Ville)
     const searchLower = searchQuery.toLowerCase();
     const searchMatch = 
         school.name.toLowerCase().includes(searchLower) || 
@@ -75,13 +70,11 @@ const PlatformDashboard: React.FC = () => {
     return statusMatch && searchMatch;
   });
 
-  // --- LOGIQUE DE PAGINATION ---
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentSchools = filteredSchools.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredSchools.length / itemsPerPage);
 
-  // --- KPI ---
   const totalCount = allSchools.length;
   const activeCount = allSchools.filter(s => s.isActive).length;
   const suspendedCount = totalCount - activeCount;
@@ -97,15 +90,17 @@ const PlatformDashboard: React.FC = () => {
       const response = await api.post('/schools/onboard', formData);
       const { admin } = response.data;
 
-      // Affichage des accès générés
-      alert(
-        `✅ SUCCÈS : École créée !\n\n` +
-        `------------------------------------------------\n` +
-        `📧 EMAIL : ${admin.generatedEmail}\n` +
-        `🔑 MOT DE PASSE : ${admin.generatedPassword}\n` +
-        `------------------------------------------------\n` +
-        `Notez ces informations maintenant.`
-      );
+      // UX : Affichage propre des identifiants (plus d'alert moche)
+      toast((t) => (
+        <div style={{minWidth: '300px'}}>
+            <h4 style={{marginTop:0, color: '#38a169'}}>✅ École créée avec succès !</h4>
+            <div style={{backgroundColor: '#EDF2F7', padding: '10px', borderRadius: '5px', fontFamily: 'monospace'}}>
+                Email : <strong>{admin.generatedEmail}</strong><br/>
+                Pass : <strong>{admin.generatedPassword}</strong>
+            </div>
+            <p style={{marginBottom:0, fontSize:'0.8rem', color:'#718096'}}>Notez ces accès maintenant.</p>
+        </div>
+      ), { duration: 15000, position: 'top-center' }); // 15 secondes pour copier
 
       setFormData({ schoolName: '', schoolAddress: '', adminNom: '', adminPrenom: '', adminEmail: '' });
       setShowForm(false);
@@ -116,7 +111,7 @@ const PlatformDashboard: React.FC = () => {
     }
   };
 
-  // 2. Activer / Suspendre l'accès global
+  // 2. Activer / Suspendre
   const toggleSchoolStatus = async (school: School) => {
     if (!window.confirm(`Voulez-vous vraiment ${school.isActive ? 'DÉSACTIVER' : 'ACTIVER'} l'école ${school.name} ?`)) return;
 
@@ -129,16 +124,14 @@ const PlatformDashboard: React.FC = () => {
     }
   };
 
-  // 3. FEATURE FLIPPING (Gestion des Modules)
+  // 3. Modules
   const toggleModule = async (school: School, moduleName: string) => {
-    // @ts-ignore : accès dynamique aux clés
+    // @ts-ignore
     const newValue = !school.modules?.[moduleName];
 
     try {
-        // Appel API
         await api.patch(`/schools/${school.id}/modules`, { [moduleName]: newValue });
         
-        // Mise à jour optimiste de l'état local
         setAllSchools(prev => prev.map(s => {
             if (s.id === school.id) {
                 return {
@@ -192,20 +185,17 @@ const PlatformDashboard: React.FC = () => {
 
       <div style={{ maxWidth: '1400px', margin: '30px auto', padding: '0 20px' }}>
         
-        {/* 1. KPI CARDS */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginBottom: '30px' }}>
             <KpiCard title="Total Clients" count={totalCount} icon={<FaSchool />} color="#3182ce" />
             <KpiCard title="Abonnements Actifs" count={activeCount} icon={<FaCheckCircle />} color="#38a169" />
             <KpiCard title="Suspendus" count={suspendedCount} icon={<FaBan />} color="#e53e3e" />
         </div>
 
-        {/* 2. GESTION DES ÉCOLES */}
         <div style={{ backgroundColor: '#2d3748', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.2)', overflow: 'hidden' }}>
             
             {/* BARRE D'OUTILS */}
             <div style={{ padding: '20px', borderBottom: '1px solid #4a5568', display: 'flex', flexWrap: 'wrap', gap: '20px', justifyContent: 'space-between', alignItems: 'center' }}>
                 
-                {/* Filtres */}
                 <div style={{ display: 'flex', gap: '10px' }}>
                     {['Tous', 'Active', 'Suspendue'].map((status: any) => (
                         <button 
@@ -222,7 +212,6 @@ const PlatformDashboard: React.FC = () => {
                     ))}
                 </div>
 
-                {/* Recherche & Ajout */}
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                     <div style={{ position: 'relative' }}>
                         <FaSearch style={{ position: 'absolute', left: '10px', top: '10px', color: '#a0aec0' }} />
@@ -243,7 +232,7 @@ const PlatformDashboard: React.FC = () => {
                 </div>
             </div>
 
-            {/* FORMULAIRE (TIROIR) */}
+            {/* FORMULAIRE */}
             {showForm && (
                 <div style={{ padding: '25px', backgroundColor: '#232c3b', borderBottom: '1px solid #4a5568' }}>
                     <h3 style={{ marginTop: 0, color: '#F77F00', marginBottom: '20px' }}>🚀 Onboarding Nouveau Client</h3>
@@ -260,19 +249,17 @@ const PlatformDashboard: React.FC = () => {
                 </div>
             )}
 
-            {/* LISTE PRINCIPALE */}
+            {/* LISTE */}
             <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '1000px' }}>
                     <thead style={{ backgroundColor: '#4a5568', color: '#cbd5e0' }}>
                         <tr>
                             <th style={{ padding: '15px' }}>École</th>
                             <th style={{ padding: '15px' }}>Localisation</th>
-                            {/* COLONNES MODULES */}
                             <th style={{ padding: '15px', textAlign: 'center' }}>💳 Cartes</th>
                             <th style={{ padding: '15px', textAlign: 'center' }}>🤖 IA</th>
                             <th style={{ padding: '15px', textAlign: 'center' }}>🚨 Radar</th>
                             <th style={{ padding: '15px', textAlign: 'center' }}>📱 SMS</th>
-                            {/* FIN MODULES */}
                             <th style={{ padding: '15px' }}>État</th>
                             <th style={{ padding: '15px', textAlign: 'right' }}>Action</th>
                         </tr>
@@ -293,12 +280,10 @@ const PlatformDashboard: React.FC = () => {
                                     <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><FaMapMarkerAlt size={12}/> {school.address}</span>
                                 </td>
                                 
-                                {/* INTERRUPTEURS MODULES */}
                                 <td style={{ textAlign: 'center' }}><ModuleSwitch active={school.modules?.cards} onClick={() => toggleModule(school, 'cards')} /></td>
                                 <td style={{ textAlign: 'center' }}><ModuleSwitch active={school.modules?.ai_planning} onClick={() => toggleModule(school, 'ai_planning')} /></td>
                                 <td style={{ textAlign: 'center' }}><ModuleSwitch active={school.modules?.risk_radar} onClick={() => toggleModule(school, 'risk_radar')} /></td>
                                 <td style={{ textAlign: 'center' }}><ModuleSwitch active={school.modules?.sms} onClick={() => toggleModule(school, 'sms')} /></td>
-                                {/* --------------------- */}
 
                                 <td style={{ padding: '15px' }}>
                                     {school.isActive ? 
@@ -326,7 +311,6 @@ const PlatformDashboard: React.FC = () => {
                 </table>
             </div>
 
-            {/* PAGINATION */}
             {totalPages > 1 && (
                 <div style={{ padding: '15px', borderTop: '1px solid #4a5568', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '15px' }}>
                     <span style={{ fontSize: '0.9rem', color: '#a0aec0' }}>Page {currentPage} sur {totalPages}</span>
@@ -342,8 +326,6 @@ const PlatformDashboard: React.FC = () => {
     </div>
   );
 };
-
-// --- STYLES & PETITS COMPOSANTS ---
 
 const KpiCard = ({ title, count, icon, color }: any) => (
     <div style={{ backgroundColor: '#2d3748', padding: '20px', borderRadius: '10px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: '15px' }}>
@@ -361,7 +343,7 @@ const ModuleSwitch = ({ active, onClick }: any) => (
         title={active ? "Désactiver ce module" : "Activer ce module"}
         style={{
             width: '40px', height: '20px', 
-            backgroundColor: active ? '#48bb78' : '#4a5568', // Vert ou Gris
+            backgroundColor: active ? '#48bb78' : '#4a5568',
             borderRadius: '20px', position: 'relative', cursor: 'pointer',
             transition: 'background 0.3s', margin: '0 auto',
             border: '1px solid #4a5568'
@@ -370,7 +352,7 @@ const ModuleSwitch = ({ active, onClick }: any) => (
         <div style={{
             width: '16px', height: '16px', backgroundColor: 'white', borderRadius: '50%',
             position: 'absolute', top: '1px', 
-            left: active ? '21px' : '2px', // Animation du bouton
+            left: active ? '21px' : '2px',
             transition: 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 
             boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
         }} />

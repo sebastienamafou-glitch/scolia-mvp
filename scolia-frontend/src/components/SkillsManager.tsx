@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
-// Assurez-vous d'avoir react-icons (npm install react-icons)
+import toast from 'react-hot-toast';
 import { FaStar, FaPlus, FaListUl } from 'react-icons/fa';
 
 interface Competence {
@@ -38,13 +38,18 @@ export const SkillsManager: React.FC = () => {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if(!newSkill.name) {
+        toast.error("Veuillez saisir un intitulé.");
+        return;
+    }
+    
     try {
       await api.post('/skills', newSkill);
-      alert('✅ Compétence ajoutée au référentiel !');
+      toast.success('✅ Compétence ajoutée au référentiel !');
       setNewSkill({ name: '', category: 'Savoir-être', description: '' }); // Reset
       fetchSkills(); // Rafraîchir la liste
     } catch (error) {
-      alert("Erreur lors de la création.");
+      toast.error("Erreur lors de la création.");
     }
   };
 

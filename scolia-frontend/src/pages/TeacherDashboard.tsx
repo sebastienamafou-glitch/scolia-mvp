@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import { Logo } from '../components/Logo';
 import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast'; // <--- NOUVEL IMPORT DE TOAST
 
 // Imports des modules
 import { NoteEntry, AttendanceEntry } from '../components/TeacherEntries';
@@ -53,7 +54,13 @@ const TeacherDashboard: React.FC = () => {
                         ❓ Aide
                     </Link>
 
-                    <button onClick={logout} style={{ backgroundColor: '#F77F00', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
+                    <button 
+                        onClick={() => { // <--- MODIFICATION ICI
+                            logout();
+                            toast.success("Vous avez été déconnecté avec succès !");
+                        }} 
+                        style={{ backgroundColor: '#F77F00', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
+                    >
                         Déconnexion
                     </button>
                 </div>
@@ -183,6 +190,7 @@ const SkillsManagerWrapper = () => {
                 setClasses(res.data);
             } catch (error) {
                 console.error("Erreur chargement classes", error);
+                toast.error("Impossible de charger la liste des classes."); // <--- MODIFICATION ICI
             }
         };
         fetchClasses();
