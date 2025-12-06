@@ -1,18 +1,51 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FaRobot, FaMobileAlt, FaChartLine, FaCheckCircle, FaUserGraduate, FaSchool, FaChalkboardTeacher } from 'react-icons/fa';
-import { Logo } from '../components/Logo'; // Assurez-vous que le chemin est bon
-
-// ✅ IMPORT DU LOGO (Assurez-vous d'avoir renommé et placé votre image dans src/assets/)
+import { FaRobot, FaMobileAlt, FaChartLine, FaCheckCircle, FaUserGraduate, FaSchool, FaChalkboardTeacher, FaBars, FaTimes } from 'react-icons/fa';
+import { Logo } from '../components/Logo';
+// Assurez-vous que le fichier image existe bien à cet emplacement
 import waciLogo from '../assets/webappci-logo.png'; 
 
+// --- INTERFACES POUR TYPER LES PROPS ---
+interface FeatureCardProps {
+  icon: React.ReactNode;
+  color: string;
+  title: string;
+  desc: string;
+}
+
+interface RoleCardProps {
+  icon: React.ReactNode;
+  title: string;
+  points: string[];
+}
+
+interface StatProps {
+  number: string;
+  label: string;
+}
+
 const LandingPage: React.FC = () => {
+  // Hook pour gérer la largeur de l'écran dynamiquement
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+      if (window.innerWidth >= 768) {
+        setMobileMenuOpen(false); // Fermer le menu mobile si on passe sur grand écran
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
     <div style={{ 
       fontFamily: '"Inter", sans-serif', 
       color: '#333', 
       overflowX: 'hidden',
-      // CORRECTION : Force le conteneur à prendre toute la largeur et hauteur disponible
       width: '100%',
       minHeight: '100vh',
       display: 'flex',
@@ -20,14 +53,58 @@ const LandingPage: React.FC = () => {
     }}>
       
       {/* --- NAVBAR --- */}
-      <nav style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 5%', backgroundColor: 'white', position: 'sticky', top: 0, zIndex: 1000, boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+      <nav style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        padding: '20px 5%', 
+        backgroundColor: 'white', 
+        position: 'sticky', 
+        top: 0, 
+        zIndex: 1000, 
+        boxShadow: '0 2px 10px rgba(0,0,0,0.05)' 
+      }}>
         <Logo width={40} height={40} showText={true} />
-        <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-            <a href="#features" style={navLinkStyle}>Fonctionnalités</a>
-            <a href="#roles" style={navLinkStyle}>Pour qui ?</a>
-            <Link to="/login" style={{ textDecoration: 'none', color: '#0A2240', fontWeight: 'bold' }}>Connexion</Link>
-            <Link to="/login" style={primaryButtonStyle}>Essai Gratuit</Link>
-        </div>
+
+        {/* Menu Desktop */}
+        {!isMobile ? (
+          <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+              <a href="#features" style={navLinkStyle}>Fonctionnalités</a>
+              <a href="#roles" style={navLinkStyle}>Pour qui ?</a>
+              <Link to="/login" style={{ textDecoration: 'none', color: '#0A2240', fontWeight: 'bold' }}>Connexion</Link>
+              <Link to="/login" style={primaryButtonStyle}>Essai Gratuit</Link>
+          </div>
+        ) : (
+          /* Bouton Burger Mobile */
+          <button 
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.5rem', color: '#0A2240' }}
+          >
+            {mobileMenuOpen ? <FaTimes /> : <FaBars />}
+          </button>
+        )}
+
+        {/* Menu Mobile Déroulant (Simple) */}
+        {isMobile && mobileMenuOpen && (
+          <div style={{
+            position: 'absolute',
+            top: '80px',
+            left: 0,
+            width: '100%',
+            backgroundColor: 'white',
+            padding: '20px',
+            boxShadow: '0 10px 20px rgba(0,0,0,0.1)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '15px',
+            textAlign: 'center'
+          }}>
+              <a href="#features" onClick={() => setMobileMenuOpen(false)} style={navLinkStyle}>Fonctionnalités</a>
+              <a href="#roles" onClick={() => setMobileMenuOpen(false)} style={navLinkStyle}>Pour qui ?</a>
+              <Link to="/login" onClick={() => setMobileMenuOpen(false)} style={{ textDecoration: 'none', color: '#0A2240', fontWeight: 'bold' }}>Connexion</Link>
+              <Link to="/login" onClick={() => setMobileMenuOpen(false)} style={primaryButtonStyle}>Essai Gratuit</Link>
+          </div>
+        )}
       </nav>
 
       {/* --- HERO SECTION --- */}
@@ -42,7 +119,7 @@ const LandingPage: React.FC = () => {
             <span style={{ backgroundColor: 'rgba(247, 127, 0, 0.2)', color: '#F77F00', padding: '5px 15px', borderRadius: '20px', fontSize: '0.9rem', fontWeight: 'bold', display: 'inline-block', marginBottom: '20px' }}>
                 🚀 La Révolution Scolaire est là
             </span>
-            <h1 style={{ fontSize: '3.5rem', fontWeight: '800', lineHeight: '1.2', marginBottom: '20px' }}>
+            <h1 style={{ fontSize: isMobile ? '2.5rem' : '3.5rem', fontWeight: '800', lineHeight: '1.2', marginBottom: '20px' }}>
                 L'Éducation Réinventée par <br/><span style={{ color: '#F77F00' }}>l'Intelligence Artificielle.</span>
             </h1>
             <p style={{ fontSize: '1.2rem', opacity: 0.9, marginBottom: '40px', lineHeight: '1.6' }}>
@@ -56,11 +133,11 @@ const LandingPage: React.FC = () => {
                     Voir la démo
                 </a>
             </div>
-            <p style={{ marginTop: '20px', fontSize: '0.9rem', opacity: 0.7 }}>
-                <FaCheckCircle style={{ marginRight: '5px', color: '#F77F00' }}/> Pas de carte bancaire requise
-                <span style={{ margin: '0 10px' }}>•</span>
-                <FaCheckCircle style={{ marginRight: '5px', color: '#F77F00' }}/> Installation en 5 minutes
-            </p>
+            <div style={{ marginTop: '30px', fontSize: '0.9rem', opacity: 0.7, display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '15px' }}>
+                <span><FaCheckCircle style={{ marginRight: '5px', color: '#F77F00' }}/> Pas de carte bancaire requise</span>
+                <span style={{ display: isMobile ? 'none' : 'inline' }}>•</span>
+                <span><FaCheckCircle style={{ marginRight: '5px', color: '#F77F00' }}/> Installation en 5 minutes</span>
+            </div>
         </div>
       </header>
 
@@ -143,7 +220,7 @@ const LandingPage: React.FC = () => {
           <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
               <p style={{ margin: 0 }}>&copy; {new Date().getFullYear()} Scolia. Tous droits réservés.</p>
               
-              {/* ✅ SIGNATURE DÉVELOPPEUR */}
+              {/* SIGNATURE DÉVELOPPEUR */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '0.9rem', flexWrap: 'wrap' }}>
                   <span>Scolia développé par</span>
                   <img 
@@ -166,9 +243,9 @@ const LandingPage: React.FC = () => {
   );
 };
 
-// --- COMPOSANTS INTERNES ET STYLES ---
+// --- COMPOSANTS INTERNES TYPÉS ---
 
-const FeatureCard = ({ icon, color, title, desc }: any) => (
+const FeatureCard: React.FC<FeatureCardProps> = ({ icon, color, title, desc }) => (
     <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '15px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', transition: 'transform 0.3s' }}>
         <div style={{ width: '60px', height: '60px', backgroundColor: color, borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' }}>
             {icon}
@@ -178,12 +255,12 @@ const FeatureCard = ({ icon, color, title, desc }: any) => (
     </div>
 );
 
-const RoleCard = ({ icon, title, points }: any) => (
+const RoleCard: React.FC<RoleCardProps> = ({ icon, title, points }) => (
     <div style={{ backgroundColor: 'rgba(255,255,255,0.05)', padding: '30px', borderRadius: '15px', border: '1px solid rgba(255,255,255,0.1)' }}>
         <div style={{ marginBottom: '20px' }}>{icon}</div>
         <h3 style={{ fontSize: '1.5rem', marginBottom: '20px' }}>{title}</h3>
         <ul style={{ listStyle: 'none', padding: 0 }}>
-            {points.map((p: string, i: number) => (
+            {points.map((p, i) => (
                 <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px', opacity: 0.9 }}>
                     <FaCheckCircle color="#F77F00" size={14} /> {p}
                 </li>
@@ -192,14 +269,14 @@ const RoleCard = ({ icon, title, points }: any) => (
     </div>
 );
 
-const Stat = ({ number, label }: any) => (
+const Stat: React.FC<StatProps> = ({ number, label }) => (
     <div>
         <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#0A2240' }}>{number}</div>
         <div style={{ color: '#666', textTransform: 'uppercase', fontSize: '0.8rem', fontWeight: 'bold', letterSpacing: '1px' }}>{label}</div>
     </div>
 );
 
-// Styles CSS-in-JS
+// Styles CSS-in-JS (Statiques)
 const primaryButtonStyle: React.CSSProperties = {
     backgroundColor: '#F77F00',
     color: 'white',
@@ -227,7 +304,7 @@ const navLinkStyle: React.CSSProperties = {
     textDecoration: 'none',
     color: '#555',
     fontWeight: '500',
-    display: window.innerWidth < 768 ? 'none' : 'block'
+    cursor: 'pointer'
 };
 
 export default LandingPage;

@@ -17,23 +17,30 @@ export class AllExceptionsFilter implements ExceptionFilter {
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const message =
+    const errorResponse =
       exception instanceof HttpException
         ? exception.getResponse()
-        : exception;
+        : 'Internal Server Error';
 
-    // 🚨 C'est ici que le bug est détecté et affiché dans tes logs 🚨
-    this.logger.error(
-      `❌ BUG DÉTECTÉ sur la route: ${request.url}`,
-      JSON.stringify(message), // Affiche le détail de l'erreur
-    );
+    // 🚨 LOGGING AMÉLIORÉ 🚨
+    if (status === HttpStatus.INTERNAL_SERVER_ERROR) {
+       // Si c'est un crash (500), on veut voir la ligne de code exacte
+       this.logger.error(
+         `❌ CRASH CRITIQUE sur ${request.method} ${request.url}`,
+         exception instanceof Error ? exception.stack : String(exception) // Affiche la stack trace
+       );
+    } else {
+       // Si c'est une erreur métier gérée (400, 401, 403...), on log juste le message
+       this.logger.warn(
+         `⚠️ Erreur ${status} sur ${request.url}: ${JSON.stringify(errorResponse)}`
+       );
+    }
 
-    // On répond proprement au Frontend au lieu de laisser charger indéfiniment
     response.status(status).json({
       statusCode: status,
       timestamp: new Date().toISOString(),
       path: request.url,
-      error: message,
+      error: errorResponse,
     });
   }
 }

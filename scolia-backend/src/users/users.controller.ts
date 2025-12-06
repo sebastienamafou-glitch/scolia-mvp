@@ -1,71 +1,64 @@
-// scolia-backend/src/users/users.controller.ts
-
 import { Controller, Get, Patch, Body, Post, Request, UseGuards, ForbiddenException, Param } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../auth/guard/roles.guard';
-import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/guard/roles.guard'; // Vérifiez que le dossier est bien 'guards'
+import { Roles, UserRole } from '../auth/roles.decorator';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Roles('Admin', 'SuperAdmin')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @Get()
   findAll(@Request() req) {
     const mySchoolId = req.user.schoolId;
-    const userRole = req.user.role;
-
-    // 🚨 SÉCURITÉ : Si pas d'école, seul le SuperAdmin passe.
+    
+    // Si pas d'école, seul le SuperAdmin passe.
     if (!mySchoolId) {
-        if (userRole !== 'SuperAdmin') {
+        if (req.user.role !== UserRole.SUPER_ADMIN) {
             throw new ForbiddenException("Accès refusé : Contexte école manquant.");
         }
         return this.usersService.findAll();
     }
     
-    // Sinon comportement normal (filtré par école)
     return this.usersService.findAllBySchool(mySchoolId);
   }
 
-  @Roles('Parent', 'Élève', 'Enseignant', 'Admin', 'SuperAdmin')
+  @Roles(UserRole.PARENT, UserRole.STUDENT, UserRole.TEACHER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @Get('me')
   getProfile(@Request() req) {
     return req.user; 
   }
   
   @Post() 
-  @Roles('Admin', 'SuperAdmin') 
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN) 
   async create(@Request() req, @Body() createUserDto: CreateUserDto) {
     const creatorSchoolId = req.user.schoolId;
     const creatorRole = req.user.role;
 
-    // Admin d'école : Doit avoir un schoolId
-    if (creatorRole === 'Admin') {
+    // Admin d'école
+    if (creatorRole === UserRole.ADMIN) {
         if (!creatorSchoolId) throw new ForbiddenException("Erreur critique: Admin sans école.");
-        // Interdiction de créer un SuperAdmin
-        if (createUserDto.role === 'SuperAdmin') throw new ForbiddenException("Action non autorisée.");
+        if (createUserDto.role === UserRole.SUPER_ADMIN) throw new ForbiddenException("Action non autorisée.");
         return this.usersService.create({ ...createUserDto, schoolId: creatorSchoolId });
     }
 
-    // SuperAdmin : OK
-    if (creatorRole === 'SuperAdmin') {
+    // SuperAdmin
+    if (creatorRole === UserRole.SUPER_ADMIN) {
         return this.usersService.create(createUserDto);
     }
   }
 
-  // NOUVEAU : Route pour la mise à jour d'un utilisateur par un Admin
-  @Roles('Admin', 'SuperAdmin')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @Patch(':id')
   async update(@Request() req, @Param('id') id: string, @Body() body: any) {
     const adminSchoolId = req.user.schoolId;
-    // On appelle une nouvelle méthode du service
     return this.usersService.updateUser(Number(id), body, adminSchoolId);
   }
 
-  @Roles('Parent', 'Élève', 'Enseignant', 'Admin', 'SuperAdmin')
+  @Roles(UserRole.PARENT, UserRole.STUDENT, UserRole.TEACHER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @Patch('preferences')
   async updatePreferences(@Request() req, @Body() body: any) {
     const userId = req.user.sub;

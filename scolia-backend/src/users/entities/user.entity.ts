@@ -1,8 +1,7 @@
-// scolia-backend/src/users/entities/user.entity.ts
-
 import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, RelationId } from 'typeorm';
 import { School } from '../../schools/entities/school.entity';
 import { Class } from '../../classes/entities/class.entity';
+import { UserRole } from '../../auth/roles.decorator'; // Assurez-vous que le chemin est bon
 
 @Entity()
 export class User {
@@ -27,8 +26,13 @@ export class User {
   @Column()
   prenom: string;
 
-  @Column()
-  role: string;
+  // ✅ CORRECTION : Utilisation de l'Enum
+  @Column({
+      type: 'enum',
+      enum: UserRole,
+      default: UserRole.STUDENT
+  })
+  role: UserRole;
 
   @Column({ nullable: true })
   photo: string;
@@ -70,34 +74,27 @@ export class User {
   notifQuietHours: string;
 
   // =========================================================
-  // RELATIONS & IDs (Version @RelationId)
+  // RELATIONS
   // =========================================================
 
-  // 1. L'École
   @ManyToOne(() => School, (school) => school.users, { nullable: true })
   @JoinColumn({ name: 'schoolId' })
   school: School;
 
-  // Miroir automatique de l'ID (Lecture seule, géré par TypeORM)
   @RelationId((user: User) => user.school)
   schoolId: number;
 
-  // 2. La Classe
   @ManyToOne(() => Class, (classe) => classe.students, { nullable: true })
   @JoinColumn({ name: 'classId' })
   class: Class;
 
-  // Miroir automatique de l'ID
   @RelationId((user: User) => user.class)
   classId: number;
 
-  // 3. Le Parent (CORRECTION ICI)
-  // Relation ManyToOne vers User lui-même (Un élève a un parent qui est aussi un User)
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'parentId' })
   parent: User;
 
-  // Miroir automatique de l'ID
   @RelationId((user: User) => user.parent)
   parentId: number;
 }

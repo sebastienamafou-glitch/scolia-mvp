@@ -1,27 +1,28 @@
-// scolia-backend/src/students/students.service.ts
-
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Student } from './entities/student.entity'; // ✅ On utilise l'entité Student
+import { Student } from './entities/student.entity';
 import { User } from '../users/entities/user.entity';
 
 @Injectable()
 export class StudentsService {
   constructor(
     @InjectRepository(Student)
-    private studentsRepository: Repository<Student>, // ✅ Changement de Repository
+    private studentsRepository: Repository<Student>,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
   ) {}
 
   // --- 1. RECHERCHE PAR CLASSE ---
   async findByClass(classId: number, schoolId: number): Promise<Student[]> {
+    // Si schoolId est 0 (ex: SuperAdmin global), on filtre juste par classe
+    const whereCondition: any = { class: { id: classId } };
+    if (schoolId > 0) {
+        whereCondition.school = { id: schoolId };
+    }
+
     return this.studentsRepository.find({
-      where: { 
-        class: { id: classId },
-        school: { id: schoolId } 
-      },
+      where: whereCondition,
       order: { nom: 'ASC' },
       relations: ['class', 'parent', 'user'] 
     });
@@ -35,14 +36,13 @@ export class StudentsService {
      });
   }
 
-  // --- 3. RECHERCHE PAR PARENT (Celle utilisée par le Dashboard) ---
+  // --- 3. RECHERCHE PAR PARENT ---
   async findByParent(parentId: number): Promise<Student[]> {
-    // On cherche dans la table STUDENT où le champ 'parent' correspond à l'ID
     return this.studentsRepository.find({
       where: { 
         parent: { id: parentId } 
       },
-      relations: ['class', 'school'], // On charge les relations nécessaires
+      relations: ['class', 'school'], 
       order: { prenom: 'ASC' }
     });
   }

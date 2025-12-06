@@ -42,12 +42,6 @@ import { AttendanceModule } from './attendance/attendance.module';
 import { ImportModule } from './import/import.module'; 
 import { BulletinsModule } from './bulletins/bulletins.module';
 
-// ✅ CORRECTION : Import des contrôleurs manquants (cause des 404)
-import { GradesController } from './grades/grades.controller';
-import { NotificationsController } from './notifications/notifications.controller';
-// Note: On importe aussi les contrôleurs existants si besoin d'injection directe, 
-// mais ici on priorise ceux qui posaient problème.
-
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -62,13 +56,14 @@ import { NotificationsController } from './notifications/notifications.controlle
         username: configService.get<string>('DB_USER'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
+        // SSL obligatoire pour Render/Neon en production
         ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false, 
         entities: [
             User, Student, Class, Grade, Homework, Bulletin, News, School, 
             Fee, Transaction, Competence, SkillEvaluation, TimetableEvent,
             Attendance, Notification
         ],
-        synchronize: true,
+        synchronize: true, // ⚠️ À passer à false en production une fois stable
       }),
       inject: [ConfigService],
     }),
@@ -78,6 +73,7 @@ import { NotificationsController } from './notifications/notifications.controlle
         limit: 100,
     }]),
 
+    // Modules Fonctionnels
     AuthModule,
     UsersModule,
     StudentsModule,
@@ -96,10 +92,10 @@ import { NotificationsController } from './notifications/notifications.controlle
     BulletinsModule, 
   ],
   controllers: [
-    AppController,
-    // ✅ CORRECTION : Enregistrement manuel des contrôleurs pour forcer le mapping des routes
-    GradesController,
-    NotificationsController
+    AppController
+    // ❌ RETRAIT DE GradesController et NotificationsController
+    // Ils sont déjà importés via GradesModule et NotificationsModule.
+    // Les laisser ici provoquerait une erreur "Nest can't resolve dependencies".
   ],
   providers: [
     AppService,

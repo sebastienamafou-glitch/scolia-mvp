@@ -1,5 +1,3 @@
-// scolia-backend/src/users/users.service.ts
-
 import { Injectable, OnModuleInit, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Not, DataSource } from 'typeorm'; 
@@ -7,6 +5,7 @@ import { User } from './entities/user.entity';
 import { Student } from '../students/entities/student.entity'; 
 import * as bcrypt from 'bcrypt';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { UserRole } from '../auth/roles.decorator';
 
 @Injectable()
 export class UsersService implements OnModuleInit {
@@ -36,7 +35,7 @@ export class UsersService implements OnModuleInit {
     const superAdmin = this.usersRepository.create({
         email: `admin@${this.DOMAIN_NAME}`, 
         passwordHash: hashedPassword,
-        role: 'SuperAdmin',
+        role: UserRole.SUPER_ADMIN, // ✅ Enum
         nom: 'Admin',
         prenom: 'System',
     });
@@ -78,7 +77,7 @@ export class UsersService implements OnModuleInit {
         if (!email || email.indexOf('@') === -1) {
            email = await this.generateUniqueEmail(createUserDto.prenom, createUserDto.nom);
         } else {
-           email = email.toLowerCase(); // Force lowercase
+           email = email.toLowerCase();
         }
     
         const plainPassword = this.generateRandomPassword(8);
@@ -97,7 +96,8 @@ export class UsersService implements OnModuleInit {
     
         const savedUser = await queryRunner.manager.save(newUser);
     
-        if (savedUser.role === 'Élève') {
+        // ✅ CORRECTION : Vérification avec Enum
+        if (savedUser.role === UserRole.STUDENT) {
             const newStudent = queryRunner.manager.create(Student, {
                 nom: savedUser.nom,
                 prenom: savedUser.prenom,
@@ -132,20 +132,41 @@ export class UsersService implements OnModuleInit {
 
   // --- LECTURE ---
   
-  async findAll(): Promise<User[]> { return this.usersRepository.find({ relations: ['class'], order: { nom: 'ASC', prenom: 'ASC' } }); }
-  async findAllBySchool(schoolId: number): Promise<User[]> { return this.usersRepository.find({ where: { school: { id: schoolId }, role: Not('SuperAdmin') }, relations: ['class'], order: { nom: 'ASC', prenom: 'ASC' } }); }
+  async findAll(): Promise<User[]> { 
+      return this.usersRepository.find({ 
+          relations: ['class'], 
+          order: { nom: 'ASC', prenom: 'ASC' } 
+      }); 
+  }
+
+  async findAllBySchool(schoolId: number): Promise<User[]> { 
+      // ✅ CORRECTION : Enum
+      return this.usersRepository.find({ 
+          where: { school: { id: schoolId }, role: Not(UserRole.SUPER_ADMIN) }, 
+          relations: ['class'], 
+          order: { nom: 'ASC', prenom: 'ASC' } 
+      }); 
+  }
   
   async findOneByEmail(email: string): Promise<User | null> { 
-      // Important : on s'assure de récupérer le passwordHash même s'il est caché par défaut
       return this.usersRepository.createQueryBuilder("user")
         .where("user.email = :email", { email })
-        .addSelect("user.passwordHash") // 👈 CRUCIAL POUR L'AUTH
+        .addSelect("user.passwordHash")
         .leftJoinAndSelect("user.school", "school")
         .getOne(); 
   }
   
-  async findStudentsByParentId(parentId: number): Promise<User[]> { return this.usersRepository.find({ where: { role: 'Élève', parentId }, relations: ['class'] }); }
-  async findOneById(id: number): Promise<User | null> { return this.usersRepository.findOne({ where: { id }, relations: ['class', 'school'] }); }
+  async findStudentsByParentId(parentId: number): Promise<User[]> { 
+      // ✅ CORRECTION : Enum
+      return this.usersRepository.find({ 
+          where: { role: UserRole.STUDENT, parentId }, 
+          relations: ['class'] 
+      }); 
+  }
+
+  async findOneById(id: number): Promise<User | null> { 
+      return this.usersRepository.findOne({ where: { id }, relations: ['class', 'school'] }); 
+  }
   
   // --- MISE A JOUR ---
 
@@ -153,25 +174,46 @@ export class UsersService implements OnModuleInit {
     const user = await this.usersRepository.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException("Utilisateur introuvable");
     if (adminSchoolId && user.schoolId !== adminSchoolId) throw new ForbiddenException("Modification interdite.");
-    if (data.classId) { user.class = { id: Number(data.classId) } as any; delete data.classId; }
     
+    if (data.classId) { 
+        user.class = { id: Number(data.classId) } as any; 
+        delete data.classId; 
+    }
+    
+    // Nettoyage des champs sensibles
     delete data.password; delete data.passwordHash; delete data.email; delete data.role; delete data.schoolId;
+    
     Object.assign(user, data);
     return this.usersRepository.save(user);
   }
 
-  async updatePassword(userId: number, plainPassword: string): Promise<void> { const newHash = await bcrypt.hash(plainPassword, 10); await this.usersRepository.update(userId, { passwordHash: newHash }); }
-  async updateResetToken(userId: number, token: string, exp: Date) { return this.usersRepository.update(userId, { resetToken: token, resetTokenExp: exp }); }
+  async updatePassword(userId: number, plainPassword: string): Promise<void> { 
+      const newHash = await bcrypt.hash(plainPassword, 10); 
+      await this.usersRepository.update(userId, { passwordHash: newHash }); 
+  }
+
+  async updateResetToken(userId: number, token: string, exp: Date) { 
+      return this.usersRepository.update(userId, { resetToken: token, resetTokenExp: exp }); 
+  }
+
   async updateNotificationPreferences(userId: number, prefs: any) {
     const user = await this.usersRepository.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException();
-    Object.assign(user, { notifGradesEnabled: prefs.notifGradesEnabled, notifAbsencesEnabled: prefs.notifAbsencesEnabled, notifFinanceEnabled: prefs.notifFinanceEnabled, notifQuietHours: prefs.notifQuietHours ? JSON.stringify(prefs.notifQuietHours) : null });
+    
+    Object.assign(user, { 
+        notifGradesEnabled: prefs.notifGradesEnabled, 
+        notifAbsencesEnabled: prefs.notifAbsencesEnabled, 
+        notifFinanceEnabled: prefs.notifFinanceEnabled, 
+        notifQuietHours: prefs.notifQuietHours ? JSON.stringify(prefs.notifQuietHours) : null 
+    });
     return this.usersRepository.save(user);
   }
+
   async adminResetPassword(adminSchoolId: number | null, targetUserId: number): Promise<string> {
     const targetUser = await this.usersRepository.findOne({ where: { id: targetUserId }, relations: ['school'] });
     if (!targetUser) throw new NotFoundException("Utilisateur introuvable.");
     if (adminSchoolId && targetUser.schoolId !== adminSchoolId) throw new ForbiddenException("Accès interdit.");
+    
     const tempPassword = Math.random().toString(36).slice(-6);
     const newHash = await bcrypt.hash(tempPassword, 10);
     await this.usersRepository.update(targetUserId, { passwordHash: newHash });

@@ -1,31 +1,39 @@
-import { Controller, Post, Body, UseGuards, Request, BadRequestException, Get, Param } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request, BadRequestException, Get, Param, ForbiddenException } from '@nestjs/common';
 import { AttendanceService } from './attendance.service';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+// ✅ CORRECTION CHEMIN
 import { RolesGuard } from '../auth/guard/roles.guard';
-import { Roles } from '../auth/roles.decorator';
+// ✅ CORRECTION ENUM
+import { Roles, UserRole } from '../auth/roles.decorator';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('attendance')
 export class AttendanceController {
   constructor(private readonly attendanceService: AttendanceService) {}
 
-  @Roles('Enseignant', 'Admin')
+  @Roles(UserRole.TEACHER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @Post('bulk')
   async saveBulk(@Request() req, @Body() dto: CreateAttendanceDto) {
     const teacherId = req.user.sub;
+    const schoolId = req.user.schoolId;
+
+    if (!schoolId && req.user.role !== UserRole.SUPER_ADMIN) {
+        throw new ForbiddenException("Contexte école manquant.");
+    }
 
     if (!dto.students || dto.students.length === 0) {
         throw new BadRequestException("La liste des élèves est vide.");
     }
 
-    // Le DTO a déjà converti classId en number, mais on le passe en string si ton service attend une string
-    // Si ton service attend un number, enlève String(...)
-    return this.attendanceService.saveAttendance(teacherId, String(dto.classId), dto.students);
+    // On passe le schoolId pour sécuriser l'enregistrement
+    return this.attendanceService.saveAttendance(teacherId, dto.classId, dto.students, schoolId || 0);
   }
 
+  @Roles(UserRole.PARENT, UserRole.STUDENT, UserRole.TEACHER, UserRole.ADMIN)
   @Get('student/:studentId')
-  async getByStudent(@Param('studentId') studentId: string) {
+  async getByStudent(@Request() req, @Param('studentId') studentId: string) {
+      // TODO: Ajouter vérification que le parent a le droit de voir cet élève
       return this.attendanceService.findByStudent(+studentId);
   }
 }

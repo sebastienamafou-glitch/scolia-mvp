@@ -15,15 +15,19 @@ export class TimetableService {
   ) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-        this.logger.error("❌ CLÉ API GEMINI MANQUANTE !");
+        this.logger.error("❌ CLÉ API GEMINI MANQUANTE ! Vérifiez le fichier .env");
     }
     this.genAI = new GoogleGenerativeAI(apiKey || '');
   }
 
   async findByClass(classId: number, schoolId: number): Promise<TimetableEvent[]> {
     try {
+        const whereCondition: any = { classId: classId };
+        // Si schoolId est > 0, on filtre. Si c'est 0 (SuperAdmin), on ne filtre pas l'école
+        if (schoolId > 0) whereCondition.schoolId = schoolId;
+
         const events = await this.timetableRepo.find({ 
-            where: { classId: classId, schoolId: schoolId },
+            where: whereCondition,
         });
 
         if (!events || events.length === 0) return [];
@@ -44,18 +48,16 @@ export class TimetableService {
     }
   }
 
-  // --- GÉNÉRATION IA AVEC FALLBACK ---
   async generateWithAI(classId: number, constraints: any, schoolId: number) {
     const prompt = `
       Agis comme un planificateur scolaire expert. Crée un emploi du temps JSON pour une classe.
       Jours : Lundi à Vendredi. Horaires : 08:00-12:00, 14:00-17:00.
-      MATIÈRES : ${JSON.stringify(constraints)}
+      MATIÈRES & PROFS : ${JSON.stringify(constraints)}
       FORMAT JSON STRICT : [{"day": "Lundi", "start": "08:00", "end": "09:00", "subject": "Maths", "room": "A1"}, ...]
+      Ne réponds QUE par le JSON. Pas de texte avant ou après.
     `;
 
-    // ✅ CORRECTION ICI : Noms de modèles valides (sans le suffixe -001 qui cause le 404)
     const modelsToTry = ["gemini-1.5-flash", "gemini-pro"];
-    
     let scheduleData: any = null; 
 
     for (const modelName of modelsToTry) {
@@ -69,7 +71,7 @@ export class TimetableService {
             const match = text.match(jsonRegex);
             if (match) {
                 scheduleData = JSON.parse(match[0]);
-                break; // Succès
+                break; 
             }
         } catch (e: any) {
             this.logger.warn(`⚠️ Échec avec ${modelName}: ${e.message}`);
@@ -77,10 +79,11 @@ export class TimetableService {
     }
 
     if (!scheduleData) {
-        throw new InternalServerErrorException("Echec génération IA : Aucun modèle disponible ou réponse invalide.");
+        throw new InternalServerErrorException("Echec génération IA : Impossible de générer un planning valide.");
     }
 
     try {
+        // Mapping Anglais -> Français au cas où l'IA répond en anglais
         const dayMapping: Record<string, string> = {
             'monday': 'Lundi', 'mon': 'Lundi', 'lundi': 'Lundi',
             'tuesday': 'Mardi', 'tue': 'Mardi', 'mardi': 'Mardi',
@@ -90,6 +93,7 @@ export class TimetableService {
             'saturday': 'Samedi', 'sat': 'Samedi', 'samedi': 'Samedi'
         };
 
+        // On nettoie l'ancien emploi du temps de cette classe
         await this.timetableRepo.delete({ classId });
 
         const events = scheduleData.map((slot: any) => {
@@ -103,8 +107,8 @@ export class TimetableService {
                 subject: slot.subject,
                 room: slot.room || 'Salle',
                 classId: classId,
-                schoolId: schoolId,
-                teacherId: null
+                schoolId: schoolId, // Important pour le cloisonnement
+                teacherId: null // L'IA ne gère pas encore les ID profs, à lier plus tard
             });
         });
 

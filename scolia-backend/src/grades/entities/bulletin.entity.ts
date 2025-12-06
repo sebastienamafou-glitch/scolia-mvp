@@ -1,5 +1,6 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Student } from '../../students/entities/student.entity';
+import { School } from '../../schools/entities/school.entity';
 
 @Entity()
 export class Bulletin {
@@ -10,17 +11,26 @@ export class Bulletin {
   period: string; // "T1", "T2", "T3"
 
   @ManyToOne(() => Student)
+  @JoinColumn({ name: 'studentId' })
   student: Student;
 
   @Column()
   studentId: number;
+  
+  // ✅ Relation School (Pour le cloisonnement)
+  @ManyToOne(() => School)
+  @JoinColumn({ name: 'schoolId' })
+  school: School;
+
+  @Column({ nullable: true })
+  schoolId: number;
 
   @Column('text', { nullable: true })
-  appreciation: string; // Le commentaire du conseil de classe
+  appreciation: string; 
 
   @Column('float', { nullable: true })
-  moyenneGenerale: number; // Stockée pour l'historique
+  moyenneGenerale: number; 
 
   @Column({ default: false })
-  isPublished: boolean; // Pour cacher le bulletin aux parents tant qu'il n'est pas fini
+  isPublished: boolean; 
 }

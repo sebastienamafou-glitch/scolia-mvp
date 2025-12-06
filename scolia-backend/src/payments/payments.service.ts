@@ -19,7 +19,7 @@ export class PaymentsService {
     private studentRepository: Repository<Student>,
   ) {}
 
-  // Utilitaire pour trouver le Student ID réel à partir d'un ID (qui peut être User ou Student)
+  // Utilitaire pour trouver le Student ID réel
   private async resolveStudentId(id: number): Promise<number | null> {
       const student = await this.studentRepository.findOne({ 
           where: [ { id: id }, { userId: id } ] 
@@ -29,19 +29,20 @@ export class PaymentsService {
 
   @OnEvent('student.created')
   async handleStudentCreation(payload: { studentId: number, schoolId: number, fraisScolarite?: number }) {
-      this.logger.log(`🏗️ Création auto du compte paiement pour l'élève #${payload.studentId}`);
-      await this.createPaymentAccount(payload.studentId);
+      this.logger.log(`🏗️ Création auto du compte paiement pour l'élève #${payload.studentId} (Ecole: ${payload.schoolId})`);
+      
+      // On passe le schoolId ici
+      await this.createPaymentAccount(payload.studentId, payload.schoolId);
       
       if (payload.fraisScolarite) {
           await this.setStudentTuition(payload.studentId, payload.fraisScolarite, null, payload.schoolId);
       }
   }
 
-  // 👇 CORRECTION ICI : Ne retourne jamais null pour éviter le crash "undefined" au frontend
   async getFeeByStudent(id: number, schoolId: number): Promise<Fee> {
     const realStudentId = await this.resolveStudentId(id);
     
-    // Valeur par défaut sécurisée
+    // Valeur par défaut
     const emptyFee = { 
         totalAmount: 0, 
         amountPaid: 0, 
@@ -51,12 +52,15 @@ export class PaymentsService {
 
     if (!realStudentId) return emptyFee;
 
+    // Si schoolId est 0 (SuperAdmin), on ne filtre pas par école
+    const whereCondition: any = { studentId: realStudentId };
+    if (schoolId > 0) whereCondition.school = { id: schoolId };
+
     const fee = await this.feesRepository.findOne({ 
-        where: { studentId: realStudentId, school: { id: schoolId } }, 
+        where: whereCondition, 
         relations: ['student'] 
     });
 
-    // Si pas de frais trouvés, on renvoie l'objet vide (0 FCFA) au lieu de null
     return fee || emptyFee;
   }
 
@@ -64,7 +68,7 @@ export class PaymentsService {
     if (!reference || amount <= 0) throw new BadRequestException("Données invalides.");
     
     const newTransaction = this.transactionsRepository.create({ 
-        studentId: userIdOrStudentId, 
+        studentId: userIdOrStudentId, // Ici c'est l'ID de l'utilisateur qui fait l'action ou l'ID student cible
         amount, 
         mobileMoneyReference: reference, 
         schoolId, 
@@ -74,14 +78,26 @@ export class PaymentsService {
   }
 
   async findPending(schoolId: number): Promise<Transaction[]> {
-    return this.transactionsRepository.find({ where: { school: { id: schoolId }, status: 'Pending' }, relations: ['student'], order: { transactionDate: 'DESC' } });
+    const whereCondition: any = { status: 'Pending' };
+    if (schoolId > 0) whereCondition.school = { id: schoolId };
+
+    return this.transactionsRepository.find({ 
+        where: whereCondition, 
+        relations: ['student'], // Attention: relation vers User ici
+        order: { transactionDate: 'DESC' } 
+    });
   }
 
   async validateTransaction(transactionId: number, schoolId: number, adminId: number): Promise<Transaction> {
-    const transaction = await this.transactionsRepository.findOne({ where: { id: transactionId, school: { id: schoolId } }, relations: ['student'] });
+    const whereCondition: any = { id: transactionId };
+    if (schoolId > 0) whereCondition.school = { id: schoolId };
+
+    const transaction = await this.transactionsRepository.findOne({ where: whereCondition, relations: ['student'] });
+    
     if (!transaction) throw new NotFoundException("Transaction introuvable.");
     if (transaction.status !== 'Pending') throw new BadRequestException("Déjà traitée.");
 
+    // Le studentId dans la transaction peut être un UserID. On résout le vrai StudentID.
     const realStudentId = await this.resolveStudentId(transaction.studentId);
     
     if (!realStudentId) {
@@ -91,15 +107,16 @@ export class PaymentsService {
     transaction.status = 'Validated';
     await this.transactionsRepository.save(transaction);
 
-    let fee = await this.feesRepository.findOne({ where: { studentId: realStudentId, school: { id: schoolId } } });
+    // Mise à jour du solde
+    let fee = await this.feesRepository.findOne({ where: { studentId: realStudentId } });
     
+    // Si le compte fee n'existe pas (cas rare), on le crée
     if (!fee) {
-        await this.createPaymentAccount(realStudentId);
+        await this.createPaymentAccount(realStudentId, schoolId);
         fee = await this.feesRepository.findOne({ where: { studentId: realStudentId } });
     }
 
     if (fee) {
-        // Conversion explicite en Number pour éviter la concaténation de chaînes
         const newPaid = Number(fee.amountPaid) + Number(transaction.amount);
         fee.amountPaid = newPaid;
         await this.feesRepository.save(fee);
@@ -127,15 +144,23 @@ export class PaymentsService {
     } else {
         fee.totalAmount = safeAmount;
         if (dateLimit) fee.dateLimit = dateLimit;
-        if (schoolId) fee.school = { id: schoolId } as any; 
+        // On ne change pas l'école d'un fee existant sauf si nécessaire
+        if (schoolId && !fee.schoolId) fee.school = { id: schoolId } as any; 
     }
     return this.feesRepository.save(fee);
   }
 
-  async createPaymentAccount(studentId: number) {
+  // ✅ CORRECTION : Ajout du paramètre schoolId optionnel
+  async createPaymentAccount(studentId: number, schoolId?: number) {
       const exists = await this.feesRepository.findOne({ where: { studentId } });
       if (!exists) {
-          await this.feesRepository.save({ studentId, totalAmount: 0, amountPaid: 0 });
+          const newFee = this.feesRepository.create({ 
+              studentId, 
+              totalAmount: 0, 
+              amountPaid: 0,
+              school: schoolId ? { id: schoolId } : undefined 
+          });
+          await this.feesRepository.save(newFee);
       }
   }
 }

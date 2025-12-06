@@ -2,7 +2,7 @@ import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, OneToMany, OneToOne,
 import { User } from '../../users/entities/user.entity';
 import { Class } from '../../classes/entities/class.entity';
 import { Grade } from '../../grades/entities/grade.entity';
-import { School } from '../../schools/entities/school.entity'; // 👈 Import Ajouté
+import { School } from '../../schools/entities/school.entity';
 
 @Entity()
 export class Student {
@@ -18,7 +18,7 @@ export class Student {
   // --- CHAMPS D'INFORMATION ---
   
   @Column({ type: 'date', nullable: true })
-  dateNaissance: Date; // ✅ Le champ que le front cherche désespérément
+  dateNaissance: Date;
 
   @Column({ nullable: true })
   adresse: string;
@@ -36,7 +36,7 @@ export class Student {
   infosMedicales: string;
 
   // --------------------------------------
-
+  // Relation OneToOne avec le compte utilisateur de l'élève (Login)
   @OneToOne(() => User)
   @JoinColumn({ name: 'userId' })
   user: User;
@@ -46,10 +46,15 @@ export class Student {
 
   // --------------------------------------
 
-  @ManyToOne(() => Class, (classe) => classe.students)
+  @ManyToOne(() => Class, (classe) => classe.students, { nullable: true })
+  @JoinColumn({ name: 'classId' })
   class: Class;
 
-  @ManyToOne(() => User) // Relation vers le Parent
+  @Column({ nullable: true })
+  classId: number;
+
+  // Relation vers le Parent (Compte User du parent)
+  @ManyToOne(() => User) 
   @JoinColumn({ name: 'parentId' })
   parent: User;
   
@@ -62,7 +67,7 @@ export class Student {
   @Column({ nullable: true }) 
   photo: string;
 
-  // ✅ CORRECTION : Ajout de la relation School manquante
+  // Relation School (Indispensable pour le multi-tenant)
   @ManyToOne(() => School)
   @JoinColumn({ name: 'schoolId' })
   school: School;

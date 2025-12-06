@@ -1,6 +1,5 @@
-// scolia-backend/src/users/dto/create-user.dto.ts
-
-import { IsString, IsOptional, IsEmail, IsNotEmpty, IsNumber, IsDateString } from 'class-validator';
+import { IsString, IsOptional, IsEmail, IsNotEmpty, IsEnum } from 'class-validator';
+import { UserRole } from '../../auth/roles.decorator';
 
 export class CreateUserDto {
   // --- CHAMPS PRIMAIRES ---
@@ -21,21 +20,20 @@ export class CreateUserDto {
   @IsString()
   prenom: string;
 
+  // ✅ CORRECTION : Validation stricte
   @IsNotEmpty()
-  @IsString()
-  role: string;
+  @IsEnum(UserRole, { message: 'Rôle invalide' })
+  role: UserRole;
 
   // --- TOLÉRANCE POUR LES NOMBRES ---
   @IsOptional()
-  fraisScolarite?: any; // On accepte tout pour éviter l'erreur de type
+  fraisScolarite?: any; 
 
   @IsOptional()
   schoolId?: number; 
 
-  // 👇 LA CORRECTION EST ICI : On déclare classId pour qu'il ne soit pas supprimé
   @IsOptional()
   classId?: any; 
-  // ---------------------------------------------------------------------------
 
   // --- CHAMPS SECONDAIRES ---
   @IsOptional()
@@ -51,7 +49,7 @@ export class CreateUserDto {
 
   // --- TOLÉRANCE DATE ---
   @IsOptional()
-  dateNaissance?: string; // On accepte le format texte (ex: "03 / 09 / 2012")
+  dateNaissance?: string;
 
   @IsOptional()
   @IsString()
@@ -69,7 +67,6 @@ export class CreateUserDto {
   @IsString()
   infosMedicales?: string;
   
-  // --- CHAMP TOLÉRANT ---
   @IsOptional()
   contactUrgence?: string; 
 }
