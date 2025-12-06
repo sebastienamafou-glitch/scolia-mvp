@@ -1,8 +1,16 @@
 // scolia-backend/src/attendance/entities/attendance.entity.ts
 
 import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
-import { User } from '../../users/entities/user.entity'; // Architecture V2 : L'élève est un User
+import { Student } from '../../students/entities/student.entity'; // ✅ Cohérence avec Grades/Payments
 import { Class } from '../../classes/entities/class.entity';
+import { User } from '../../users/entities/user.entity';
+import { School } from '../../schools/entities/school.entity';
+
+export enum AttendanceStatus {
+  PRESENT = 'Présent',
+  ABSENT = 'Absent',
+  RETARD = 'Retard'
+}
 
 @Entity()
 export class Attendance {
@@ -10,22 +18,26 @@ export class Attendance {
   id: number;
 
   @Column({ type: 'date' })
-  date: Date; // Stocke YYYY-MM-DD (Pour grouper les absences par jour)
+  date: Date; 
 
-  @Column()
-  status: string; // Valeurs attendues : 'Présent', 'Absent', 'Retard'
+  @Column({
+      type: 'enum',
+      enum: AttendanceStatus,
+      default: AttendanceStatus.PRESENT
+  })
+  status: AttendanceStatus; 
 
   // --- RELATIONS ---
 
-  // 1. L'Élève concerné
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  // 1. L'Élève (On utilise l'entité Student pour la cohérence académique)
+  @ManyToOne(() => Student, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'studentId' })
-  student: User;
+  student: Student;
 
   @Column()
   studentId: number;
 
-  // 2. La Classe concernée
+  // 2. La Classe
   @ManyToOne(() => Class, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'classId' })
   class: Class;
@@ -33,8 +45,7 @@ export class Attendance {
   @Column()
   classId: number;
 
-  // 3. L'Enseignant qui a fait l'appel (Traçabilité)
-  // Optionnel, car l'appel peut être fait par un admin
+  // 3. L'auteur de l'appel (User : Prof ou Surveillant)
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'teacherId' })
   teacher: User;
@@ -42,6 +53,14 @@ export class Attendance {
   @Column({ nullable: true })
   teacherId: number;
 
+  // 4. ✅ SÉCURITÉ : Relation École obligatoire
+  @ManyToOne(() => School)
+  @JoinColumn({ name: 'schoolId' })
+  school: School;
+
+  @Column({ nullable: true })
+  schoolId: number;
+
   @CreateDateColumn()
-  createdAt: Date; // Heure exacte de la saisie
+  createdAt: Date; 
 }

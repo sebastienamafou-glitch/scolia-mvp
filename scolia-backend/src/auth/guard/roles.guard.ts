@@ -1,29 +1,36 @@
 // scolia-backend/src/auth/guards/roles.guard.ts
-
-import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { Role, ROLES_KEY } from '../roles.decorator';
+import { UserRole, ROLES_KEY } from '../roles.decorator';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
-    // 1. Récupérer les rôles requis (définis par le décorateur @Roles sur la route)
-    const requiredRoles = this.reflector.getAllAndOverride<Role[]>(ROLES_KEY, [
+    const requiredRoles = this.reflector.getAllAndOverride<UserRole[]>(ROLES_KEY, [
       context.getHandler(),
       context.getClass(),
     ]);
     
-    // Si aucun rôle n'est spécifié (@Roles n'est pas utilisé), la route est accessible à tous les utilisateurs authentifiés.
+    // Si aucun rôle requis, on laisse passer (la route est publique ou juste authentifiée)
     if (!requiredRoles) {
       return true; 
     }
     
-    // 2. Récupérer l'utilisateur connecté (mis là par le JwtAuthGuard)
     const { user } = context.switchToHttp().getRequest();
+
+    // ✅ SÉCURITÉ : Si JwtAuthGuard a échoué ou n'a pas été mis, 'user' est undefined.
+    if (!user) {
+        throw new ForbiddenException("Accès refusé : Utilisateur non identifié.");
+    }
     
-    // 3. Vérifier si le rôle de l'utilisateur correspond à un rôle requis
+    // ✅ BONUS : Le Super Admin a souvent accès à tout (Optionnel selon votre logique métier)
+    if (user.role === UserRole.SUPER_ADMIN) {
+        return true;
+    }
+
+    // Vérification standard
     return requiredRoles.some((role) => user.role === role);
   }
 }

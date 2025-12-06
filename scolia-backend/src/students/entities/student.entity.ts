@@ -2,6 +2,7 @@ import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, OneToMany, OneToOne,
 import { User } from '../../users/entities/user.entity';
 import { Class } from '../../classes/entities/class.entity';
 import { Grade } from '../../grades/entities/grade.entity';
+import { School } from '../../schools/entities/school.entity';
 
 @Entity()
 export class Student {
@@ -14,7 +15,7 @@ export class Student {
   @Column()
   prenom: string;
 
-  // --- NOUVEAUX CHAMPS D'INFORMATION ---
+  // --- CHAMPS D'INFORMATION ---
   
   @Column({ type: 'date', nullable: true })
   dateNaissance: Date;
@@ -25,21 +26,17 @@ export class Student {
   @Column({ nullable: true })
   telephoneEleve: string;
 
-  // Infos Urgence
   @Column({ nullable: true })
-  contactUrgenceNom: string; // Ex: "Grand-mère" ou "Voisin"
+  contactUrgenceNom: string;
 
   @Column({ nullable: true })
   contactUrgenceTel: string;
 
-  // Infos Santé
   @Column({ type: 'text', nullable: true })
-  infosMedicales: string; // Ex: "Allergique aux arachides, Asthmatique"
+  infosMedicales: string;
 
   // --------------------------------------
-
-  // ✅ CRUCIAL : Lien One-to-One vers le User (Login)
-  // C'est ce lien qui permet de dire "L'utilisateur ID 11 est l'étudiant ID 5"
+  // Relation OneToOne avec le compte utilisateur de l'élève (Login)
   @OneToOne(() => User)
   @JoinColumn({ name: 'userId' })
   user: User;
@@ -49,16 +46,32 @@ export class Student {
 
   // --------------------------------------
 
-  @ManyToOne(() => Class, (classe) => classe.students, { eager: true }) // Eager charge la classe auto
+  @ManyToOne(() => Class, (classe) => classe.students, { nullable: true })
+  @JoinColumn({ name: 'classId' })
   class: Class;
 
-  // Lien avec le compte Parent (User)
-  @ManyToOne(() => User, { nullable: true, eager: true }) // Eager charge le parent auto
+  @Column({ nullable: true })
+  classId: number;
+
+  // Relation vers le Parent (Compte User du parent)
+  @ManyToOne(() => User) 
+  @JoinColumn({ name: 'parentId' })
   parent: User;
+  
+  @Column({ nullable: true })
+  parentId: number;
 
   @OneToMany(() => Grade, (grade) => grade.student)
   grades: Grade[];
 
-  @Column({ nullable: true }) // nullable: true car certains n'ont pas encore de photo
+  @Column({ nullable: true }) 
   photo: string;
+
+  // Relation School (Indispensable pour le multi-tenant)
+  @ManyToOne(() => School)
+  @JoinColumn({ name: 'schoolId' })
+  school: School;
+
+  @Column({ nullable: true })
+  schoolId: number;
 }

@@ -2,23 +2,21 @@
 
 import React, { createContext, useContext, useState, useEffect, type PropsWithChildren } from 'react';
 import api from '../services/api';
-
-// On définit le type Role localement
-export type Role = 'Admin' | 'Enseignant' | 'Parent' | 'Élève' | 'SuperAdmin';
+import { UserRole } from '../types/userRole';
 
 export interface User {
   id: number;
   email: string;
   nom: string;
   prenom: string;
-  role: Role;
+  role: UserRole; // Utilisation directe du type importé
   schoolId: number | null; 
 }
 
 interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
-  userRole: Role | null;
+  userRole: UserRole | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
@@ -29,7 +27,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<User | null>(null);
-  const [userRole, setUserRole] = useState<Role | null>(null);
+  const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -54,9 +52,10 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
       const userData = response.data;
       
       setUser(userData);           
-      setUserRole(userData.role as Role);
+      // Force le typage ici pour rassurer TypeScript que la string reçue est bien un UserRole
+      setUserRole(userData.role as UserRole);
       setIsAuthenticated(true);
-    } catch (error: any) { // Typage any pour accéder facilement à error.response
+    } catch (error: any) { 
       console.error('Token verification failed:', error);
       
       // 👇 CONDITION DE SÉCURITÉ : Déconnecter uniquement si le token est invalide/expiré (401) ou non autorisé (403)
@@ -67,7 +66,6 @@ export const AuthProvider: React.FC<PropsWithChildren> = ({ children }) => {
           setUser(null);
           setUserRole(null);
       }
-      // Si c'est une erreur 500 ou réseau, on ne fait rien (on garde la session active localement)
     } finally {
       setIsLoading(false);
     }

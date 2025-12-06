@@ -7,12 +7,15 @@ export class Fee {
   @PrimaryGeneratedColumn()
   id: number;
 
-  // ✅ CORRECTION : Ajout de la colonne manquante
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   totalAmount: number; 
 
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   amountPaid: number;
+
+  // 👇 NOUVELLE COLONNE AJOUTÉE
+  @Column({ type: 'date', nullable: true })
+  dateLimit: string;
 
   @UpdateDateColumn()
   updatedAt: Date;

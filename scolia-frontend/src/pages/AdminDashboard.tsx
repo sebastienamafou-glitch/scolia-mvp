@@ -5,8 +5,6 @@ import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Logo } from '../components/Logo';
 import { Link } from 'react-router-dom';
-import toast from 'react-hot-toast'; // 👈 IMPORT UX
-
 // Imports des modules fonctionnels
 import { ClassManager } from '../components/ClassManager';
 import { BulletinEditor } from '../components/BulletinEditor';
@@ -18,14 +16,13 @@ import { SkillsManager } from '../components/SkillsManager';
 import { TimetableManager } from '../components/TimetableManager';
 import { Footer } from '../components/Footer';
 
-// Icônes
 import { 
     FaUserGraduate, FaChalkboardTeacher, FaUserTie, FaUserShield, 
     FaSearch, FaPlus, FaTimes, FaChevronLeft, FaChevronRight, 
     FaCog, FaUnlockAlt, FaLock 
 } from 'react-icons/fa';
 
-// --- TYPES ---
+// --- TYPES MIS À JOUR (COMPATIBILITÉ V2) ---
 
 interface User {
   id: number;
@@ -33,6 +30,7 @@ interface User {
   prenom: string;
   email: string;
   role: string;
+  // ✅ CORRECTION : Adaptation à la relation TypeORM V2, on utilise 'class'
   class?: {
       id: number;
       name: string;
@@ -67,37 +65,34 @@ interface ClassOption {
 const AdminDashboard: React.FC = () => {
   const { logout } = useAuth();
   
-  // États Données
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [mySchool, setMySchool] = useState<SchoolInfo | null>(null);
   const [availableClasses, setAvailableClasses] = useState<ClassOption[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
   
-  // États Chargement
   const [loading, setLoading] = useState(true);
   const [schoolLoading, setSchoolLoading] = useState(true);
 
-  // États UI
+  // États UI (Tableau Utilisateurs)
   const [activeTab, setActiveTab] = useState<string>('Tous');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [showCreateForm, setShowCreateForm] = useState(false);
   
-  // Formulaire Paramètres École
   const [schoolForm, setSchoolForm] = useState({ name: '', address: '', logo: '', description: '' });
   
-  // Formulaire Création Utilisateur
+  // Formulaire Création Utilisateur (Utilise classId)
   const [newUser, setNewUser] = useState({
-    password: '', role: 'Enseignant', 
+    password: '', 
+    role: UserRole.TEACHER as UserRole, // Type forcé initialement
     nom: '', prenom: '', 
-    classId: '',
+    classId: '', // 👈 Utilise classId pour l'ID de la classe
     parentId: '', photo: '',
     dateNaissance: '', adresse: '',
     contactUrgenceNom: '', contactUrgenceTel: '', infosMedicales: ''
   });
 
-  // --- INITIALISATION ---
   useEffect(() => {
     const init = async () => {
         await Promise.all([fetchUsers(), fetchMySchool(), fetchClasses()]);
@@ -109,7 +104,8 @@ const AdminDashboard: React.FC = () => {
   const fetchUsers = async () => {
     try {
       const response = await api.get('/users');
-      setAllUsers(response.data);
+      // On force le typage ici pour que TypeScript accepte les strings venant de l'API comme étant des UserRole
+      setAllUsers(response.data as User[]);
     } catch (error) {
       console.error("Erreur chargement utilisateurs", error);
       toast.error("Erreur lors du chargement des utilisateurs.");
@@ -129,10 +125,9 @@ const AdminDashboard: React.FC = () => {
         const res = await api.get('/schools/my-school');
         let mod = res.data.modules;
         if (typeof mod === 'string') {
-            try { mod = JSON.parse(mod);
-            } catch(e) {}
+             mod = JSON.parse(mod);
         }
-        res.data.modules = mod; 
+        res.data.modules = mod; // Injecte les valeurs parsées
         setMySchool(res.data);
         setSchoolForm({
             name: res.data.name || '',
@@ -148,7 +143,6 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  // --- ACTIONS ÉCOLE ---
   const handleUpdateSchool = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -160,9 +154,6 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  // --- ACTIONS UTILISATEURS ---
-  
-  // Import CSV
   const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -183,12 +174,12 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  // Création Manuelle
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const payload: any = { ...newUser };
       
+      // Nettoyage des champs selon le rôle
       if (payload.role !== 'Élève') {
           delete payload.classId;
           delete payload.parentId; delete payload.dateNaissance;
@@ -214,7 +205,7 @@ const AdminDashboard: React.FC = () => {
       
       fetchUsers();
       setNewUser({ 
-          password: '', role: 'Enseignant', nom: '', prenom: '', 
+          password: '', role: UserRole.TEACHER, nom: '', prenom: '', 
           classId: '', parentId: '', photo: '', dateNaissance: '', adresse: '',
           contactUrgenceNom: '', contactUrgenceTel: '', infosMedicales: ''
       });
@@ -224,26 +215,18 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  // Reset Password
+  // Reset Password (Mise à jour V2 : Génération et affichage du nouveau mot de passe par PATCH)
   const handleResetPassword = async (user: User) => {
     if (!window.confirm(`Générer un nouveau mot de passe pour ${user.prenom} ${user.nom} ?`)) return;
     try {
         const res = await api.patch(`/users/${user.id}/reset-password`);
-        
-        // UX : Toast persistant pour que l'admin ait le temps de copier
-        toast((t) => (
-            <div>
-                <b>🔑 Nouveau Mot de Passe :</b><br/>
-                Pour {user.nom} : <strong>{res.data.plainPassword}</strong>
-            </div>
-        ), { duration: 10000, icon: '🛡️' });
-
+        // On affiche le mot de passe reçu du backend
+        prompt(`✅ Nouveau mot de passe pour ${user.nom} :`, res.data.plainPassword);
     } catch (error) {
         toast.error("Erreur lors de la réinitialisation.");
     }
   };
 
-  // --- FILTRES & PAGINATION ---
   const filteredUsers = allUsers.filter(user => {
     const roleMatch = activeTab === 'Tous' || user.role === activeTab;
     const searchLower = searchQuery.toLowerCase();
@@ -266,8 +249,9 @@ const AdminDashboard: React.FC = () => {
   const countAdmins = allUsers.filter(u => u.role === 'Admin').length;
   const availableParents = allUsers.filter(user => user.role === 'Parent');
   
+  // Raccourci Modules (Utilise l'objet déjà parsé dans fetchMySchool)
   const defaultModules: SchoolInfo['modules'] = { risk_radar: false, ai_planning: false, sms: false, cards: false };
-  const safeModules = mySchool?.modules && typeof mySchool.modules === 'object' ? { ...defaultModules, ...mySchool.modules } : defaultModules;
+  const safeModules = mySchool?.modules ? { ...defaultModules, ...mySchool.modules } : defaultModules;
   
   if (schoolLoading || loading) {
       return (
@@ -282,7 +266,7 @@ const AdminDashboard: React.FC = () => {
   return (
     <div style={{ backgroundColor: '#f0f2f5', minHeight: '100vh', color: '#333', fontFamily: 'sans-serif' }}>
       
-      {/* HEADER DYNAMIQUE */}
+      {/* HEADER */}
       <header style={{ backgroundColor: 'white', padding: '15px 30px', borderBottom: '1px solid #ddd', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 100 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             {mySchool?.logo ? (
@@ -306,23 +290,16 @@ const AdminDashboard: React.FC = () => {
 
       <div style={{ maxWidth: '1200px', margin: '30px auto', padding: '0 20px' }}>
 
-        
-        {/* 🚀 MODULE PAYANT 1 : RADAR DE RISQUE */}
+        {/* RISK RADAR */}
         {activeTab !== 'Paramètres' && (
             <div style={{ marginBottom: '30px' }}>
-                {safeModules.risk_radar ?
-                (
-                    <RiskRadarWidget />
-                ) : (
-                    <UpsellBanner 
-                        title="Radar de Risque & Rétention" 
-                        description="Détectez automatiquement les élèves en décrochage scolaire ou financier avant qu'il ne soit trop tard." 
-                    />
+                {safeModules.risk_radar ? ( <RiskRadarWidget /> ) : (
+                    <UpsellBanner title="Radar de Risque & Rétention" description="Détectez automatiquement les élèves en décrochage." />
                 )}
             </div>
         )}
 
-        {/* SECTION KPI */}
+        {/* SECTION KPI (Toujours visible) */}
         {activeTab !== 'Paramètres' && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '30px' }}>
                 <KpiCard title="Élèves Inscrits" count={countStudents} icon={<FaUserGraduate />} color="#3498db" />
@@ -347,10 +324,10 @@ const AdminDashboard: React.FC = () => {
         {/* TABLEAU DE BORD PRINCIPAL */}
         <div style={{ backgroundColor: 'white', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
             
-            {/* TABS */}
             <div style={{ padding: '20px', borderBottom: '1px solid #eee', display: 'flex', flexWrap: 'wrap', gap: '20px', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '5px' }}>
-                    {['Tous', 'Élève', 'Enseignant', 'Parent', 'Admin'].map(role => (
+                    {/* On utilise Object.values ou un tableau explicite pour les boutons de filtre */}
+                    {['Tous', UserRole.STUDENT, UserRole.TEACHER, UserRole.PARENT, UserRole.ADMIN].map(role => (
                         <button 
                             key={role}
                             onClick={() => { setActiveTab(role); setCurrentPage(1); }}
@@ -377,7 +354,6 @@ const AdminDashboard: React.FC = () => {
                     </button>
                 </div>
 
-                {/* OUTILS DE RECHERCHE */}
                 {activeTab !== 'Paramètres' && (
                     <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                         <div style={{ position: 'relative' }}>
@@ -399,7 +375,6 @@ const AdminDashboard: React.FC = () => {
                 )}
             </div>
 
-            {/* CONTENU TABS */}
             {activeTab === 'Paramètres' ? (
                 <div style={{ padding: '30px' }}>
                     <h2 style={{ color: '#0A2240', marginTop: 0 }}>Personnaliser mon Établissement</h2>
@@ -413,22 +388,22 @@ const AdminDashboard: React.FC = () => {
                 </div>
             ) : (
                 <>
-                    {/* FORMULAIRE CRÉATION UTILISATEUR */}
                     {showCreateForm && (
                         <div style={{ padding: '20px', backgroundColor: '#fafafa', borderBottom: '1px solid #eee' }}>
                             <form onSubmit={handleCreate} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
-                                <select value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})} style={inputStyle}>
-                                    <option value="Enseignant">Enseignant</option>
-                                    <option value="Élève">Élève</option>
-                                    <option value="Parent">Parent</option>
-                                    <option value="Admin">Admin</option>
+                                <select value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value as UserRole})} style={inputStyle}>
+                                    <option value={UserRole.TEACHER}>{UserRole.TEACHER}</option>
+                                    <option value={UserRole.STUDENT}>{UserRole.STUDENT}</option>
+                                    <option value={UserRole.PARENT}>{UserRole.PARENT}</option>
+                                    <option value={UserRole.ADMIN}>{UserRole.ADMIN}</option>
                                 </select>
                                 <input type="text" placeholder="Nom" required value={newUser.nom} onChange={e => setNewUser({...newUser, nom: e.target.value})} style={inputStyle} />
                                 <input type="text" placeholder="Prénom" required value={newUser.prenom} onChange={e => setNewUser({...newUser, prenom: e.target.value})} style={inputStyle} />
                                 
-                                {newUser.role === 'Élève' && (
+                                {newUser.role === UserRole.STUDENT && (
                                     <div style={{ gridColumn: '1 / -1', backgroundColor: '#E3F2FD', padding: '15px', borderRadius: '8px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
                                         
+                                        {/* ✅ SÉLECTEUR DE CLASSE MISE À JOUR (Utilise classId et availableClasses) */}
                                         <select 
                                             value={newUser.classId} 
                                             onChange={e => setNewUser({...newUser, classId: e.target.value})} 
@@ -439,7 +414,6 @@ const AdminDashboard: React.FC = () => {
                                                 <option key={cls.id} value={cls.id}>{cls.name}</option>
                                             ))}
                                         </select>
-                                        
                                         <select value={newUser.parentId} onChange={e => setNewUser({...newUser, parentId: e.target.value})} style={inputStyle}>
                                             <option value="">-- Lier à un Parent --</option>
                                             {availableParents.map(p => <option key={p.id} value={p.id}>{p.nom} {p.prenom}</option>)}
@@ -453,7 +427,6 @@ const AdminDashboard: React.FC = () => {
                         </div>
                     )}
 
-                    {/* TABLE UTILISATEURS */}
                     <div style={{ overflowX: 'auto', width: '100%' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem', minWidth: '700px' }}>
                             <thead style={{ backgroundColor: '#f8f9fa', color: '#666' }}>
@@ -468,7 +441,7 @@ const AdminDashboard: React.FC = () => {
                             <tbody>
                                 {currentUsers.length === 0 ? <tr><td colSpan={5} style={{ padding: '20px', textAlign: 'center' }}>Aucun résultat.</td></tr> :
                                 currentUsers.map(user => (
-                                    <tr key={user.id} style={{ borderBottom: '1px solid #eee', cursor: user.role === 'Élève' ? 'pointer' : 'default' }} onClick={() => user.role === 'Élève' && setSelectedStudent(user)}>
+                                    <tr key={user.id} style={{ borderBottom: '1px solid #eee', cursor: user.role === UserRole.STUDENT ? 'pointer' : 'default' }} onClick={() => user.role === UserRole.STUDENT && setSelectedStudent(user)}>
                                         <td style={{ padding: '10px 15px', fontWeight: 'bold' }}>{user.nom} {user.prenom}</td>
                                         <td style={{ padding: '10px 15px' }}>
                                             <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', backgroundColor: getRoleColor(user.role).bg, color: getRoleColor(user.role).text }}>
@@ -488,7 +461,6 @@ const AdminDashboard: React.FC = () => {
                         </table>
                     </div>
 
-                    {/* PAGINATION */}
                     <div style={{ padding: '15px', borderTop: '1px solid #eee', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '15px' }}>
                         <span style={{ fontSize: '0.9rem', color: '#666' }}>Page {currentPage} sur {totalPages}</span>
                         <div style={{ display: 'flex', gap: '5px' }}>
@@ -500,20 +472,15 @@ const AdminDashboard: React.FC = () => {
             )}
         </div>
 
-        {/* --- MODULES GESTION --- */}
+        {/* --- MODULES GESTION (Bas de page) --- */}
         {activeTab !== 'Paramètres' && (
             <>
                 <div style={{ marginTop: '40px', display: 'grid', gap: '30px' }}>
-                    <ClassManager />
+                    <ClassManager onClassCreated={fetchClasses} />
                     
                     <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px' }}>
                         <h2 style={{ color: '#0A2240', marginTop: 0 }}>📅 Gestion des Emplois du Temps</h2>
-                        {safeModules.ai_planning ?
-                        (
-                            <TimetableManager />
-                        ) : (
-                            <UpsellBannerSmall title="Générateur IA d'Emploi du temps" />
-                        )}
+                        {safeModules.ai_planning ? ( <TimetableManager /> ) : ( <UpsellBannerSmall title="Générateur IA d'Emploi du temps" /> )}
                     </div>
 
                     <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px' }}>
@@ -531,13 +498,12 @@ const AdminDashboard: React.FC = () => {
 
       </div>
 
+      {/* MODALE ÉLÈVE */}
       {selectedStudent && <StudentCard student={selectedStudent} onClose={() => setSelectedStudent(null)} />}
       <Footer />
     </div>
   );
 };
-
-// --- STYLES & PETITS COMPOSANTS ---
 
 const KpiCard = ({ title, count, icon, color }: any) => (
     <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: '15px' }}>
@@ -574,9 +540,9 @@ const UpsellBannerSmall = ({ title }: any) => (
 
 const getRoleColor = (role: string) => {
     switch(role) {
-        case 'Élève': return { bg: '#E3F2FD', text: '#1565C0' };
-        case 'Enseignant': return { bg: '#FFF3E0', text: '#E65100' };
-        case 'Parent': return { bg: '#E8F5E9', text: '#2E7D32' };
+        case UserRole.STUDENT: return { bg: '#E3F2FD', text: '#1565C0' };
+        case UserRole.TEACHER: return { bg: '#FFF3E0', text: '#E65100' };
+        case UserRole.PARENT: return { bg: '#E8F5E9', text: '#2E7D32' };
         default: return { bg: '#EEEEEE', text: '#616161' };
     }
 };

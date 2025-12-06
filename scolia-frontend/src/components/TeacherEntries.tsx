@@ -43,7 +43,10 @@ export const AttendanceEntry: React.FC = () => {
 
   // 2. Charger les élèves quand une classe est sélectionnée
   useEffect(() => {
-    if (!selectedClassId) return;
+    if (!selectedClassId) {
+        setStudents([]);
+        return;
+    }
     
     const fetchStudents = async () => {
         setLoading(true);
@@ -88,7 +91,6 @@ export const AttendanceEntry: React.FC = () => {
       };
 
       await api.post('/attendance/bulk', payload);
-      
       toast.success('✅ Appel enregistré avec succès !');
       
     } catch (error) {
@@ -169,7 +171,6 @@ export const NoteEntry: React.FC = () => {
     
     const [loading, setLoading] = useState(false);
 
-    // 1. Charger la liste des classes au démarrage
     useEffect(() => {
         const fetchClasses = async () => {
             try {
@@ -183,9 +184,11 @@ export const NoteEntry: React.FC = () => {
         fetchClasses();
     }, []);
 
-    // 2. Charger les élèves quand une classe est sélectionnée
     useEffect(() => {
-        if (!selectedClassId) return;
+        if (!selectedClassId) {
+            setStudents([]);
+            return;
+        }
         
         const fetchStudents = async () => {
             setLoading(true);
@@ -205,6 +208,7 @@ export const NoteEntry: React.FC = () => {
 
 
     const handleGradeChange = (studentId: number, value: string) => {
+        // Autorise uniquement chiffres et point/virgule ou vide
         setGrades(prev => ({ ...prev, [studentId]: value }));
     };
 
@@ -216,12 +220,12 @@ export const NoteEntry: React.FC = () => {
              return;
         }
         
-        // 🚨 VALIDER ICI avant l'envoi
+        // Validation locale
         const invalidNotes = students.some(student => {
-            const note = Number(grades[student.id]);
-            // On considère les champs vides (NaN) comme valides (omis du payload)
-            if (isNaN(note) || grades[student.id] === '') return false; 
-            return note < 0 || note > noteSur;
+            const val = grades[student.id];
+            if (val === undefined || val === '') return false; // Note non saisie = valide (ignorée)
+            const note = Number(val);
+            return isNaN(note) || note < 0 || note > noteSur;
         });
         
         if (invalidNotes) {
@@ -231,11 +235,13 @@ export const NoteEntry: React.FC = () => {
 
         setLoading(true);
         try {
-            // Préparation du payload pour POST /grades
-            const notesPayload = Object.entries(grades).map(([studentId, noteVal]) => ({
-                studentId: Number(studentId),
-                noteValue: Number(noteVal)
-            })).filter(n => n.noteValue !== undefined && !isNaN(n.noteValue) && n.noteValue >= 0 && n.noteValue <= noteSur);
+            // Filtrage des notes valides (non vides et numériques)
+            const notesPayload = Object.entries(grades)
+                .map(([studentId, noteVal]) => ({
+                    studentId: Number(studentId),
+                    noteValue: Number(noteVal)
+                }))
+                .filter(n => !isNaN(n.noteValue) && n.noteValue >= 0 && n.noteValue <= noteSur && grades[n.studentId] !== '');
 
             const payload = {
                 classId: Number(selectedClassId),
@@ -283,7 +289,7 @@ export const NoteEntry: React.FC = () => {
                     </select>
                 </div>
 
-                {/* CONFIGURATION DU DEVOIR (Visible seulement si classe choisie) */}
+                {/* CONFIGURATION DU DEVOIR */}
                 {selectedClassId && (
                     <div style={{ backgroundColor: '#F4F6F8', padding: '20px', borderRadius: '10px', marginBottom: '25px', border: '1px solid #E0E0E0' }}>
                         <div style={{ marginBottom: '15px' }}>
@@ -334,13 +340,13 @@ export const NoteEntry: React.FC = () => {
                         
                         <div style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '5px' }}>
                             {students.map(student => {
-                                const currentNote = grades[student.id] ? Number(grades[student.id]) : 0;
-                                const isInvalid = (grades[student.id] !== '' && (currentNote > noteSur || currentNote < 0));
+                                const valStr = grades[student.id] !== undefined ? grades[student.id] : '';
+                                const currentNote = valStr !== '' ? Number(valStr) : NaN;
+                                const isInvalid = (valStr !== '' && (isNaN(currentNote) || currentNote > noteSur || currentNote < 0));
 
                                 return (
                                 <div key={student.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 10px', borderBottom: '1px solid #f0f0f0', backgroundColor: 'white' }}>
                                     <div style={{ color: '#333', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                        {/* Avatar simple */}
                                         <div style={{ width: '30px', height: '30px', borderRadius: '50%', backgroundColor: '#E0E0E0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 'bold', color: '#555' }}>
                                             {student.prenom[0]}{student.nom[0]}
                                         </div>
@@ -351,7 +357,7 @@ export const NoteEntry: React.FC = () => {
                                         <input 
                                             type="number" 
                                             placeholder="-"
-                                            value={grades[student.id] || ''}
+                                            value={valStr}
                                             onChange={(e) => handleGradeChange(student.id, e.target.value)}
                                             style={{ 
                                                 width: '70px', 

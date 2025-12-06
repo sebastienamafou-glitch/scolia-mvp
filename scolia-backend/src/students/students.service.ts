@@ -1,51 +1,47 @@
-// scolia-backend/src/students/students.service.ts
-
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Student } from './entities/student.entity';
 import { User } from '../users/entities/user.entity';
+// L'import UserRole n'est plus nécessaire ici si on utilise des strings pour les relations
 
 @Injectable()
 export class StudentsService {
   constructor(
+    @InjectRepository(Student)
+    private studentsRepository: Repository<Student>,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
   ) {}
 
-  // --- 1. RECHERCHE PAR CLASSE (Sécurisée & Relationnelle) ---
-  // On récupère les Users qui ont le rôle 'Élève' ET qui sont liés à la Class ID et School ID
-  async findByClass(classId: number, schoolId: number): Promise<User[]> {
-    return this.usersRepository.find({
-      where: { 
-        role: 'Élève',
-        class: { id: classId }, // Utilise la relation SQL
-        school: { id: schoolId } // Sécurité Multi-Tenant
-      },
+  async findByClass(classId: number, schoolId: number): Promise<Student[]> {
+    const whereCondition: any = { class: { id: classId } };
+    if (schoolId > 0) {
+        whereCondition.school = { id: schoolId };
+    }
+
+    return this.studentsRepository.find({
+      where: whereCondition,
       order: { nom: 'ASC' },
-      relations: ['class', 'parent'] // On charge les infos liées utiles
+      // ✅ CORRIGÉ : Tout en minuscules et strings
+      relations: ['class', 'parent', 'user'] 
     });
   }
 
-  // --- 2. RECHERCHE PAR ID ---
-  async findOne(id: number): Promise<User | null> {
-     return this.usersRepository.findOne({ 
-         where: { id, role: 'Élève' }, // On s'assure que c'est bien un élève
-         relations: ['class', 'school', 'parent'] 
+  async findOne(id: number): Promise<Student | null> {
+     return this.studentsRepository.findOne({ 
+         where: { id },
+         relations: ['class', 'school', 'parent', 'user'] 
      });
   }
 
-  // --- 3. RECHERCHE PAR PARENT ---
-  async findByParent(parentId: number): Promise<User[]> {
-    return this.usersRepository.find({
+  async findByParent(parentId: number): Promise<Student[]> {
+    return this.studentsRepository.find({
       where: { 
-        parentId: parentId,
-        role: 'Élève' 
+        parent: { id: parentId } 
       },
-      relations: ['class'], // On veut voir la classe de l'enfant
-      select: {
-          id: true, nom: true, prenom: true, email: true, photo: true, schoolId: true,
-          class: { id: true, name: true } // Sélection partielle propre
-      }
+      relations: ['class', 'school'], 
+      order: { prenom: 'ASC' }
     });
   }
 }

@@ -1,9 +1,17 @@
 // scolia-backend/src/auth/strategies/jwt.strategy.ts
-
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PassportStrategy } from '@nestjs/passport';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config'; // 👈 Import du ConfigService
+import { ConfigService } from '@nestjs/config';
+import { UserRole } from '../roles.decorator'; // Import de l'Enum
+
+// ✅ AJOUT : Interface pour typer le Payload du Token
+interface JwtPayload {
+  sub: string;
+  email: string;
+  role: UserRole;
+  schoolId: string;
+}
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -11,20 +19,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      // 👇 CORRECTION : Utilisez getOrThrow pour garantir une string
-      // Si votre version de NestJS est ancienne, utilisez : configService.get<string>('JWT_SECRET')!
       secretOrKey: configService.getOrThrow<string>('JWT_SECRET'),
     });
   }
 
-  async validate(payload: any) {
-    // Cette méthode n'est appelée que si le token est validé (signature OK)
-    // On retourne un objet utilisateur "allégé" qui sera injecté dans request.user
-    
+  async validate(payload: JwtPayload) {
     if (!payload) {
       throw new UnauthorizedException();
     }
 
+    // ✅ Retourne un objet typé. 
+    // Important : schoolId est crucial pour le cloisonnement des données (CDC Page 1, 2.2) 
     return { 
         userId: payload.sub, 
         email: payload.email, 

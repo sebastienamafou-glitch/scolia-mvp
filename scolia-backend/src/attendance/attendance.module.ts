@@ -3,9 +3,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AttendanceService } from './attendance.service';
 import { AttendanceController } from './attendance.controller';
 import { Attendance } from './entities/attendance.entity';
+import { Student } from '../students/entities/student.entity'; // ✅ Important
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Attendance])], // 👈 C'est la ligne magique qui manque
+  imports: [TypeOrmModule.forFeature([Attendance, Student])], 
   controllers: [AttendanceController],
   providers: [AttendanceService],
   exports: [AttendanceService]

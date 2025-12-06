@@ -1,5 +1,6 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Class } from '../../classes/entities/class.entity';
+import { School } from '../../schools/entities/school.entity'; // ✅ Ajout
 
 @Entity()
 export class Homework {
@@ -7,7 +8,7 @@ export class Homework {
   id: number;
 
   @Column()
-  title: string; // ex: "Exercice page 42"
+  title: string; 
 
   @Column({ type: 'text', nullable: true })
   description: string;
@@ -16,12 +17,20 @@ export class Homework {
   matiere: string;
 
   @Column()
-  dueDate: Date; // Pour quand ?
+  dueDate: Date; 
 
-  // Lien vers la Classe (tout le monde a le même devoir)
   @ManyToOne(() => Class, (classe) => classe.homeworks)
+  @JoinColumn({ name: 'classId' })
   class: Class;
 
   @Column()
   classId: number;
+
+  // ✅ SÉCURITÉ : On lie le devoir à l'école pour faciliter le filtrage global
+  @ManyToOne(() => School)
+  @JoinColumn({ name: 'schoolId' })
+  school: School;
+
+  @Column({ nullable: true })
+  schoolId: number;
 }

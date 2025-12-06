@@ -1,81 +1,68 @@
+// scolia-backend/src/payments/payments.controller.ts
+
 import { 
-    Controller, 
-    Get, 
-    Post, 
-    Patch, 
-    Body, 
-    Query, 
-    UseGuards, 
-    Request,
-    ForbiddenException, 
-    Param, 
+    Controller, Get, Post, Patch, Body, Query, UseGuards, Request, ForbiddenException, Param 
 } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+// ✅ CORRECTION CHEMIN : guards (pluriel)
 import { RolesGuard } from '../auth/guard/roles.guard';
-import { Roles } from '../auth/roles.decorator';
+// ✅ CORRECTION : Import Enum
+import { Roles, UserRole } from '../auth/roles.decorator';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('payments')
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
-  // 1. GET /payments/balance?studentId=X (Parent/Admin)
+  // Accessible à tous pour voir son solde (sécurisé par le service qui filtre par ID)
   @Get('balance')
   async getBalance(@Request() req, @Query('studentId') studentId: string) {
     const schoolId = req.user.schoolId;
     return this.paymentsService.getFeeByStudent(Number(studentId), schoolId);
   }
 
-  // 2. POST /payments/submit (Parent)
-  @Roles('Parent')
+  // ✅ CORRECTION : UserRole.ADMIN
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Post('fees') 
+  async updateFees(@Request() req, @Body() body: { studentId: number, totalAmount: any, dateLimit?: string }) {
+      if (!req.user.schoolId && req.user.role !== UserRole.SUPER_ADMIN) throw new ForbiddenException();
+
+      return this.paymentsService.setStudentTuition(
+          Number(body.studentId), 
+          Number(body.totalAmount), 
+          body.dateLimit || null,   
+          req.user.schoolId || 0
+      );
+  }
+
+  @Roles(UserRole.PARENT, UserRole.STUDENT)
   @Post('submit')
   async submitTransaction(@Request() req, @Body() body: { studentId: number, amount: number, reference: string }) {
     if (!req.user.schoolId) throw new ForbiddenException("Erreur d'authentification école.");
-    
-    return this.paymentsService.submitTransaction(
-        body.studentId,
-        body.amount,
-        body.reference,
-        req.user.schoolId
-    );
+    // Le parent envoie l'ID de l'enfant (studentId) pour qui il paie
+    return this.paymentsService.submitTransaction(body.studentId, body.amount, body.reference, req.user.schoolId);
   }
 
-  // 3. PATCH /payments/validate/:id (Admin)
-  @Roles('Admin')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @Patch('validate/:id')
   async validateTransaction(@Request() req, @Param('id') transactionId: string) {
-    if (!req.user.schoolId) throw new ForbiddenException("Accès Admin refusé.");
-    
-    // ✅ CORRECTION : On passe req.user.sub (ID Admin) comme 3ème argument
-    // au lieu de 'action' (string) qui causait l'erreur de type.
-    return this.paymentsService.validateTransaction(
-        Number(transactionId),
-        req.user.schoolId,
-        req.user.sub // L'ID de l'admin qui valide
-    );
+    if (!req.user.schoolId && req.user.role !== UserRole.SUPER_ADMIN) throw new ForbiddenException("Accès Admin refusé.");
+    return this.paymentsService.validateTransaction(Number(transactionId), req.user.schoolId || 0, req.user.sub);
   }
 
-  // 4. GET /payments/pending (Admin)
-  @Roles('Admin')
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @Get('pending')
   async getPendingTransactions(@Request() req) {
-      if (!req.user.schoolId) throw new ForbiddenException("Accès Admin refusé.");
-      return this.paymentsService.findPending(req.user.schoolId);
+      if (!req.user.schoolId && req.user.role !== UserRole.SUPER_ADMIN) throw new ForbiddenException("Accès Admin refusé.");
+      return this.paymentsService.findPending(req.user.schoolId || 0);
   }
 
-  // 5. POST /payments/set-tuition (Admin - Définir montant)
-  @Roles('Admin')
+  // Doublon de 'fees', mais gardé pour compatibilité si le front l'utilise
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @Post('set-tuition')
   async setTuition(@Request() req, @Body() body: { studentId: number, amount: number }) {
       if (!req.user.schoolId) throw new ForbiddenException();
-      
-      // ✅ CORRECTION : On appelle la bonne méthode 'setStudentTuition'
-      // (L'erreur "Property setFee does not exist" venait de là)
-      return this.paymentsService.setStudentTuition(
-          body.studentId, 
-          body.amount, 
-          req.user.schoolId
-      );
+      return this.paymentsService.setStudentTuition(body.studentId, body.amount, null, req.user.schoolId);
   }
 }

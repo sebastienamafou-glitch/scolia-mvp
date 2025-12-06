@@ -1,41 +1,39 @@
-// scolia-backend/src/attendance/attendance.controller.ts
-
-import { Controller, Post, Body, UseGuards, Request, Get, Param } from '@nestjs/common'; // <-- AJOUT de Get et Param
+import { Controller, Post, Body, UseGuards, Request, BadRequestException, Get, Param, ForbiddenException } from '@nestjs/common';
 import { AttendanceService } from './attendance.service';
+import { CreateAttendanceDto } from './dto/create-attendance.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+// ✅ CORRECTION CHEMIN
 import { RolesGuard } from '../auth/guard/roles.guard';
-import { Roles } from '../auth/roles.decorator';
-
-// DTO simulé pour la clarté (nous allons le créer dans un fichier séparé pour la vraie version)
-// Pour l'instant, laissons le DTO dans le même fichier pour le débogage initial
-class CreateAttendanceDto {
-  classId: string;
-  matiere: string;
-  records: { studentId: number; status: 'Présent' | 'Absent' | 'Retard' }[];
-}
-
+// ✅ CORRECTION ENUM
+import { Roles, UserRole } from '../auth/roles.decorator';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('attendance')
 export class AttendanceController {
-  constructor(private attendanceService: AttendanceService) {}
+  constructor(private readonly attendanceService: AttendanceService) {}
 
-  @Roles('Enseignant', 'Admin')
-  @Post('bulk') // Route : POST /attendance/bulk (saisie par lot)
-  async createAttendance(@Body() createAttendanceDto: CreateAttendanceDto, @Request() req) {
-    const teacherId = req.user.sub; // ID de l'enseignant qui saisit
+  @Roles(UserRole.TEACHER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Post('bulk')
+  async saveBulk(@Request() req, @Body() dto: CreateAttendanceDto) {
+    const teacherId = req.user.sub;
+    const schoolId = req.user.schoolId;
 
-    return this.attendanceService.saveAttendance(teacherId, createAttendanceDto.classId, createAttendanceDto.records);
+    if (!schoolId && req.user.role !== UserRole.SUPER_ADMIN) {
+        throw new ForbiddenException("Contexte école manquant.");
+    }
+
+    if (!dto.students || dto.students.length === 0) {
+        throw new BadRequestException("La liste des élèves est vide.");
+    }
+
+    // On passe le schoolId pour sécuriser l'enregistrement
+    return this.attendanceService.saveAttendance(teacherId, dto.classId, dto.students, schoolId || 0);
   }
 
-  // Route pour le Parent (Voir les absences)
-  @Roles('Parent', 'Admin')
-  @Get('student/:studentId') // <-- Utilisation correcte de @Get et du paramètre
-  async getStudentAttendance(@Param('studentId') studentId: string) { // <-- Utilisation de @Param
-      // Logique réelle : appellerait attendanceService.findByStudentId(studentId)
-      return { 
-          message: 'Liste des absences (Logique non implémentée, mais route protégée).',
-          studentId: studentId
-      };
+  @Roles(UserRole.PARENT, UserRole.STUDENT, UserRole.TEACHER, UserRole.ADMIN)
+  @Get('student/:studentId')
+  async getByStudent(@Request() req, @Param('studentId') studentId: string) {
+      // TODO: Ajouter vérification que le parent a le droit de voir cet élève
+      return this.attendanceService.findByStudent(+studentId);
   }
 }

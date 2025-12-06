@@ -1,11 +1,12 @@
-// scolia-backend/src/payments/payments.service.ts
-
 import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Fee } from './entities/fee.entity';
 import { Transaction } from './entities/transaction.entity';
-import { OnEvent } from '@nestjs/event-emitter'; // 👈 Import pour écouter
+import { Student } from '../students/entities/student.entity';
+import { OnEvent } from '@nestjs/event-emitter';
+// ✅ Import ajouté pour éviter l'erreur si utilisé dans la logique
+import { UserRole } from '../auth/roles.decorator'; 
 
 @Injectable()
 export class PaymentsService {
@@ -16,71 +17,144 @@ export class PaymentsService {
     private feesRepository: Repository<Fee>,
     @InjectRepository(Transaction)
     private transactionsRepository: Repository<Transaction>,
+    @InjectRepository(Student)
+    private studentRepository: Repository<Student>,
   ) {}
 
-  // 👂 ÉCOUTEUR D'ÉVÉNEMENT : Se déclenche quand un élève est créé
+  private async resolveStudentId(id: number): Promise<number | null> {
+      const student = await this.studentRepository.findOne({ 
+          where: [ { id: id }, { userId: id } ] 
+      });
+      return student ? student.id : null;
+  }
+
   @OnEvent('student.created')
   async handleStudentCreation(payload: { studentId: number, schoolId: number, fraisScolarite?: number }) {
       this.logger.log(`🏗️ Création auto du compte paiement pour l'élève #${payload.studentId}`);
-      await this.createPaymentAccount(payload.studentId);
+      await this.createPaymentAccount(payload.studentId, payload.schoolId);
       
       if (payload.fraisScolarite) {
-          await this.setStudentTuition(payload.studentId, payload.fraisScolarite, payload.schoolId);
+          await this.setStudentTuition(payload.studentId, payload.fraisScolarite, null, payload.schoolId);
       }
   }
 
-  async getFeeByStudent(studentId: number, schoolId: number): Promise<Fee | null> {
-    return this.feesRepository.findOne({ where: { studentId, school: { id: schoolId } }, relations: ['student'] });
+  async getFeeByStudent(id: number, schoolId: number): Promise<Fee> {
+    const realStudentId = await this.resolveStudentId(id);
+    
+    const emptyFee = { 
+        totalAmount: 0, 
+        amountPaid: 0, 
+        studentId: realStudentId || 0,
+        schoolId: schoolId 
+    } as Fee;
+
+    if (!realStudentId) return emptyFee;
+
+    const whereCondition: any = { studentId: realStudentId };
+    if (schoolId > 0) whereCondition.school = { id: schoolId };
+
+    const fee = await this.feesRepository.findOne({ 
+        where: whereCondition, 
+        relations: ['student'] // ✅ CORRIGÉ (string minuscule)
+    });
+
+    return fee || emptyFee;
   }
 
-  async submitTransaction(studentId: number, amount: number, reference: string, schoolId: number): Promise<Transaction> {
+  async submitTransaction(userIdOrStudentId: number, amount: number, reference: string, schoolId: number): Promise<Transaction> {
     if (!reference || amount <= 0) throw new BadRequestException("Données invalides.");
-    const newTransaction = this.transactionsRepository.create({ studentId, amount, mobileMoneyReference: reference, schoolId, status: 'Pending' });
+    
+    const newTransaction = this.transactionsRepository.create({ 
+        studentId: userIdOrStudentId, 
+        amount, 
+        mobileMoneyReference: reference, 
+        schoolId, 
+        status: 'Pending' 
+    });
     return this.transactionsRepository.save(newTransaction);
   }
 
   async findPending(schoolId: number): Promise<Transaction[]> {
-    return this.transactionsRepository.find({ where: { school: { id: schoolId }, status: 'Pending' }, relations: ['student'], order: { transactionDate: 'DESC' } });
+    const whereCondition: any = { status: 'Pending' };
+    if (schoolId > 0) whereCondition.school = { id: schoolId };
+
+    return this.transactionsRepository.find({ 
+        where: whereCondition, 
+        relations: ['student'], // ✅ CORRIGÉ (string minuscule)
+        order: { transactionDate: 'DESC' } 
+    });
   }
 
   async validateTransaction(transactionId: number, schoolId: number, adminId: number): Promise<Transaction> {
-    const transaction = await this.transactionsRepository.findOne({ where: { id: transactionId, school: { id: schoolId } }, relations: ['student'] });
+    const whereCondition: any = { id: transactionId };
+    if (schoolId > 0) whereCondition.school = { id: schoolId };
+
+    const transaction = await this.transactionsRepository.findOne({ 
+        where: whereCondition, 
+        relations: ['student'] // ✅ CORRIGÉ (string minuscule)
+    });
+    
     if (!transaction) throw new NotFoundException("Transaction introuvable.");
     if (transaction.status !== 'Pending') throw new BadRequestException("Déjà traitée.");
+
+    const realStudentId = await this.resolveStudentId(transaction.studentId);
+    
+    if (!realStudentId) {
+        throw new BadRequestException(`Impossible de lier la transaction (User ID: ${transaction.studentId}) à un dossier Étudiant.`);
+    }
 
     transaction.status = 'Validated';
     await this.transactionsRepository.save(transaction);
 
-    let fee = await this.feesRepository.findOne({ where: { studentId: transaction.studentId, school: { id: schoolId } } });
+    let fee = await this.feesRepository.findOne({ where: { studentId: realStudentId } });
+    
     if (!fee) {
-        await this.createPaymentAccount(transaction.studentId);
-        fee = await this.feesRepository.findOne({ where: { studentId: transaction.studentId } });
+        await this.createPaymentAccount(realStudentId, schoolId);
+        fee = await this.feesRepository.findOne({ where: { studentId: realStudentId } });
     }
 
     if (fee) {
         const newPaid = Number(fee.amountPaid) + Number(transaction.amount);
         fee.amountPaid = newPaid;
         await this.feesRepository.save(fee);
-        this.logger.log(`✅ Paiement validé pour élève ${transaction.studentId} (+${transaction.amount})`);
+        this.logger.log(`✅ Paiement validé pour élève ${realStudentId} (+${transaction.amount})`);
     }
     return transaction;
   }
 
-  async setStudentTuition(studentId: number, totalAmount: number, schoolId: number): Promise<Fee> {
-    let fee = await this.feesRepository.findOne({ where: { studentId } });
+  async setStudentTuition(id: number, totalAmount: number, dateLimit: string | null, schoolId: number): Promise<Fee> {
+    const realStudentId = await this.resolveStudentId(id);
+    if (!realStudentId) throw new NotFoundException("Élève introuvable pour configurer les frais.");
+
+    let fee = await this.feesRepository.findOne({ where: { studentId: realStudentId } });
+    const safeAmount = isNaN(Number(totalAmount)) ? 0 : Number(totalAmount);
+
     if (!fee) {
-        fee = this.feesRepository.create({ studentId, school: { id: schoolId }, totalAmount: Number(totalAmount), amountPaid: 0 });
+        fee = this.feesRepository.create({ 
+            studentId: realStudentId, 
+            school: { id: schoolId }, 
+            totalAmount: safeAmount, 
+            amountPaid: 0,
+            dateLimit: dateLimit || undefined 
+        });
     } else {
-        fee.totalAmount = Number(totalAmount);
-        if (schoolId) fee.school = { id: schoolId } as any;
+        fee.totalAmount = safeAmount;
+        if (dateLimit) fee.dateLimit = dateLimit;
+        if (schoolId && !fee.schoolId) fee.school = { id: schoolId } as any; 
     }
     return this.feesRepository.save(fee);
   }
 
-  async createPaymentAccount(studentId: number) {
+  async createPaymentAccount(studentId: number, schoolId?: number) {
       const exists = await this.feesRepository.findOne({ where: { studentId } });
       if (!exists) {
-          await this.feesRepository.save({ studentId, totalAmount: 0, amountPaid: 0 });
+          const newFee = this.feesRepository.create({ 
+              studentId, 
+              totalAmount: 0, 
+              amountPaid: 0,
+              school: schoolId ? { id: schoolId } : undefined 
+          });
+          await this.feesRepository.save(newFee);
       }
   }
 }

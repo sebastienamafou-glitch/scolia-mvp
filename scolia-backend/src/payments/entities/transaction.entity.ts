@@ -13,14 +13,19 @@ export class Transaction {
   @Column()
   mobileMoneyReference: string; // Le code SMS (ex: CI2301...)
 
-  @Column({ default: 'Pending' })
+  @Column({ 
+      type: 'enum', 
+      enum: ['Pending', 'Validated', 'Rejected'], 
+      default: 'Pending' 
+  })
   status: 'Pending' | 'Validated' | 'Rejected';
 
   @CreateDateColumn()
   transactionDate: Date;
   
+  // Le payeur est techniquement un User (Parent ou Élève)
   @ManyToOne(() => User)
-  @JoinColumn({ name: 'studentId' })
+  @JoinColumn({ name: 'studentId' }) // On garde le nom de colonne 'studentId' pour compatibilité existante
   student: User;
 
   @Column()

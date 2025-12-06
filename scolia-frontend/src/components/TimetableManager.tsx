@@ -17,16 +17,16 @@ interface TimetableSlot {
   room?: string;
 }
 
-// Helper pour nettoyer les strings (minuscule et sans espaces début/fin)
-const normalize = (str: string) => str.toLowerCase().trim();
+// Helper pour nettoyer les strings (avec check d'existence)
+const normalize = (str: string) => str ? str.toLowerCase().trim() : '';
 
-// Mapping si le backend renvoie de l'anglais et l'UI utilise le français
 const dayMapping: Record<string, string> = {
     'monday': 'lundi',
     'tuesday': 'mardi',
     'wednesday': 'mercredi',
     'thursday': 'jeudi',
-    'friday': 'vendredi'
+    'friday': 'vendredi',
+    'saturday': 'samedi'
 };
 
 export const TimetableManager: React.FC = () => {
@@ -36,16 +36,17 @@ export const TimetableManager: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
 
-  // Charger les classes
   useEffect(() => {
     api.get('/classes')
        .then(res => setClasses(res.data))
        .catch(err => console.error("Erreur chargement classes", err));
   }, []);
 
-  // Charger l'emploi du temps quand on sélectionne une classe
   useEffect(() => {
-    if (!selectedClassId) return;
+    if (!selectedClassId) {
+        setSchedule([]);
+        return;
+    }
     loadSchedule();
   }, [selectedClassId]);
 
@@ -53,10 +54,9 @@ export const TimetableManager: React.FC = () => {
     setLoading(true);
     try {
       const res = await api.get(`/timetable/class/${selectedClassId}`);
-      setSchedule(res.data);
+      setSchedule(res.data || []);
     } catch (e) {
       console.error(e);
-      toast.error("Impossible de charger l'emploi du temps.");
     } finally {
       setLoading(false);
     }
@@ -72,7 +72,7 @@ export const TimetableManager: React.FC = () => {
     const toastId = toast.loading("L'IA génère le planning...");
 
     try {
-      // Contraintes par défaut
+      // Contraintes par défaut (on pourrait faire un formulaire pour ça plus tard)
       const constraints = {
         "Mathématiques": 4,
         "Français": 4,
@@ -84,18 +84,15 @@ export const TimetableManager: React.FC = () => {
       };
 
       await api.post(`/timetable/generate/${selectedClassId}`, constraints);
-      
-      toast.success("✨ Emploi du temps généré avec succès !", { id: toastId });
+      alert("✨ Emploi du temps généré avec succès !");
       loadSchedule(); // Rafraîchir l'affichage
     } catch (error) {
-      console.error(error);
-      toast.error("Erreur lors de la génération IA.", { id: toastId });
+      alert("Erreur lors de la génération IA.");
     } finally {
       setGenerating(false);
     }
   };
 
-  // Organiser les données pour l'affichage (Lundi, Mardi...)
   const days = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'];
   
   return (
@@ -119,7 +116,7 @@ export const TimetableManager: React.FC = () => {
                     onClick={handleGenerateAI}
                     disabled={!selectedClassId || generating}
                     style={{ 
-                        backgroundColor: generating ? '#ccc' : '#673AB7', // Violet IA
+                        backgroundColor: generating ? '#ccc' : '#673AB7', 
                         color: 'white', border: 'none', padding: '8px 15px', borderRadius: '5px', 
                         fontWeight: 'bold', cursor: generating ? 'wait' : 'pointer',
                         display: 'flex', alignItems: 'center', gap: '5px'
@@ -130,9 +127,8 @@ export const TimetableManager: React.FC = () => {
             </div>
         </div>
 
-        {/* AFFICHAGE DE LA GRILLE */}
         {selectedClassId ? (
-            loading ? <p>Chargement...</p> : (
+            loading ? <p>Chargement du planning...</p> : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px' }}>
                     {days.map(day => (
                         <div key={day} style={{ border: '1px solid #eee', borderRadius: '8px', overflow: 'hidden' }}>
@@ -148,30 +144,21 @@ export const TimetableManager: React.FC = () => {
                                     })
                                     .sort((a, b) => a.startTime.localeCompare(b.startTime))
                                     .map(slot => (
-                                        <div key={slot.id} style={{ backgroundColor: '#E3F2FD', padding: '8px', borderRadius: '4px', marginBottom: '5px', fontSize: '0.85rem' }}>
+                                        <div key={slot.id} style={{ backgroundColor: '#E3F2FD', padding: '8px', borderRadius: '4px', marginBottom: '5px', fontSize: '0.85rem', borderLeft: '3px solid #1565C0' }}>
                                             <div style={{ fontWeight: 'bold', color: '#1565C0' }}>{slot.subject}</div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#555', fontSize: '0.75rem' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#555', fontSize: '0.75rem', marginTop: '4px' }}>
                                                 <FaClock size={10} /> {slot.startTime} - {slot.endTime}
                                             </div>
                                             <div style={{ fontSize: '0.75rem', color: '#888' }}>{slot.room}</div>
                                         </div>
                                     ))}
-                                {schedule
-                                    .filter(s => {
-                                        const apiDay = normalize(s.dayOfWeek);
-                                        const uiDay = normalize(day);
-                                        return apiDay === uiDay || dayMapping[apiDay] === uiDay;
-                                    })
-                                    .length === 0 && (
-                                    <div style={{ textAlign: 'center', color: '#ccc', marginTop: '20px', fontSize: '0.8rem' }}>Aucun cours</div>
-                                )}
                             </div>
                         </div>
                     ))}
                 </div>
             )
         ) : (
-            <p style={{ textAlign: 'center', color: '#666', fontStyle: 'italic' }}>Veuillez sélectionner une classe pour voir ou générer son planning.</p>
+            <p style={{ textAlign: 'center', color: '#666', fontStyle: 'italic', padding: '30px' }}>Veuillez sélectionner une classe pour voir ou générer son planning.</p>
         )}
     </div>
   );

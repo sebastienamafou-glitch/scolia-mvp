@@ -1,9 +1,10 @@
-// scolia-backend/src/news/entities/news.entity.ts
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
+import { School } from '../../schools/entities/school.entity';
+// ✅ IMPORT AJOUTÉ
+import { UserRole } from '../../auth/roles.decorator';
 
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
-import { School } from '../../schools/entities/school.entity'; // 👈 Import
-
-export type TargetAudience = 'All' | 'Enseignant' | 'Parent' | 'Élève';
+// On utilise l'Enum importé pour typer le syndicat de types
+export type TargetAudience = 'All' | UserRole.TEACHER | UserRole.PARENT | UserRole.STUDENT;
 
 @Entity()
 export class News {
@@ -17,15 +18,11 @@ export class News {
   content: string;
 
   @Column({ default: 'All' })
-  targetRole: TargetAudience;
-
-  @Column({ default: false })
-  isUrgent: boolean;
+  targetRole: string; // On stocke en string en base pour simplifier
 
   @CreateDateColumn()
   createdAt: Date;
 
-  // ✅ SÉCURITÉ : Liaison avec l'école
   @ManyToOne(() => School)
   @JoinColumn({ name: 'schoolId' })
   school: School;

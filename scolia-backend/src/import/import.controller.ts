@@ -3,16 +3,15 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ImportService } from './import.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/guard/roles.guard';
-import { Roles } from '../auth/roles.decorator';
+import { Roles, UserRole } from '../auth/roles.decorator'; // ✅ Enum
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('import')
 export class ImportController {
   constructor(private readonly importService: ImportService) {}
 
-  @Roles('Admin')
+  @Roles(UserRole.ADMIN) // ✅ Correction
   @Post('users')
-  // Le nom du champ de formulaire doit être 'file'
   @UseInterceptors(FileInterceptor('file')) 
   async uploadUsers(@UploadedFile() file: Express.Multer.File, @Request() req) {
     if (!file || !file.mimetype.includes('csv')) {
@@ -22,7 +21,6 @@ export class ImportController {
     const schoolId = req.user.schoolId;
     if (!schoolId) throw new ForbiddenException("Opération réservée à un administrateur d'école.");
 
-    // Le service gère le parsing et l'insertion dans la base de données
     const result = await this.importService.parseAndImportUsers(file, schoolId);
 
     if (result.errorCount > 0) {

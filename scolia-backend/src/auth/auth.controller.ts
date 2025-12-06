@@ -3,6 +3,7 @@ import * as bcrypt from 'bcrypt';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guard/jwt-auth.guard'; // Ajoutez 'guard'
 import { Throttle } from '@nestjs/throttler'; // 👈 Importez Throttle
+import { UserRole } from '../auth/roles.decorator';
 
 @Controller('auth')
 export class AuthController {

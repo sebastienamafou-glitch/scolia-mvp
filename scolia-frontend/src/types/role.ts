@@ -1,2 +1,7 @@
 // scolia-frontend/src/types/role.ts
-export type Role = 'Admin' | 'Enseignant' | 'Élève' | 'Parent' | 'SuperAdmin';
+import { UserRole } from './userRole';
+
+export interface Role {
+    id: number;
+    name: UserRole;
+}

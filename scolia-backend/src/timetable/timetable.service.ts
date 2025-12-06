@@ -1,6 +1,4 @@
-// scolia-backend/src/timetable/timetable.service.ts
-
-import { Injectable, InternalServerErrorException, Logger, ForbiddenException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TimetableEvent } from './entities/timetable-event.entity';
@@ -17,20 +15,19 @@ export class TimetableService {
   ) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-        this.logger.error("❌ CLÉ API GEMINI MANQUANTE !");
+        this.logger.error("❌ CLÉ API GEMINI MANQUANTE ! Vérifiez le fichier .env");
     }
     this.genAI = new GoogleGenerativeAI(apiKey || '');
   }
 
-  // 🔒 SÉCURITÉ : On filtre par classId ET schoolId
-  // Si un élève change l'ID dans l'URL pour voir une autre école, ça renverra vide.
   async findByClass(classId: number, schoolId: number): Promise<TimetableEvent[]> {
     try {
+        const whereCondition: any = { classId: classId };
+        // Si schoolId est > 0, on filtre. Si c'est 0 (SuperAdmin), on ne filtre pas l'école
+        if (schoolId > 0) whereCondition.schoolId = schoolId;
+
         const events = await this.timetableRepo.find({ 
-            where: { 
-                classId: classId,
-                schoolId: schoolId // 👈 Verrouillage Multi-Tenant
-            },
+            where: whereCondition,
         });
 
         if (!events || events.length === 0) return [];
@@ -51,72 +48,77 @@ export class TimetableService {
     }
   }
 
-  // --- GÉNÉRATION IA (ROBUSTE) ---
   async generateWithAI(classId: number, constraints: any, schoolId: number) {
-    const model = this.genAI.getGenerativeModel({ model: "gemini-pro" });
-
     const prompt = `
       Agis comme un planificateur scolaire expert. Crée un emploi du temps JSON pour une classe.
       Jours : Lundi à Vendredi. Horaires : 08:00-12:00, 14:00-17:00.
-      MATIÈRES : ${JSON.stringify(constraints)}
+      MATIÈRES & PROFS : ${JSON.stringify(constraints)}
       FORMAT JSON STRICT : [{"day": "Lundi", "start": "08:00", "end": "09:00", "subject": "Maths", "room": "A1"}, ...]
+      Ne réponds QUE par le JSON. Pas de texte avant ou après.
     `;
 
+    const modelsToTry = ["gemini-1.5-flash", "gemini-pro"];
+    let scheduleData: any = null; 
+
+    for (const modelName of modelsToTry) {
+        try {
+            this.logger.log(`🤖 Tentative IA avec le modèle : ${modelName}...`);
+            const model = this.genAI.getGenerativeModel({ model: modelName });
+            const result = await model.generateContent(prompt);
+            const text = result.response.text();
+
+            const jsonRegex = /\[[\s\S]*\]/; 
+            const match = text.match(jsonRegex);
+            if (match) {
+                scheduleData = JSON.parse(match[0]);
+                break; 
+            }
+        } catch (e: any) {
+            this.logger.warn(`⚠️ Échec avec ${modelName}: ${e.message}`);
+        }
+    }
+
+    if (!scheduleData) {
+        throw new InternalServerErrorException("Echec génération IA : Impossible de générer un planning valide.");
+    }
+
     try {
-      this.logger.log(`🤖 IA sollicitée pour classe ${classId}...`);
-      const result = await model.generateContent(prompt);
-      const text = result.response.text();
+        // Mapping Anglais -> Français au cas où l'IA répond en anglais
+        const dayMapping: Record<string, string> = {
+            'monday': 'Lundi', 'mon': 'Lundi', 'lundi': 'Lundi',
+            'tuesday': 'Mardi', 'tue': 'Mardi', 'mardi': 'Mardi',
+            'wednesday': 'Mercredi', 'wed': 'Mercredi', 'mercredi': 'Mercredi',
+            'thursday': 'Jeudi', 'thu': 'Jeudi', 'jeudi': 'Jeudi',
+            'friday': 'Vendredi', 'fri': 'Vendredi', 'vendredi': 'Vendredi',
+            'saturday': 'Samedi', 'sat': 'Samedi', 'samedi': 'Samedi'
+        };
 
-      // Nettoyage JSON via Regex
-      const jsonRegex = /\[[\s\S]*\]/; 
-      const match = text.match(jsonRegex);
+        // On nettoie l'ancien emploi du temps de cette classe
+        await this.timetableRepo.delete({ classId });
 
-      if (!match) throw new Error("Format IA invalide.");
+        const events = scheduleData.map((slot: any) => {
+            const rawDay = (slot.day || '').toLowerCase().trim();
+            const cleanDay = dayMapping[rawDay] || slot.day; 
 
-      let scheduleData;
-      try {
-          scheduleData = JSON.parse(match[0]);
-      } catch (e) {
-          throw new Error("JSON mal formé.");
-      }
+            return this.timetableRepo.create({
+                dayOfWeek: cleanDay,
+                startTime: slot.start,
+                endTime: slot.end,
+                subject: slot.subject,
+                room: slot.room || 'Salle',
+                classId: classId,
+                schoolId: schoolId, // Important pour le cloisonnement
+                teacherId: null // L'IA ne gère pas encore les ID profs, à lier plus tard
+            });
+        });
 
-      // 🧹 ROBUSTESSE : Dictionnaire de normalisation des jours
-      const dayMapping: Record<string, string> = {
-          'monday': 'Lundi', 'mon': 'Lundi', 'lundi': 'Lundi',
-          'tuesday': 'Mardi', 'tue': 'Mardi', 'mardi': 'Mardi',
-          'wednesday': 'Mercredi', 'wed': 'Mercredi', 'mercredi': 'Mercredi',
-          'thursday': 'Jeudi', 'thu': 'Jeudi', 'jeudi': 'Jeudi',
-          'friday': 'Vendredi', 'fri': 'Vendredi', 'vendredi': 'Vendredi',
-          'saturday': 'Samedi', 'sat': 'Samedi', 'samedi': 'Samedi'
-      };
-
-      // Suppression de l'ancien emploi du temps
-      await this.timetableRepo.delete({ classId });
-
-      const events = scheduleData.map((slot: any) => {
-          // Normalisation : on met en minuscule et on cherche dans le dico
-          const rawDay = (slot.day || '').toLowerCase().trim();
-          const cleanDay = dayMapping[rawDay] || slot.day; // Fallback si non trouvé (ex: "Lundi" tel quel)
-
-          return this.timetableRepo.create({
-              dayOfWeek: cleanDay, // Jour propre
-              startTime: slot.start,
-              endTime: slot.end,
-              subject: slot.subject,
-              room: slot.room || 'Salle',
-              classId: classId,
-              schoolId: schoolId, // On force l'ID école de l'admin
-              teacherId: null
-          });
-      });
-
-      const saved = await this.timetableRepo.save(events);
-      this.logger.log(`🎉 Planning généré : ${saved.length} cours.`);
-      return saved;
+        const saved = await this.timetableRepo.save(events);
+        this.logger.log(`🎉 Planning généré : ${saved.length} cours.`);
+        return saved;
 
     } catch (error) {
-      this.logger.error("ERREUR IA :", error);
-      throw new InternalServerErrorException("Echec génération IA.");
+      this.logger.error("ERREUR SAUVEGARDE IA :", error);
+      throw new InternalServerErrorException("Erreur interne lors de la sauvegarde.");
     }
   }
 }

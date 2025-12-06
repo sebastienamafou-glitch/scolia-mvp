@@ -1,13 +1,11 @@
 // scolia-frontend/src/components/ClassManager.tsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 
-interface ClassEntity {
-  id: number;
-  name: string;
-  level: string;
+interface ClassManagerProps {
+    onClassCreated?: () => void; // On déclare la fonction reçue
 }
 
 export const ClassManager: React.FC = () => {
@@ -25,7 +23,6 @@ export const ClassManager: React.FC = () => {
       setClasses(res.data);
     } catch (err) {
       console.error(err);
-      toast.error("Impossible de charger la liste des classes.");
     } finally {
       setLoading(false);
     }
@@ -33,20 +30,13 @@ export const ClassManager: React.FC = () => {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if(!newClass.name || !newClass.level) {
-        toast.error("Veuillez remplir tous les champs.");
-        return;
-    }
-
     try {
       await api.post('/classes', newClass);
-      toast.success('Classe créée avec succès !');
+      alert('Classe créée !');
       setNewClass({ name: '', level: '' });
-      fetchClasses(); // Recharger la liste
+      fetchClasses();
     } catch (err) {
-      console.error(err);
-      toast.error("Erreur lors de la création de la classe.");
+      alert("Erreur lors de la création.");
     }
   };
 
@@ -72,7 +62,6 @@ export const ClassManager: React.FC = () => {
             <select 
                 value={newClass.level}
                 onChange={e => setNewClass({...newClass, level: e.target.value})}
-                required
                 style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }}
             >
                 <option value="">-- Niveau --</option>
@@ -84,26 +73,14 @@ export const ClassManager: React.FC = () => {
                 <option value="Première">Première</option>
                 <option value="Terminale">Terminale</option>
             </select>
-            <button type="submit" style={{ backgroundColor: '#0A2240', color: 'white', padding: '10px', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
+            <button type="submit" style={{ backgroundColor: '#0A2240', color: 'white', padding: '10px', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
                 Ajouter
             </button>
         </form>
 
-        {/* Liste */}
-        <div>
-            <h3>Classes existantes ({classes.length})</h3>
-            {loading ? <p>Chargement...</p> : (
-                <ul style={{ listStyle: 'none', padding: 0, maxHeight: '200px', overflowY: 'auto' }}>
-                    {classes.map(c => (
-                        <li key={c.id} style={{ padding: '8px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between' }}>
-                            <strong>{c.name}</strong>
-                            <span style={{ color: '#666', fontSize: '0.9em' }}>{c.level}</span>
-                        </li>
-                    ))}
-                </ul>
-            )}
+            <div style={{ marginTop: '15px', color: '#666', fontSize: '0.9rem' }}>
+                ℹ️ Les nouvelles classes apparaîtront immédiatement dans le formulaire d'inscription.
+            </div>
         </div>
-      </div>
-    </div>
-  );
+    );
 };

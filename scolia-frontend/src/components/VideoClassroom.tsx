@@ -28,7 +28,7 @@ export const VideoClassroom: React.FC<VideoClassroomProps> = ({ user, roomName }
                 configOverwrite={{
                     startWithAudioMuted: true,
                     disableThirdPartyRequests: true,
-                    prejoinPageEnabled: false, // Entre direct (plus fluide)
+                    prejoinPageEnabled: false, 
                     toolbarButtons: [
                         'microphone', 'camera', 'closedcaptions', 'desktop', 'fullscreen',
                         'fodeviceselection', 'hangup', 'profile', 'chat', 'recording',
@@ -41,16 +41,15 @@ export const VideoClassroom: React.FC<VideoClassroomProps> = ({ user, roomName }
                 interfaceConfigOverwrite={{
                     SHOW_JITSI_WATERMARK: false,
                     SHOW_WATERMARK_FOR_GUESTS: false,
-                    DEFAULT_BACKGROUND: '#0A2240', // Couleur Scolia
+                    DEFAULT_BACKGROUND: '#0A2240', 
                     TOOLBAR_ALWAYS_VISIBLE: true,
                 }}
                 userInfo={{
                     displayName: `${user.prenom} ${user.nom}`,
-                    email: user.email // L'identification automatique via l'email Scolia !
+                    email: user.email 
                 }}
                 onApiReady={() => {
                     setLoading(false);
-                    // On peut ajouter des écouteurs d'événements ici si besoin
                 }}
                 getIFrameRef={(iframeRef) => {
                     iframeRef.style.height = '100%';

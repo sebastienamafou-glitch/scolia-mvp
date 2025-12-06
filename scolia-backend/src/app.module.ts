@@ -1,12 +1,9 @@
-// scolia-backend/src/app.module.ts
-
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { EventEmitterModule } from '@nestjs/event-emitter'; // 👈 NOUVEAU
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler'; 
 import { APP_GUARD } from '@nestjs/core'; 
-
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -43,11 +40,11 @@ import { TimetableModule } from './timetable/timetable.module';
 import { SkillsModule } from './skills/skills.module';
 import { AttendanceModule } from './attendance/attendance.module'; 
 import { ImportModule } from './import/import.module'; 
+import { BulletinsModule } from './bulletins/bulletins.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    // ✅ Activation des événements globaux
     EventEmitterModule.forRoot(),
     
     TypeOrmModule.forRootAsync({
@@ -59,13 +56,14 @@ import { ImportModule } from './import/import.module';
         username: configService.get<string>('DB_USER'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
+        // SSL obligatoire pour Render/Neon en production
         ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false, 
         entities: [
             User, Student, Class, Grade, Homework, Bulletin, News, School, 
             Fee, Transaction, Competence, SkillEvaluation, TimetableEvent,
             Attendance, Notification
         ],
-        synchronize: false, // Mettre à true UNE SEULE FOIS pour créer les tables
+        synchronize: true, // ⚠️ À passer à false en production une fois stable
       }),
       inject: [ConfigService],
     }),
@@ -75,6 +73,7 @@ import { ImportModule } from './import/import.module';
         limit: 100,
     }]),
 
+    // Modules Fonctionnels
     AuthModule,
     UsersModule,
     StudentsModule,
@@ -89,9 +88,15 @@ import { ImportModule } from './import/import.module';
     AnalyticsModule, 
     TimetableModule,
     AttendanceModule,
-    ImportModule
+    ImportModule, 
+    BulletinsModule, 
   ],
-  controllers: [AppController],
+  controllers: [
+    AppController
+    // ❌ RETRAIT DE GradesController et NotificationsController
+    // Ils sont déjà importés via GradesModule et NotificationsModule.
+    // Les laisser ici provoquerait une erreur "Nest can't resolve dependencies".
+  ],
   providers: [
     AppService,
     {

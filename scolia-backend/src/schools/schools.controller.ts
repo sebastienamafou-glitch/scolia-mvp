@@ -5,66 +5,52 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { School, SchoolModules } from './entities/school.entity';
-import { User } from '../users/entities/user.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+// ✅ CORRECTION CHEMIN : guards (pluriel)
 import { RolesGuard } from '../auth/guard/roles.guard';
-import { Roles } from '../auth/roles.decorator';
-import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
-import { randomBytes } from 'crypto';
+import { SchoolsService } from './schools.service'; 
+// ✅ CORRECTION : Import Enum
+import { Roles, UserRole } from '../auth/roles.decorator';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('schools')
 export class SchoolsController {
   constructor(
-    @InjectRepository(School) private schoolRepo: Repository<School>,
-    @InjectRepository(User) private userRepo: Repository<User>,
-    private usersService: UsersService,
+    private readonly schoolsService: SchoolsService,
+    // 👇 AJOUT : Nécessaire car utilisé dans onboardNewSchool
+    private readonly usersService: UsersService,
+    // 👇 AJOUT : Nécessaire car utilisé pour findAll, findOne, etc.
+    @InjectRepository(School) 
+    private schoolRepo: Repository<School>
   ) {}
 
   // --- SUPER ADMIN : CRÉATION ---
-  @Roles('SuperAdmin')
+  @Roles(UserRole.SUPER_ADMIN)
   @Post('onboard')
   async onboardNewSchool(@Request() req, @Body() body: any) {
-    if (req.user.schoolId !== null) throw new ForbiddenException("Seul le Super Admin peut créer une nouvelle école.");
+    // Vérification de sécurité (même si le Guard le fait déjà)
+    if (req.user.role !== UserRole.SUPER_ADMIN) {
+        throw new ForbiddenException("Seul le Super Admin peut créer une nouvelle école.");
+    }
 
-    const { schoolName, schoolAddress, schoolLogo, adminNom, adminPrenom } = body;
+    const { adminNom, adminPrenom } = body;
 
-    const newSchool = this.schoolRepo.create({
-      name: schoolName,
-      address: schoolAddress,
-      logo: schoolLogo, 
-      isActive: true,
-      modules: { cards: false, sms: false, ai_planning: false, risk_radar: false }
-    });
-    const savedSchool = await this.schoolRepo.save(newSchool);
-
+    // 1. On génère l'email unique (via UsersService injecté)
     const uniqueEmail = await this.usersService.generateUniqueEmail(adminPrenom, adminNom);
-    const temporaryPassword = randomBytes(4).toString('hex');
-    const salt = await bcrypt.genSalt();
-    const hash = await bcrypt.hash(temporaryPassword, salt);
 
-    const newAdmin = this.userRepo.create({
-      email: uniqueEmail,
-      nom: adminNom,
-      prenom: adminPrenom,
-      passwordHash: hash,  
-      role: 'Admin',
-      school: savedSchool, 
-      // NOTE: schoolId est géré par la relation 'school' (insert: false dans l'entité User)
-    });
-    
-    await this.userRepo.save(newAdmin);
+    // 2. On délègue la création complexe au service
+    const result = await this.schoolsService.createSchoolWithAdmin(body, uniqueEmail);
 
     return {
       message: "✅ Nouvelle école créée !",
-      school: savedSchool,
-      admin: { generatedEmail: uniqueEmail, generatedPassword: temporaryPassword }
+      school: result.school,
+      admin: { generatedEmail: uniqueEmail, generatedPassword: result.password }
     };
   }
 
   // --- SUPER ADMIN : GESTION DES MODULES ---
-  @Roles('SuperAdmin')
+  @Roles(UserRole.SUPER_ADMIN)
   @Patch(':id/modules')
   async updateSchoolModules(@Param('id') id: string, @Body() modules: Partial<SchoolModules>) {
       const school = await this.schoolRepo.findOne({ where: { id: Number(id) } });
@@ -78,7 +64,7 @@ export class SchoolsController {
   }
 
   // --- SUPER ADMIN : STATUT ---
-  @Roles('SuperAdmin')
+  @Roles(UserRole.SUPER_ADMIN)
   @Patch(':id/status')
   async updateSchoolStatus(@Param('id') schoolId: string, @Body('isActive') isActive: boolean) {
     await this.schoolRepo.update(schoolId, { isActive });
@@ -86,14 +72,14 @@ export class SchoolsController {
   }
 
   // --- SUPER ADMIN : LISTE ---
-  @Roles('SuperAdmin')
+  @Roles(UserRole.SUPER_ADMIN)
   @Get()
   async findAllSchools() {
       return this.schoolRepo.find({ order: { name: 'ASC' } });
   }
 
   // --- ADMIN CLIENT : MON ÉCOLE ---
-  @Roles('Admin')
+  @Roles(UserRole.ADMIN)
   @Get('my-school')
   async findMySchool(@Request() req) {
     const schoolId = req.user.schoolId;
@@ -111,7 +97,7 @@ export class SchoolsController {
     return school;
   }
 
-  @Roles('Admin')
+  @Roles(UserRole.ADMIN)
   @Patch('my-school')
   async updateMySchool(@Request() req, @Body() body: any) {
     const schoolId = req.user.schoolId;
@@ -125,7 +111,7 @@ export class SchoolsController {
   }
 }
 
-// Petit helper pour nettoyer les objets
+// Petit helper pour nettoyer les objets (gardé à la fin du fichier)
 function safeUpdateData(body: any) {
     const allowed = ['name', 'address', 'logo', 'description'];
     const clean: any = {};

@@ -1,11 +1,11 @@
-// scolia-backend/src/analytics/analytics.service.ts
-
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Student } from '../students/entities/student.entity';
 import { Grade } from '../grades/entities/grade.entity';
 import { Fee } from '../payments/entities/fee.entity';
+// ✅ IMPORT AJOUTÉ
+import { UserRole } from '../auth/roles.decorator'; 
 
 @Injectable()
 export class AnalyticsService {
@@ -16,18 +16,23 @@ export class AnalyticsService {
   ) {}
 
   async getRiskReport(schoolId: number) {
-    // 1. Récupérer tous les élèves de l'école avec leurs notes
     const students = await this.studentRepo.find({ 
         where: { class: { school: { id: schoolId } } },
+        // ✅ CORRIGÉ : Relations en minuscules strings (pas d'Enum ici)
         relations: ['grades', 'class', 'parent'] 
     });
 
-    // 2. OPTIMISATION : Récupérer tous les frais de l'école en UNE SEULE requête
     const allFees = await this.feeRepo.find({ where: { school: { id: schoolId } } });
     
-    // Création d'un dictionnaire pour un accès instantané (O(1)) par ID élève
-    const feesMap = new Map<number, Fee>();
-    allFees.forEach(fee => feesMap.set(fee.studentId, fee));
+    const feesMap = new Map<number, { totalAmount: number, amountPaid: number }>();
+
+    allFees.forEach(fee => {
+        const currentStats = feesMap.get(fee.studentId) || { totalAmount: 0, amountPaid: 0 };
+        feesMap.set(fee.studentId, {
+            totalAmount: currentStats.totalAmount + Number(fee.totalAmount),
+            amountPaid: currentStats.amountPaid + Number(fee.amountPaid)
+        });
+    });
 
     const atRiskList: any[] = [];
 
@@ -35,22 +40,16 @@ export class AnalyticsService {
       let riskScore = 0;
       const reasons: string[] = [];
 
-      // --- ANALYSE FINANCIÈRE (Instantanée grâce à la Map) ---
-      const fee = feesMap.get(student.id);
+      const feeStats = feesMap.get(student.id);
       
-      if (fee && Number(fee.totalAmount) > 0) { 
-          const paid = Number(fee.amountPaid);
-          const total = Number(fee.totalAmount);
-          const percentPaid = (paid / total) * 100;
-          
-          // Seuil d'alerte : moins de 30% payé
+      if (feeStats && feeStats.totalAmount > 0) { 
+          const percentPaid = (feeStats.amountPaid / feeStats.totalAmount) * 100;
           if (percentPaid < 30) {
               riskScore += 1;
               reasons.push(`💸 Retard Paiement (${percentPaid.toFixed(0)}%)`);
           }
       }
 
-      // --- ANALYSE PÉDAGOGIQUE ---
       if (student.grades && student.grades.length > 0) {
           const sum = student.grades.reduce((a, b) => a + Number(b.value), 0);
           const avg = sum / student.grades.length;
@@ -61,7 +60,6 @@ export class AnalyticsService {
           }
       }
 
-      // --- DÉCISION ---
       if (riskScore >= 1) {
           atRiskList.push({
               id: student.id,
@@ -69,14 +67,13 @@ export class AnalyticsService {
               prenom: student.prenom,
               classe: student.class?.name || 'Sans classe',
               photo: (student as any).photo || '', 
-              parentPhone: student.parent?.email, // Ou tel si dispo
+              parentPhone: student.parent?.email, 
               riskLevel: riskScore >= 2 ? 'HIGH' : 'MEDIUM',
               reasons: reasons
           });
       }
     }
 
-    // Tri par gravité
     return atRiskList.sort((a, b) => (a.riskLevel === 'HIGH' ? -1 : 1));
   }
 }
