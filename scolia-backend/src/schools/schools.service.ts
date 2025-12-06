@@ -36,7 +36,7 @@ export class SchoolsService {
       nom: data.adminNom,
       prenom: data.adminPrenom,
       passwordHash: hash,
-      role: 'Admin',
+      role: UserRole.ADMIN,
       school: savedSchool,
     });
     

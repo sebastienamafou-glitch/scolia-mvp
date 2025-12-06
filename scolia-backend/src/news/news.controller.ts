@@ -12,7 +12,7 @@ export class NewsController {
   constructor(private readonly newsService: NewsService) {}
 
   // 1. L'Admin publie une info POUR SON ÉCOLE
-  @Roles('Admin')
+  @Roles(UserRole.ADMIN)
   @Post()
   async create(@Request() req, @Body() body: any) {
     const schoolId = req.user.schoolId;

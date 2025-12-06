@@ -52,14 +52,14 @@ export const SchoolNews: React.FC = () => {
     <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', marginBottom: '30px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>
         <h2 style={{ margin: 0, color: '#0A2240', fontSize: '1.2rem' }}>📢 Actualités & Vie Scolaire</h2>
-        {userRole === 'Admin' && (
+        {userRole === UserRole.ADMIN && (
             <button onClick={() => setShowForm(!showForm)} style={{ fontSize: '0.9rem', padding: '8px 12px', backgroundColor: '#0A2240', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
                 {showForm ? 'Fermer' : '+ Nouvelle Annonce'}
             </button>
         )}
       </div>
 
-      {userRole === 'Admin' && showForm && (
+      {userRole === UserRole.ADMIN && showForm && (
         <form onSubmit={handlePublish} style={{ backgroundColor: '#F4F6F8', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
             <input type="text" placeholder="Titre" value={newPost.title} onChange={e => setNewPost({...newPost, title: e.target.value})} style={{ width: '100%', padding: '8px', marginBottom: '10px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
             <textarea placeholder="Message..." rows={3} value={newPost.content} onChange={e => setNewPost({...newPost, content: e.target.value})} style={{ width: '100%', padding: '8px', marginBottom: '10px', borderRadius: '4px', border: '1px solid #ccc', fontFamily: 'inherit', boxSizing: 'border-box' }} />

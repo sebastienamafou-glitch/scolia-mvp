@@ -27,7 +27,7 @@ const App: React.FC = () => {
     );
   }
 
-  const rolesWithCustomHeader = ['Enseignant', 'Admin', 'Parent', 'SuperAdmin', 'Élève'];
+  const rolesWithCustomHeader = [UserRole.TEACHER, UserRole.ADMIN, UserRole.PARENT, UserRole.SUPER_ADMIN, UserRole.STUDENT];
   const showGlobalHeader = userRole && !rolesWithCustomHeader.includes(userRole);
 
   return (
@@ -72,23 +72,23 @@ const App: React.FC = () => {
           {/* REDIRECTION VERS LE DASHBOARD BASÉ SUR LE RÔLE */}
           <Route path="/home" element={
             !userRole ? <Navigate to="/login" replace /> : // Doit être connecté pour accéder à /home
-            userRole === 'SuperAdmin' ? <Navigate to="/platform" replace /> :
-            userRole === 'Admin' ? <Navigate to="/admin-dashboard" replace /> :
-            userRole === 'Enseignant' ? <Navigate to="/teacher-dashboard" replace /> :
-            userRole === 'Parent' ? <Navigate to="/parent-dashboard" replace /> : 
-            userRole === 'Élève' ? <Navigate to="/student-dashboard" replace /> :
+            userRole === UserRole.SUPER_ADMIN ? <Navigate to="/platform" replace /> :
+            userRole === UserRole.ADMIN ? <Navigate to="/admin-dashboard" replace /> :
+            userRole === UserRole.TEACHER ? <Navigate to="/teacher-dashboard" replace /> :
+            userRole === UserRole.PARENT ? <Navigate to="/parent-dashboard" replace /> : 
+            userRole === UserRole.STUDENT ? <Navigate to="/student-dashboard" replace /> :
             <Navigate to="/login" replace />
           } />
 
           {/* --- ROUTES PROTÉGÉES --- */}
-          <Route path="/platform" element={<PrivateRoute roles={['SuperAdmin']}><PlatformDashboard /></PrivateRoute>} />
-          <Route path="/admin-dashboard" element={<PrivateRoute roles={['Admin']}><AdminDashboard /></PrivateRoute>} />
-          <Route path="/teacher-dashboard" element={<PrivateRoute roles={['Enseignant']}><TeacherDashboard /></PrivateRoute>} />
-          <Route path="/parent-dashboard" element={<PrivateRoute roles={['Parent']}><ParentDashboard /></PrivateRoute>} />
-          <Route path="/student-dashboard" element={<PrivateRoute roles={['Élève']}><NotesPage /></PrivateRoute>} />
+          <Route path="/platform" element={<PrivateRoute roles={[UserRole.SUPER_ADMIN]}><PlatformDashboard /></PrivateRoute>} />
+          <Route path="/admin-dashboard" element={<PrivateRoute roles={[UserRole.ADMIN]}><AdminDashboard /></PrivateRoute>} />
+          <Route path="/teacher-dashboard" element={<PrivateRoute roles={[UserRole.TEACHER]}><TeacherDashboard /></PrivateRoute>} />
+          <Route path="/parent-dashboard" element={<PrivateRoute roles={[UserRole.PARENT]}><ParentDashboard /></PrivateRoute>} />
+          <Route path="/student-dashboard" element={<PrivateRoute roles={[UserRole.STUDENT]}><NotesPage /></PrivateRoute>} />
 
           {/* Route Aide */}
-          <Route path="/help" element={<PrivateRoute roles={['SuperAdmin', 'Admin', 'Enseignant', 'Parent', 'Élève']}><HelpPage /></PrivateRoute>} />
+          <Route path="/help" element={<PrivateRoute roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.PARENT, UserRole.STUDENT]}><HelpPage /></PrivateRoute>} />
 
           {/* Catch-all (404) -> Renvoie à la racine */}
           <Route path="*" element={<Navigate to="/" replace />} />

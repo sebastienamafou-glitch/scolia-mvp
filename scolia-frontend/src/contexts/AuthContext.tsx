@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useEffect, type PropsWithCh
 import api from '../services/api';
 
 // On définit le type Role localement
-export type Role = 'Admin' | 'Enseignant' | 'Parent' | 'Élève' | 'SuperAdmin';
+export type Role = UserRole.ADMIN | UserRole.TEACHER | UserRole.PARENT | UserRole.STUDENT | UserRole.SUPER_ADMIN;
 
 export interface User {
   id: number;

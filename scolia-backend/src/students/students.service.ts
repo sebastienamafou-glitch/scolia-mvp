@@ -24,7 +24,7 @@ export class StudentsService {
     return this.studentsRepository.find({
       where: whereCondition,
       order: { nom: 'ASC' },
-      relations: ['class', 'parent', 'user'] 
+      relations: ['class', UserRole.PARENT, 'user'] 
     });
   }
 
@@ -32,7 +32,7 @@ export class StudentsService {
   async findOne(id: number): Promise<Student | null> {
      return this.studentsRepository.findOne({ 
          where: { id },
-         relations: ['class', 'school', 'parent', 'user'] 
+         relations: ['class', 'school', UserRole.PARENT, 'user'] 
      });
   }
 

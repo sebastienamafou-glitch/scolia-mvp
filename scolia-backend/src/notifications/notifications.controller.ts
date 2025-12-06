@@ -19,7 +19,7 @@ import { Roles } from '../auth/roles.decorator';
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
-  @Roles('Parent', 'Élève', 'Admin', 'SuperAdmin', 'Enseignant')
+  @Roles(UserRole.PARENT, UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.TEACHER)
   @Post('subscribe')
   async subscribe(@Request() req, @Body('token') token: string) {
     if (!req.user.sub) return;
@@ -27,7 +27,7 @@ export class NotificationsController {
   }
 
   // ✅ Route critique corrigée (était 404 dans les logs)
-  @Roles('Enseignant', 'Admin')
+  @Roles(UserRole.TEACHER, UserRole.ADMIN)
   @Post('alert-teacher')
   async alertTeacher(@Request() req, @Body() body: { type: string; details: string; duration?: number }) {
       const teacherId = req.user.sub;

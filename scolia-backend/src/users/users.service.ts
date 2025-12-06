@@ -35,8 +35,8 @@ export class UsersService implements OnModuleInit {
     const superAdmin = this.usersRepository.create({
         email: `admin@${this.DOMAIN_NAME}`, 
         passwordHash: hashedPassword,
-        role: UserRole.SUPER_ADMIN, // ✅ Enum
-        nom: 'Admin',
+        role: UserRole.SUPER_ADMIN, // ✅ Use enum value directly
+        nom: 'ADMIN',
         prenom: 'System',
     });
     await this.usersRepository.save(superAdmin);

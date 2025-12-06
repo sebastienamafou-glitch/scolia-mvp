@@ -19,7 +19,7 @@ export class AnalyticsService {
     // 1. Récupérer tous les élèves de l'école avec leurs notes
     const students = await this.studentRepo.find({ 
         where: { class: { school: { id: schoolId } } },
-        relations: ['grades', 'class', 'parent'] 
+        relations: ['grades', 'class', UserRole.PARENT] 
     });
 
     // 2. OPTIMISATION : Récupérer tous les frais de l'école

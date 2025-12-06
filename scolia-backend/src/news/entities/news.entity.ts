@@ -3,7 +3,7 @@
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { School } from '../../schools/entities/school.entity'; // 👈 Import
 
-export type TargetAudience = 'All' | 'Enseignant' | 'Parent' | 'Élève';
+export type TargetAudience = 'All' | UserRole.TEACHER | UserRole.PARENT | UserRole.STUDENT;
 
 @Entity()
 export class News {

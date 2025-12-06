@@ -12,10 +12,10 @@ const HelpPage: React.FC = () => {
   
   // Par défaut, on ouvre l'onglet correspondant au rôle de l'utilisateur
   const defaultTab = 
-    userRole === 'SuperAdmin' ? 'superadmin' :
-    userRole === 'Admin' ? 'admin' :
-    userRole === 'Enseignant' ? 'prof' : 
-    'parent';
+    userRole === UserRole.SUPER_ADMIN ? UserRole.SUPER_ADMIN :
+    userRole === UserRole.ADMIN ? UserRole.ADMIN :
+    userRole === UserRole.TEACHER ? 'prof' : 
+    UserRole.PARENT;
 
   const [activeTab, setActiveTab] = useState(defaultTab);
 
@@ -39,7 +39,7 @@ const HelpPage: React.FC = () => {
         <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', overflowX: 'auto', paddingBottom: '5px' }}>
             
             {/* Onglet SuperAdmin (Visible uniquement par le SuperAdmin) */}
-            {userRole === 'SuperAdmin' && (
+            {userRole === UserRole.SUPER_ADMIN && (
                 <TabButton id="superadmin" label="Super Admin" icon={<FaCode />} active={activeTab} onClick={setActiveTab} />
             )}
             
@@ -52,7 +52,7 @@ const HelpPage: React.FC = () => {
         {/* CONTENU */}
         <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', lineHeight: '1.6', color: '#444' }}>
             
-            {activeTab === 'superadmin' && (
+            {activeTab === UserRole.SUPER_ADMIN && (
                 <section>
                     <h2 style={titleStyle}>👑 Guide Super Admin (Propriétaire)</h2>
                     <p><em>Réservé au gestionnaire technique de la plateforme.</em></p>
@@ -80,7 +80,7 @@ const HelpPage: React.FC = () => {
                 </section>
             )}
 
-            {activeTab === 'admin' && (
+            {activeTab === UserRole.ADMIN && (
                 <section>
                     <h2 style={titleStyle}>🎓 Guide Directeur (Admin École)</h2>
                     
@@ -130,7 +130,7 @@ const HelpPage: React.FC = () => {
                 </section>
             )}
 
-            {activeTab === 'parent' && (
+            {activeTab === UserRole.PARENT && (
                 <section>
                     <h2 style={titleStyle}>👪 Guide Parent & Élève</h2>
                     

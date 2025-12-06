@@ -22,7 +22,7 @@ export class SchoolsController {
   ) {}
 
   // --- SUPER ADMIN : CRÉATION (CORRIGÉ) ---
-  @Roles('SuperAdmin')
+  @Roles(UserRole.SUPER_ADMIN)
   @Post('onboard')
   async onboardNewSchool(@Request() req, @Body() body: any) {
     if (req.user.schoolId !== null) throw new ForbiddenException("Seul le Super Admin peut créer une nouvelle école.");
@@ -44,7 +44,7 @@ export class SchoolsController {
   }
 
   // --- SUPER ADMIN : GESTION DES MODULES ---
-  @Roles('SuperAdmin')
+  @Roles(UserRole.SUPER_ADMIN)
   @Patch(':id/modules')
   async updateSchoolModules(@Param('id') id: string, @Body() modules: Partial<SchoolModules>) {
       const school = await this.schoolRepo.findOne({ where: { id: Number(id) } });
@@ -58,7 +58,7 @@ export class SchoolsController {
   }
 
   // --- SUPER ADMIN : STATUT ---
-  @Roles('SuperAdmin')
+  @Roles(UserRole.SUPER_ADMIN)
   @Patch(':id/status')
   async updateSchoolStatus(@Param('id') schoolId: string, @Body('isActive') isActive: boolean) {
     await this.schoolRepo.update(schoolId, { isActive });
@@ -66,14 +66,14 @@ export class SchoolsController {
   }
 
   // --- SUPER ADMIN : LISTE ---
-  @Roles('SuperAdmin')
+  @Roles(UserRole.SUPER_ADMIN)
   @Get()
   async findAllSchools() {
       return this.schoolRepo.find({ order: { name: 'ASC' } });
   }
 
   // --- ADMIN CLIENT : MON ÉCOLE ---
-  @Roles('Admin')
+  @Roles(UserRole.ADMIN)
   @Get('my-school')
   async findMySchool(@Request() req) {
     const schoolId = req.user.schoolId;
@@ -91,7 +91,7 @@ export class SchoolsController {
     return school;
   }
 
-  @Roles('Admin')
+  @Roles(UserRole.ADMIN)
   @Patch('my-school')
   async updateMySchool(@Request() req, @Body() body: any) {
     const schoolId = req.user.schoolId;

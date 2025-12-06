@@ -10,7 +10,7 @@ import { Roles } from '../auth/roles.decorator';
 export class ImportController {
   constructor(private readonly importService: ImportService) {}
 
-  @Roles('Admin')
+  @Roles(UserRole.ADMIN)
   @Post('users')
   // Le nom du champ de formulaire doit être 'file'
   @UseInterceptors(FileInterceptor('file')) 

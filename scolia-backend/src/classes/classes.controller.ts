@@ -11,7 +11,7 @@ import { Roles } from '../auth/roles.decorator';
 export class ClassesController {
   constructor(private readonly classesService: ClassesService) {}
 
-  @Roles('Admin')
+  @Roles(UserRole.ADMIN)
   @Post()
   async create(@Request() req, @Body() body: { name: string; level: string }) {
     const schoolId = req.user.schoolId;
@@ -23,7 +23,7 @@ export class ClassesController {
 
   // Admin : Gère ses classes
   // Enseignant : Voit les classes pour l'appel/notes
-  @Roles('Admin', 'Enseignant')
+  @Roles(UserRole.ADMIN, UserRole.TEACHER)
   @Get()
   async findAll(@Request() req) {
     const schoolId = req.user.schoolId;

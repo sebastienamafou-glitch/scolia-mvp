@@ -77,7 +77,7 @@ const AdminDashboard: React.FC = () => {
   const [schoolForm, setSchoolForm] = useState({ name: '', address: '', logo: '', description: '' });
   
   const [newUser, setNewUser] = useState({
-    password: '', role: 'Enseignant', 
+    password: '', role: UserRole.TEACHER, 
     nom: '', prenom: '', 
     classId: '', 
     parentId: '', photo: '',
@@ -168,7 +168,7 @@ const AdminDashboard: React.FC = () => {
     try {
       const payload: any = { ...newUser };
       
-      if (payload.role !== 'Élève') {
+      if (payload.role !== UserRole.STUDENT) {
           delete payload.classId;
           delete payload.parentId; delete payload.dateNaissance;
           delete payload.adresse; delete payload.contactUrgenceNom;
@@ -186,7 +186,7 @@ const AdminDashboard: React.FC = () => {
       
       fetchUsers();
       setNewUser({ 
-          password: '', role: 'Enseignant', nom: '', prenom: '', 
+          password: '', role: UserRole.TEACHER, nom: '', prenom: '', 
           classId: '', parentId: '', photo: '', dateNaissance: '', adresse: '',
           contactUrgenceNom: '', contactUrgenceTel: '', infosMedicales: ''
       });
@@ -221,11 +221,11 @@ const AdminDashboard: React.FC = () => {
   const currentUsers = filteredUsers.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
 
-  const countStudents = allUsers.filter(u => u.role === 'Élève').length;
-  const countTeachers = allUsers.filter(u => u.role === 'Enseignant').length;
-  const countParents = allUsers.filter(u => u.role === 'Parent').length;
-  const countAdmins = allUsers.filter(u => u.role === 'Admin').length;
-  const availableParents = allUsers.filter(user => user.role === 'Parent');
+  const countStudents = allUsers.filter(u => u.role === UserRole.STUDENT).length;
+  const countTeachers = allUsers.filter(u => u.role === UserRole.TEACHER).length;
+  const countParents = allUsers.filter(u => u.role === UserRole.PARENT).length;
+  const countAdmins = allUsers.filter(u => u.role === UserRole.ADMIN).length;
+  const availableParents = allUsers.filter(user => user.role === UserRole.PARENT);
   
   const defaultModules: SchoolInfo['modules'] = { risk_radar: false, ai_planning: false, sms: false, cards: false };
   const safeModules = mySchool?.modules ? { ...defaultModules, ...mySchool.modules } : defaultModules;
@@ -303,7 +303,7 @@ const AdminDashboard: React.FC = () => {
             
             <div style={{ padding: '20px', borderBottom: '1px solid #eee', display: 'flex', flexWrap: 'wrap', gap: '20px', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '5px' }}>
-                    {['Tous', 'Élève', 'Enseignant', 'Parent', 'Admin'].map(role => (
+                    {['Tous', UserRole.STUDENT, UserRole.TEACHER, UserRole.PARENT, UserRole.ADMIN].map(role => (
                         <button 
                             key={role}
                             onClick={() => { setActiveTab(role); setCurrentPage(1); }}
@@ -376,7 +376,7 @@ const AdminDashboard: React.FC = () => {
                                 <input type="text" placeholder="Nom" required value={newUser.nom} onChange={e => setNewUser({...newUser, nom: e.target.value})} style={inputStyle} />
                                 <input type="text" placeholder="Prénom" required value={newUser.prenom} onChange={e => setNewUser({...newUser, prenom: e.target.value})} style={inputStyle} />
                                 
-                                {newUser.role === 'Élève' && (
+                                {newUser.role === UserRole.STUDENT && (
                                     <div style={{ gridColumn: '1 / -1', backgroundColor: '#E3F2FD', padding: '15px', borderRadius: '8px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
                                         <select value={newUser.classId} onChange={e => setNewUser({...newUser, classId: e.target.value})} style={inputStyle}>
                                             <option value="">-- Choisir une Classe --</option>
@@ -411,7 +411,7 @@ const AdminDashboard: React.FC = () => {
                             <tbody>
                                 {currentUsers.length === 0 ? <tr><td colSpan={5} style={{ padding: '20px', textAlign: 'center' }}>Aucun résultat.</td></tr> :
                                 currentUsers.map(user => (
-                                    <tr key={user.id} style={{ borderBottom: '1px solid #eee', cursor: user.role === 'Élève' ? 'pointer' : 'default' }} onClick={() => user.role === 'Élève' && setSelectedStudent(user)}>
+                                    <tr key={user.id} style={{ borderBottom: '1px solid #eee', cursor: user.role === UserRole.STUDENT ? 'pointer' : 'default' }} onClick={() => user.role === UserRole.STUDENT && setSelectedStudent(user)}>
                                         <td style={{ padding: '10px 15px', fontWeight: 'bold' }}>{user.nom} {user.prenom}</td>
                                         <td style={{ padding: '10px 15px' }}>
                                             <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', backgroundColor: getRoleColor(user.role).bg, color: getRoleColor(user.role).text }}>
@@ -509,9 +509,9 @@ const UpsellBannerSmall = ({ title }: any) => (
 
 const getRoleColor = (role: string) => {
     switch(role) {
-        case 'Élève': return { bg: '#E3F2FD', text: '#1565C0' };
-        case 'Enseignant': return { bg: '#FFF3E0', text: '#E65100' };
-        case 'Parent': return { bg: '#E8F5E9', text: '#2E7D32' };
+        case UserRole.STUDENT: return { bg: '#E3F2FD', text: '#1565C0' };
+        case UserRole.TEACHER: return { bg: '#FFF3E0', text: '#E65100' };
+        case UserRole.PARENT: return { bg: '#E8F5E9', text: '#2E7D32' };
         default: return { bg: '#EEEEEE', text: '#616161' };
     }
 };

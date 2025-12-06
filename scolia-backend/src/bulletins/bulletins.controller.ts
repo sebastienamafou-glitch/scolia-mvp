@@ -21,7 +21,7 @@ export class BulletinsController {
   }
 
   // ✅ CORRECTION : Ajout de la route manquante
-  @Roles('Enseignant', 'Admin')
+  @Roles(UserRole.TEACHER, UserRole.ADMIN)
   @Post('save')
   async saveBulletin(@Body() data: any) {
     this.logger.log(`Sauvegarde du bulletin demandée pour l'élève ${data.studentId}`);

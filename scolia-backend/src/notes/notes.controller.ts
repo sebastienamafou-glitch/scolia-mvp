@@ -12,7 +12,7 @@ import { Roles } from '../auth/roles.decorator';
 export class NotesController {
   constructor(private notesService: NotesService) {}
 
-  @Roles('Enseignant', 'Admin')
+  @Roles(UserRole.TEACHER, UserRole.ADMIN)
   @Post('bulk') // Route : POST /notes/bulk (saisie par lot)
   async createBulk(@Body() createNotesDto: CreateNotesDto, @Request() req) {
     const teacherId = req.user.sub; // ID de l'enseignant qui saisit

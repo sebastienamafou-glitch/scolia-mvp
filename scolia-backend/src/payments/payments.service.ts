@@ -58,7 +58,7 @@ export class PaymentsService {
 
     const fee = await this.feesRepository.findOne({ 
         where: whereCondition, 
-        relations: ['student'] 
+        relations: [UserRole.STUDENT] 
     });
 
     return fee || emptyFee;
@@ -83,7 +83,7 @@ export class PaymentsService {
 
     return this.transactionsRepository.find({ 
         where: whereCondition, 
-        relations: ['student'], // Attention: relation vers User ici
+        relations: [UserRole.STUDENT], // Attention: relation vers User ici
         order: { transactionDate: 'DESC' } 
     });
   }
@@ -92,7 +92,7 @@ export class PaymentsService {
     const whereCondition: any = { id: transactionId };
     if (schoolId > 0) whereCondition.school = { id: schoolId };
 
-    const transaction = await this.transactionsRepository.findOne({ where: whereCondition, relations: ['student'] });
+    const transaction = await this.transactionsRepository.findOne({ where: whereCondition, relations: [UserRole.STUDENT] });
     
     if (!transaction) throw new NotFoundException("Transaction introuvable.");
     if (transaction.status !== 'Pending') throw new BadRequestException("Déjà traitée.");

@@ -70,7 +70,7 @@ export class NotificationsService {
   async sendTeacherAlert(teacherId: number, schoolId: number, type: string, details: string, duration?: number): Promise<{ message: string; recipients: number }> {
     
     const teacher = await this.userRepo.findOne({ 
-        where: { id: teacherId, schoolId, role: 'Enseignant' },
+        where: { id: teacherId, schoolId, role: UserRole.TEACHER },
     });
 
     if (!teacher) {
@@ -78,8 +78,8 @@ export class NotificationsService {
     }
     
     // 1. Récupérer tous les destinataires potentiels
-    const allParents = await this.userRepo.find({ where: { role: 'Parent', schoolId } });
-    const adminUser = await this.userRepo.findOne({ where: { role: 'Admin', schoolId } });
+    const allParents = await this.userRepo.find({ where: { role: UserRole.PARENT, schoolId } });
+    const adminUser = await this.userRepo.findOne({ where: { role: UserRole.ADMIN, schoolId } });
     
     let successfullyNotified = 0;
     const title = `🔔 Alerte École : Absence de M. ${teacher.nom}`;
