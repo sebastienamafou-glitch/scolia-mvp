@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Logo } from '../components/Logo';
 import { FaArrowLeft, FaUserTie, FaChalkboardTeacher, FaUsers, FaLifeRing, FaCode } from 'react-icons/fa';
+import { UserRole } from '../types/userRole';
 
 const HelpPage: React.FC = () => {
   const { userRole } = useAuth();
