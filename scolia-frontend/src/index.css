@@ -1,10 +1,19 @@
 /* scolia-frontend/src/index.css */
 
+/* 1. RESET UNIVERSEL (CRUCIAL) */
+/* Cela force tous les éléments à inclure les bordures et paddings dans leur largeur totale.
+   Sans ça, width: 100% + padding crée un débordement horizontal. */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
 :root {
-  /* Police moderne type Apple/Système pour tout le monde */
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
+
   color-scheme: light;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -12,29 +21,38 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Configuration globale de la page pour prendre 100% de l'écran */
-html, body, #root {
+/* 2. CONFIGURATION PLEIN ÉCRAN ROBUSTE */
+html {
   width: 100%;
-  min-height: 100vh;
-  margin: 0;
-  padding: 0;
-  background-color: #F4F6F8; /* Couleur de fond globale (Gris très clair) */
+  height: 100%; /* S'assure que la base est bien de 100% */
 }
 
 body {
-  display: block; /* Important: Écrase le 'flex' par défaut de Vite qui casse le layout */
-  min-width: 320px;
+  width: 100%;
+  min-height: 100vh; /* Prend au minimum toute la hauteur de la fenêtre */
+  margin: 0;
+  background-color: #F4F6F8;
+  
+  /* Flexbox ici permet au #root de bien s'étirer */
+  display: flex; 
+  flex-direction: column;
 }
 
 #root {
-  max-width: none; /* Important: Enlève la limite de largeur de Vite */
+  width: 100%;
+  /* flex: 1 permet à root de prendre tout l'espace restant dans body */
+  flex: 1; 
+  display: flex;
+  flex-direction: column;
+  
+  /* Annule les styles par défaut de Vite qui centrent parfois le contenu */
+  max-width: none;
   margin: 0;
   text-align: left;
 }
 
-/* Amélioration des formulaires (Responsive & Police) */
+/* 3. AMÉLIORATION DES FORMULAIRES */
 input, select, textarea, button {
+  font-family: inherit;
   max-width: 100%;
-  box-sizing: border-box; /* CRUCIAL : Empêche les inputs de dépasser de l'écran sur mobile */
-  font-family: inherit; /* Force les inputs à utiliser la même police que le site */
 }

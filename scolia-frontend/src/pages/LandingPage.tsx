@@ -8,7 +8,16 @@ import waciLogo from '../assets/webappci-logo.png';
 
 const LandingPage: React.FC = () => {
   return (
-    <div style={{ fontFamily: '"Inter", sans-serif', color: '#333', overflowX: 'hidden' }}>
+    <div style={{ 
+      fontFamily: '"Inter", sans-serif', 
+      color: '#333', 
+      overflowX: 'hidden',
+      // CORRECTION : Force le conteneur à prendre toute la largeur et hauteur disponible
+      width: '100%',
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column'
+    }}>
       
       {/* --- NAVBAR --- */}
       <nav style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 5%', backgroundColor: 'white', position: 'sticky', top: 0, zIndex: 1000, boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
