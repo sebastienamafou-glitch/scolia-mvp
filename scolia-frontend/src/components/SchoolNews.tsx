@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { UserRole } from '../types/userRole';
 
 interface NewsItem {
   id: number;

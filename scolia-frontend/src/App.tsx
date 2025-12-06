@@ -1,5 +1,6 @@
 import React from 'react';
 import { Routes, Route, Navigate, Link } from 'react-router-dom';
+import { UserRole } from './types/userRole';
 import { useAuth } from './contexts/AuthContext'; // Assurez-vous que ce hook existe
 import { Toaster } from 'react-hot-toast'; 
 

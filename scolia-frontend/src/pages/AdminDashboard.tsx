@@ -5,6 +5,7 @@ import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Logo } from '../components/Logo';
 import { Link } from 'react-router-dom';
+
 // Imports des modules fonctionnels
 import { ClassManager } from '../components/ClassManager';
 import { BulletinEditor } from '../components/BulletinEditor';
@@ -15,6 +16,7 @@ import { RiskRadarWidget } from '../components/RiskRadarWidget';
 import { SkillsManager } from '../components/SkillsManager';
 import { TimetableManager } from '../components/TimetableManager';
 import { Footer } from '../components/Footer';
+import { UserRole } from '../types/userRole';
 
 // Icônes
 import { 
@@ -23,12 +25,13 @@ import {
     FaCog, FaUnlockAlt, FaLock 
 } from 'react-icons/fa';
 
+// CORRECTION ICI : role est typé UserRole au lieu de string
 interface User {
   id: number;
   nom: string;
   prenom: string;
   email: string;
-  role: string;
+  role: UserRole; 
   class?: { id: number; name: string; }; 
   photo?: string;
   dateNaissance?: string;
@@ -68,6 +71,7 @@ const AdminDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [schoolLoading, setSchoolLoading] = useState(true);
 
+  // activeTab peut être 'Tous' ou une des valeurs de UserRole
   const [activeTab, setActiveTab] = useState<string>('Tous');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -76,8 +80,10 @@ const AdminDashboard: React.FC = () => {
   
   const [schoolForm, setSchoolForm] = useState({ name: '', address: '', logo: '', description: '' });
   
+  // CORRECTION : new user state typé implicitement correctement grâce à UserRole.TEACHER
   const [newUser, setNewUser] = useState({
-    password: '', role: UserRole.TEACHER, 
+    password: '', 
+    role: UserRole.TEACHER as UserRole, // Force le type initial
     nom: '', prenom: '', 
     classId: '', 
     parentId: '', photo: '',
@@ -96,7 +102,8 @@ const AdminDashboard: React.FC = () => {
   const fetchUsers = async () => {
     try {
       const response = await api.get('/users');
-      setAllUsers(response.data);
+      // On cast la réponse pour correspondre à notre interface stricte
+      setAllUsers(response.data as User[]);
     } catch (error) {
       console.error("Erreur chargement utilisateurs", error);
     }
@@ -113,7 +120,6 @@ const AdminDashboard: React.FC = () => {
     setSchoolLoading(true);
     try {
         const res = await api.get('/schools/my-school');
-        // Parsing propre : Si c'est une string, on parse, sinon on garde l'objet
         let mod = res.data.modules;
         if (typeof mod === 'string') {
              mod = JSON.parse(mod);
@@ -367,11 +373,12 @@ const AdminDashboard: React.FC = () => {
                     {showCreateForm && (
                         <div style={{ padding: '20px', backgroundColor: '#fafafa', borderBottom: '1px solid #eee' }}>
                             <form onSubmit={handleCreate} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
-                                <select value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})} style={inputStyle}>
-                                    <option value="Enseignant">Enseignant</option>
-                                    <option value="Élève">Élève</option>
-                                    <option value="Parent">Parent</option>
-                                    <option value="Admin">Admin</option>
+                                {/* CORRECTION : Valeurs du select alignées sur l'objet UserRole */}
+                                <select value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value as UserRole})} style={inputStyle}>
+                                    <option value={UserRole.TEACHER}>{UserRole.TEACHER}</option>
+                                    <option value={UserRole.STUDENT}>{UserRole.STUDENT}</option>
+                                    <option value={UserRole.PARENT}>{UserRole.PARENT}</option>
+                                    <option value={UserRole.ADMIN}>{UserRole.ADMIN}</option>
                                 </select>
                                 <input type="text" placeholder="Nom" required value={newUser.nom} onChange={e => setNewUser({...newUser, nom: e.target.value})} style={inputStyle} />
                                 <input type="text" placeholder="Prénom" required value={newUser.prenom} onChange={e => setNewUser({...newUser, prenom: e.target.value})} style={inputStyle} />
@@ -445,8 +452,6 @@ const AdminDashboard: React.FC = () => {
         {activeTab !== 'Paramètres' && (
             <>
                 <div style={{ marginTop: '40px', display: 'grid', gap: '30px' }}>
-                    
-                    {/* 👇 CORRECTION MAJEURE ICI : On passe la fonction de rafraichissement */}
                     <ClassManager onClassCreated={fetchClasses} />
                     
                     <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px' }}>
@@ -507,6 +512,8 @@ const UpsellBannerSmall = ({ title }: any) => (
     </div>
 );
 
+// getRoleColor attend une string, mais nos valeurs sont des chaînes, donc ça fonctionne.
+// On peut typer l'argument 'role' en UserRole pour plus de sécurité si souhaité.
 const getRoleColor = (role: string) => {
     switch(role) {
         case UserRole.STUDENT: return { bg: '#E3F2FD', text: '#1565C0' };
