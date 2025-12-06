@@ -5,7 +5,7 @@ import { Repository } from 'typeorm';
 import { School, SchoolModules } from './entities/school.entity';
 import { User } from '../users/entities/user.entity';
 import * as bcrypt from 'bcrypt';
-import { randomBytes } from 'crypto';
+import { randomBytes } from 'crypto'; // Node natif, pas besoin d'install
 import { UserRole } from '../auth/roles.decorator';
 
 @Injectable()
@@ -46,5 +46,8 @@ export class SchoolsService {
     return { school: savedSchool, password: temporaryPassword };
   }
   
-  // Ajoute ici les méthodes findOne, update, etc.
+  // Méthodes utilitaires pour le contrôleur
+  async findOne(id: number) {
+      return this.schoolRepo.findOne({ where: { id } });
+  }
 }

@@ -5,7 +5,7 @@ import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt'; 
 import { MailService } from '../mail/mail.service'; 
-import { UserRole } from './roles.decorator'; // 👈 Import de l'Enum créé précédemment
+import { UserRole } from './roles.decorator';
 
 @Injectable()
 export class AuthService {
@@ -19,6 +19,7 @@ export class AuthService {
 
   async validateUser(email: string, pass: string): Promise<any> {
     const cleanEmail = email.toLowerCase().trim();
+    // On suppose que findOneByEmail charge aussi la relation 'school' si nécessaire
     const user = await this.usersService.findOneByEmail(cleanEmail);
     
     if (!user) {
@@ -26,7 +27,6 @@ export class AuthService {
         return null;
     }
 
-    // Sécurité défensive si la BDD a des utilisateurs mal créés
     if (!user.passwordHash) {
         this.logger.error(`Utilisateur ${cleanEmail} corrompu (pas de hash).`);
         return null;
@@ -35,8 +35,9 @@ export class AuthService {
     const isMatch = await bcrypt.compare(pass, user.passwordHash);
     
     if (isMatch) {
-      // On retire le mot de passe de l'objet retourné
-      const { passwordHash, ...result } = user; 
+      // ✅ Sécurité : On s'assure de ne jamais renvoyer le hash, même par erreur
+      // On convertit en objet JS simple pour casser la liaison TypeORM
+      const { passwordHash, ...result } = JSON.parse(JSON.stringify(user)); 
       return result;
     } else {
       this.logger.warn(`Login échoué : Mauvais mot de passe pour ${cleanEmail}`);
@@ -44,15 +45,13 @@ export class AuthService {
     }
   }
 
-  // J'utilise 'any' pour l'instant car l'objet user vient de Passport, 
-  // mais idéalement créez une interface UserEntity
   async login(user: any) {
     if (!user) throw new UnauthorizedException("Identifiants incorrects");
 
-    // Gestion robuste du schoolId (cas où l'ORM retourne l'objet School ou juste l'ID)
-    const finalSchoolId = user.school?.id || user.schoolId;
+    // Gestion robuste du schoolId
+    // Si 'school' est chargé (objet), on prend son ID. Sinon on regarde si une prop 'schoolId' existe.
+    const finalSchoolId = user.school?.id || user.schoolId || null;
 
-    // ⚠️ Vérification critique : Assurons-nous que le rôle est valide
     if (!Object.values(UserRole).includes(user.role as UserRole)) {
         this.logger.warn(`Rôle inconnu détecté lors du login : ${user.role}`);
     }
@@ -60,15 +59,16 @@ export class AuthService {
     const payload = { 
         email: user.email, 
         sub: user.id, 
-        role: user.role, // Doit correspondre à l'Enum UserRole
+        role: user.role, 
         schoolId: finalSchoolId 
     };
     
     return {
       access_token: this.jwtService.sign(payload),
-      // Optionnel : renvoyer les infos user pour le frontend (évite de décoder le token tout de suite)
       user: {
-        fullName: `${user.firstName} ${user.lastName}`,
+        id: user.id, // Utile pour le front
+        firstName: user.firstName,
+        lastName: user.lastName,
         role: user.role,
         schoolId: finalSchoolId
       }
@@ -78,12 +78,9 @@ export class AuthService {
   async forgotPassword(email: string) {
     const user = await this.usersService.findOneByEmail(email.toLowerCase().trim());
     if (!user) {
-      // Par sécurité, on peut répondre "Si l'email existe, un lien a été envoyé"
-      // pour éviter l'énumération des utilisateurs, mais ici on garde simple.
       throw new NotFoundException("Aucun utilisateur avec cet email.");
     }
 
-    // Token signé spécifiquement pour le reset (ne permet pas de se connecter)
     const payload = { sub: user.id, type: 'reset' };
     const token = this.jwtService.sign(payload, { expiresIn: '15m' });
 
@@ -102,8 +99,6 @@ export class AuthService {
 
       const userId = payload.sub;
 
-      // ✅ CORRECTION MAJEURE : Hachage du nouveau mot de passe ici
-      // Sauf si votre usersService.updatePassword le fait déjà, c'est plus sûr de le faire ici.
       const salt = await bcrypt.genSalt();
       const hashedPassword = await bcrypt.hash(newPassword, salt);
 

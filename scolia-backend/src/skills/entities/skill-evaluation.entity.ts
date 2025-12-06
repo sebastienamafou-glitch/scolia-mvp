@@ -1,5 +1,6 @@
 import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
-import { User } from '../../users/entities/user.entity'; // L'élève
+import { Student } from '../../students/entities/student.entity'; // ✅ CHANGEMENT: User -> Student
+import { User } from '../../users/entities/user.entity'; // Utilisé pour 'teacher'
 import { Competence } from './competence.entity';
 
 @Entity()
@@ -7,25 +8,23 @@ export class SkillEvaluation {
   @PrimaryGeneratedColumn()
   id: number;
 
-  // Score de 1 à 5 (ou 1 à 10)
   @Column({ type: 'int' })
   level: number; 
 
   @Column({ type: 'text', nullable: true })
-  comment: string; // Appréciation spécifique (ex: "Très bon progrès")
+  comment: string;
 
   @CreateDateColumn()
   evaluationDate: Date;
 
-  // Lien vers l'élève
-  @ManyToOne(() => User)
+  // ✅ CORRECTION : On lie au dossier Student pour cohérence globale
+  @ManyToOne(() => Student)
   @JoinColumn({ name: 'studentId' })
-  student: User;
+  student: Student;
 
   @Column()
   studentId: number;
 
-  // Lien vers la compétence évaluée
   @ManyToOne(() => Competence)
   @JoinColumn({ name: 'competenceId' })
   competence: Competence;
@@ -33,7 +32,6 @@ export class SkillEvaluation {
   @Column()
   competenceId: number;
 
-  // Lien vers l'évaluateur (le Prof) - Optionnel mais utile pour la traçabilité
   @ManyToOne(() => User)
   @JoinColumn({ name: 'teacherId' })
   teacher: User;

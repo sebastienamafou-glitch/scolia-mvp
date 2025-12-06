@@ -1,10 +1,8 @@
 import { Controller, Get, Post, Body, Param, UseGuards, Request, Logger, ForbiddenException } from '@nestjs/common';
 import { GradesService } from './grades.service';
 import { BulkGradeDto } from './dto/bulk-grade.dto';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-// ✅ CORRECTION CHEMIN : guards (pluriel)
-import { RolesGuard } from '../auth/guard/roles.guard';
-// ✅ CORRECTION : Import Enum
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'; // ✅ Standardisé (guards)
+import { RolesGuard } from '../auth/guards/roles.guard';      // ✅ Standardisé (guards)
 import { Roles, UserRole } from '../auth/roles.decorator';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -14,44 +12,36 @@ export class GradesController {
 
   constructor(private readonly gradesService: GradesService) {}
 
-  // Seul l'enseignant ou l'admin peut saisir des notes
   @Roles(UserRole.TEACHER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @Post()
   async create(@Request() req, @Body() body: BulkGradeDto) {
     if (!req.user.schoolId && req.user.role !== UserRole.SUPER_ADMIN) {
         throw new ForbiddenException("Contexte école manquant.");
     }
-
-    if (body.notes && Array.isArray(body.notes)) {
-        // On passe le schoolId au service pour sécuriser l'enregistrement
-        return this.gradesService.saveBulk(body, req.user.schoolId || 0);
+    // Validation basique
+    if (!body.notes || !Array.isArray(body.notes)) {
+        return { message: "Format invalide. 'notes' doit être un tableau." };
     }
-    return { message: "Utilisez le format bulk." };
+    
+    return this.gradesService.saveBulk(body, req.user.schoolId || 0);
   }
 
-  // Pour l'élève/parent qui consulte SES notes
   @Roles(UserRole.STUDENT, UserRole.PARENT)
   @Get('my-grades')
   async getMyGrades(@Request() req) {
-    const userId = req.user.sub;
-    // Si c'est un parent, il faut spécifier quel enfant via query param idéalement,
-    // mais ici on garde la logique simple : "Mes notes" (pour l'élève connecté)
+    const userId = req.user.sub || req.user.id; // Supporte les deux formats de payload
+    
     if (req.user.role === UserRole.PARENT) {
-        // TODO: Implémenter la logique parent qui choisit l'enfant
-        return { message: "Veuillez utiliser la route /grades/student/:id" };
+        // Pour l'instant, simple message. Le parent doit utiliser /grades/student/:id
+        return { message: "Veuillez utiliser la route /grades/student/:id pour voir les notes de vos enfants." };
     }
-
     return this.gradesService.findByStudentUserId(userId);
   }
 
-  // Pour Admin/Prof qui consulte un élève spécifique
   @Roles(UserRole.ADMIN, UserRole.TEACHER, UserRole.PARENT, UserRole.SUPER_ADMIN)
   @Get('student/:studentId')
   async findByStudent(@Request() req, @Param('studentId') studentId: string) {
-    // Vérification de sécurité basique
-    if (req.user.role === UserRole.PARENT) {
-        // Vérifier que cet ID est bien un enfant du parent (à faire dans le service Student idéalement)
-    }
+    // TODO: Ajouter une vérification que le parent a bien le droit de voir cet élève
     return this.gradesService.findByStudent(Number(studentId));
   }
 }

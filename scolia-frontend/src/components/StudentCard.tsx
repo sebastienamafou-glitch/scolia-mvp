@@ -29,8 +29,6 @@ export const StudentCard: React.FC<StudentCardProps> = ({ student, onClose }) =>
   const [loadingFee, setLoadingFee] = useState(false);
 
   useEffect(() => {
-    if (!student?.id) return;
-    
     const loadFee = async () => {
         setLoadingFee(true);
         try {
@@ -38,17 +36,21 @@ export const StudentCard: React.FC<StudentCardProps> = ({ student, onClose }) =>
             if (res.data) {
                 setAmountDue(res.data.amountDue);
                 setAmountPaid(res.data.amountPaid);
+                // Gestion sécurisée de la date
                 const date = new Date(res.data.dueDate);
-                setDueDate(date.toISOString().split('T')[0]);
+                if (!isNaN(date.getTime())) {
+                    setDueDate(date.toISOString().split('T')[0]);
+                }
             }
         } catch (e) {
-            console.log("Pas encore de frais définis");
+            // C'est normal si pas de frais, on ne spamme pas la console
+            console.log("Info: Pas encore de frais définis pour cet élève.");
         } finally {
             setLoadingFee(false);
         }
     };
-    loadFee();
-  }, [student.id]);
+    if (student) loadFee();
+  }, [student]);
 
   const handleSaveFee = async () => {
     if (!amountDue || !dueDate) {
@@ -111,7 +113,7 @@ export const StudentCard: React.FC<StudentCardProps> = ({ student, onClose }) =>
             <div style={{ backgroundColor: '#F9F9F9', padding: '20px', borderRadius: '10px', border: '1px solid #ddd' }}>
                 <h3 style={{ color: '#F77F00', marginTop: 0 }}>💰 Configuration Scolarité</h3>
                 
-                {loadingFee ? <p>Chargement des infos financières...</p> : (
+                {loadingFee ? <p>Chargement...</p> : (
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                         
                         <div>

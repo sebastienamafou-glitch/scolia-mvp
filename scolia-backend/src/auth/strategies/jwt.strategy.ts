@@ -1,16 +1,16 @@
 // scolia-backend/src/auth/strategies/jwt.strategy.ts
+
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PassportStrategy } from '@nestjs/passport';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { UserRole } from '../roles.decorator'; // Import de l'Enum
+import { UserRole } from '../roles.decorator';
 
-// ✅ AJOUT : Interface pour typer le Payload du Token
 interface JwtPayload {
-  sub: string;
+  sub: number; // 👈 Modifié en number car user.id est un number dans auth.service
   email: string;
   role: UserRole;
-  schoolId: string;
+  schoolId: number; // 👈 Modifié en number
 }
 
 @Injectable()
@@ -28,10 +28,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException();
     }
 
-    // ✅ Retourne un objet typé. 
-    // Important : schoolId est crucial pour le cloisonnement des données (CDC Page 1, 2.2) 
+    // Retourne l'objet user qui sera injecté dans request.user
     return { 
-        userId: payload.sub, 
+        id: payload.sub, // On mappe 'sub' vers 'id' pour plus de clarté dans les controlleurs
         email: payload.email, 
         role: payload.role,
         schoolId: payload.schoolId 

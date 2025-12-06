@@ -1,73 +1,124 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Grade } from '../grades/entities/grade.entity';
 import { Student } from '../students/entities/student.entity';
+import { Bulletin } from '../grades/entities/bulletin.entity';
 
 @Injectable()
 export class BulletinsService {
-  private readonly logger = new Logger(BulletinsService.name);
-
   constructor(
-    @InjectRepository(Grade)
-    private gradesRepo: Repository<Grade>,
-    @InjectRepository(Student)
-    private studentRepo: Repository<Student>,
+    @InjectRepository(Grade) private gradesRepo: Repository<Grade>,
+    @InjectRepository(Student) private studentRepo: Repository<Student>,
+    @InjectRepository(Bulletin) private bulletinRepo: Repository<Bulletin>,
   ) {}
 
-  async generateBulletin(studentId: number, period: string) {
-    // 1. Smart Lookup : On s'assure d'avoir le bon ID élève
-    let finalStudentId = studentId;
+  async generateBulletin(studentId: number, period: string, schoolId: number) {
+    // 1. Récupérer l'élève
     const student = await this.studentRepo.findOne({ 
-        where: [ { id: studentId }, { userId: studentId } ] 
+        where: [ 
+            { id: studentId, school: { id: schoolId } }, 
+            { userId: studentId, school: { id: schoolId } } 
+        ] 
     });
     
-    if (student) finalStudentId = student.id;
+    const finalStudentId = student ? student.id : studentId;
 
-    // 2. Récupérer toutes les notes de l'élève
+    // 2. Récupérer le bulletin existant
+    let bulletinData = await this.bulletinRepo.findOne({
+        where: { 
+            student: { id: finalStudentId }, // ✅ Relation
+            period: period,
+            school: { id: schoolId } // ✅ Relation
+        }
+    });
+
+    // 3. Récupérer les notes
     const grades = await this.gradesRepo.find({
-      where: { student: { id: finalStudentId } },
+      where: { 
+          student: { id: finalStudentId }, 
+          school: { id: schoolId } 
+      },
       order: { matiere: 'ASC' }
     });
 
-    // ✅ CORRECTION CRUCIALE : On renvoie "subjects" même si vide
     if (!grades.length) {
         return { 
             subjects: [], 
             globalAverage: 0, 
-            comments: "Aucune note disponible." 
+            bulletinData: bulletinData || { appreciation: '' },
+            isBlocked: false 
         };
     }
 
-    // 3. Calculer les moyennes par matière
-    const subjects: { [key: string]: number[] } = {};
+    // 4. Calculs (Code simplifié pour éviter les erreurs de typage sur 'matiere' et 'sur')
+    // On suppose ici que ton entité Grade a bien les champs 'matiere', 'value', 'sur', 'coef'
+    const subjectsData: Record<string, { points: number; coefs: number }> = {};
     
-    grades.forEach(grade => {
-        // Filtrage simple par matière
-        if (!subjects[grade.matiere]) subjects[grade.matiere] = [];
-        subjects[grade.matiere].push(Number(grade.value));
-    });
+    for (const grade of grades) {
+        // Cast explicite si TypeScript ne voit pas les colonnes (temporaire)
+        const g = grade as any; 
+        const matiere = g.matiere || 'Matière inconnue';
+        
+        if (!subjectsData[matiere]) {
+            subjectsData[matiere] = { points: 0, coefs: 0 };
+        }
+        
+        const val = Number(g.value);
+        const sur = Number(g.sur || 20);
+        const coef = Number(g.coef || 1);
+        const noteSur20 = sur > 0 ? (val / sur) * 20 : 0;
 
-    const averages = Object.keys(subjects).map(subject => {
-        const notes = subjects[subject];
-        const avg = notes.reduce((a, b) => a + b, 0) / notes.length;
+        subjectsData[matiere].points += noteSur20 * coef;
+        subjectsData[matiere].coefs += coef;
+    }
+
+    let totalPointsGeneral = 0;
+    let totalCoefsGeneral = 0;
+
+    const subjects = Object.keys(subjectsData).map(matiere => {
+        const data = subjectsData[matiere];
+        const avg = data.coefs > 0 ? (data.points / data.coefs) : 0;
+        
+        totalPointsGeneral += data.points;
+        totalCoefsGeneral += data.coefs;
+
         return {
-            matiere: subject,
+            matiere,
             moyenne: parseFloat(avg.toFixed(2)),
-            professeur: "Non assigné" 
+            coefTotal: data.coefs
         };
     });
 
-    // 4. Moyenne Générale
-    const globalSum = averages.reduce((acc, item) => acc + item.moyenne, 0);
-    const globalAverage = averages.length > 0 ? (globalSum / averages.length).toFixed(2) : 0;
+    const globalAverage = totalCoefsGeneral > 0 
+        ? (totalPointsGeneral / totalCoefsGeneral).toFixed(2) 
+        : "0.00";
 
     return {
         studentId: finalStudentId,
         period: period,
-        subjects: averages, // ✅ On renvoie bien la liste nommée "subjects"
-        globalAverage: globalAverage,
-        appreciation: "Travail régulier, continuez ainsi !"
+        subjects,
+        globalAverage,
+        bulletinData: bulletinData || { appreciation: '' }
     };
+  }
+
+  async saveAppreciation(studentId: number, period: string, appreciation: string, schoolId: number) {
+      let bulletin = await this.bulletinRepo.findOne({
+          where: { student: { id: studentId }, period, school: { id: schoolId } }
+      });
+
+      if (!bulletin) {
+          bulletin = this.bulletinRepo.create({
+              student: { id: studentId } as any,
+              period,
+              school: { id: schoolId } as any,
+              appreciation
+          });
+      } else {
+          bulletin.appreciation = appreciation;
+      }
+
+      return this.bulletinRepo.save(bulletin);
   }
 }

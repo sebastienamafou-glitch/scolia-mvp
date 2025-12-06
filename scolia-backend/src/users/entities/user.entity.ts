@@ -1,7 +1,9 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, RelationId } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
 import { School } from '../../schools/entities/school.entity';
 import { Class } from '../../classes/entities/class.entity';
-import { UserRole } from '../../auth/roles.decorator'; // Assurez-vous que le chemin est bon
+import { UserRole } from '../../auth/roles.decorator';
+// 👇 AJOUT IMPORT (Attention au chemin relatif, il faut peut-être ajuster selon ton dossier)
+import { Notification } from '../../notifications/entities/notification.entity';
 
 @Entity()
 export class User {
@@ -14,11 +16,8 @@ export class User {
   @Column({ nullable: true })
   fcmToken: string;
 
-  @Column({ nullable: true, select: false }) 
+  @Column({ select: false }) 
   passwordHash: string; 
-
-  @Column({ nullable: true })
-  password: string;
 
   @Column()
   nom: string;
@@ -26,7 +25,6 @@ export class User {
   @Column()
   prenom: string;
 
-  // ✅ CORRECTION : Utilisation de l'Enum
   @Column({
       type: 'enum',
       enum: UserRole,
@@ -37,14 +35,12 @@ export class User {
   @Column({ nullable: true })
   photo: string;
 
-  // --- CHAMPS RESET PASSWORD ---
   @Column({ nullable: true })
   resetToken: string;
 
   @Column({ nullable: true, type: 'timestamp' })
   resetTokenExp: Date;
 
-  // --- PROFILS ÉLÈVE & INFOS ---
   @Column({ nullable: true })
   dateNaissance: string;
 
@@ -60,7 +56,6 @@ export class User {
   @Column({ nullable: true, type: 'text' })
   infosMedicales: string;
 
-  // --- PRÉFÉRENCES NOTIFICATIONS ---
   @Column({ default: true })
   notifGradesEnabled: boolean;
 
@@ -73,29 +68,29 @@ export class User {
   @Column({ type: 'jsonb', nullable: true })
   notifQuietHours: string;
 
-  // =========================================================
-  // RELATIONS
-  // =========================================================
-
+  // --- RELATIONS EXISTANTES ---
   @ManyToOne(() => School, (school) => school.users, { nullable: true })
   @JoinColumn({ name: 'schoolId' })
   school: School;
 
-  @RelationId((user: User) => user.school)
+  @Column({ nullable: true })
   schoolId: number;
 
   @ManyToOne(() => Class, (classe) => classe.students, { nullable: true })
   @JoinColumn({ name: 'classId' })
   class: Class;
 
-  @RelationId((user: User) => user.class)
+  @Column({ nullable: true })
   classId: number;
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'parentId' })
   parent: User;
 
-  @RelationId((user: User) => user.parent)
+  @Column({ nullable: true })
   parentId: number;
-  notifications: any;
+
+  // 👇 AJOUT RELATION MANQUANTE
+  @OneToMany(() => Notification, (notification) => notification.user)
+  notifications: Notification[];
 }

@@ -5,8 +5,6 @@ import { Fee } from './entities/fee.entity';
 import { Transaction } from './entities/transaction.entity';
 import { Student } from '../students/entities/student.entity';
 import { OnEvent } from '@nestjs/event-emitter';
-// ✅ Import ajouté pour éviter l'erreur si utilisé dans la logique
-import { UserRole } from '../auth/roles.decorator'; 
 
 @Injectable()
 export class PaymentsService {
@@ -21,16 +19,20 @@ export class PaymentsService {
     private studentRepository: Repository<Student>,
   ) {}
 
+  // Helper pour trouver le bon ID Student (qu'on reçoive un UserID ou un StudentID)
   private async resolveStudentId(id: number): Promise<number | null> {
-      const student = await this.studentRepository.findOne({ 
-          where: [ { id: id }, { userId: id } ] 
-      });
-      return student ? student.id : null;
+      // Cas 1: C'est déjà un ID Student valide
+      const asStudent = await this.studentRepository.findOne({ where: { id } });
+      if (asStudent) return asStudent.id;
+
+      // Cas 2: C'est un UserID (ex: parent paie pour son compte élève)
+      const asUser = await this.studentRepository.findOne({ where: { userId: id } });
+      return asUser ? asUser.id : null;
   }
 
   @OnEvent('student.created')
   async handleStudentCreation(payload: { studentId: number, schoolId: number, fraisScolarite?: number }) {
-      this.logger.log(`🏗️ Création auto du compte paiement pour l'élève #${payload.studentId}`);
+      this.logger.log(`🏗️ Paiements : Init compte pour élève #${payload.studentId}`);
       await this.createPaymentAccount(payload.studentId, payload.schoolId);
       
       if (payload.fraisScolarite) {
@@ -41,6 +43,7 @@ export class PaymentsService {
   async getFeeByStudent(id: number, schoolId: number): Promise<Fee> {
     const realStudentId = await this.resolveStudentId(id);
     
+    // Objet vide par défaut pour éviter crash frontend
     const emptyFee = { 
         totalAmount: 0, 
         amountPaid: 0, 
@@ -55,17 +58,20 @@ export class PaymentsService {
 
     const fee = await this.feesRepository.findOne({ 
         where: whereCondition, 
-        relations: ['student'] // ✅ CORRIGÉ (string minuscule)
+        relations: ['student'] 
     });
 
     return fee || emptyFee;
   }
 
   async submitTransaction(userIdOrStudentId: number, amount: number, reference: string, schoolId: number): Promise<Transaction> {
-    if (!reference || amount <= 0) throw new BadRequestException("Données invalides.");
+    if (!reference || amount <= 0) throw new BadRequestException("Montant ou référence invalide.");
     
+    const realStudentId = await this.resolveStudentId(userIdOrStudentId);
+    if (!realStudentId) throw new NotFoundException("Élève introuvable.");
+
     const newTransaction = this.transactionsRepository.create({ 
-        studentId: userIdOrStudentId, 
+        studentId: realStudentId, // On stocke l'ID Student
         amount, 
         mobileMoneyReference: reference, 
         schoolId, 
@@ -80,7 +86,7 @@ export class PaymentsService {
 
     return this.transactionsRepository.find({ 
         where: whereCondition, 
-        relations: ['student'], // ✅ CORRIGÉ (string minuscule)
+        relations: ['student'], 
         order: { transactionDate: 'DESC' } 
     });
   }
@@ -91,43 +97,39 @@ export class PaymentsService {
 
     const transaction = await this.transactionsRepository.findOne({ 
         where: whereCondition, 
-        relations: ['student'] // ✅ CORRIGÉ (string minuscule)
+        relations: ['student']
     });
     
     if (!transaction) throw new NotFoundException("Transaction introuvable.");
     if (transaction.status !== 'Pending') throw new BadRequestException("Déjà traitée.");
 
-    const realStudentId = await this.resolveStudentId(transaction.studentId);
-    
-    if (!realStudentId) {
-        throw new BadRequestException(`Impossible de lier la transaction (User ID: ${transaction.studentId}) à un dossier Étudiant.`);
-    }
-
     transaction.status = 'Validated';
     await this.transactionsRepository.save(transaction);
 
-    let fee = await this.feesRepository.findOne({ where: { studentId: realStudentId } });
+    // Mise à jour du solde
+    let fee = await this.feesRepository.findOne({ where: { studentId: transaction.studentId } });
     
     if (!fee) {
-        await this.createPaymentAccount(realStudentId, schoolId);
-        fee = await this.feesRepository.findOne({ where: { studentId: realStudentId } });
+        await this.createPaymentAccount(transaction.studentId, schoolId);
+        fee = await this.feesRepository.findOne({ where: { studentId: transaction.studentId } });
     }
 
     if (fee) {
+        // Conversion explicite pour éviter concaténation de strings
         const newPaid = Number(fee.amountPaid) + Number(transaction.amount);
         fee.amountPaid = newPaid;
         await this.feesRepository.save(fee);
-        this.logger.log(`✅ Paiement validé pour élève ${realStudentId} (+${transaction.amount})`);
+        this.logger.log(`✅ Paiement validé pour élève ${transaction.studentId} (+${transaction.amount})`);
     }
     return transaction;
   }
 
   async setStudentTuition(id: number, totalAmount: number, dateLimit: string | null, schoolId: number): Promise<Fee> {
     const realStudentId = await this.resolveStudentId(id);
-    if (!realStudentId) throw new NotFoundException("Élève introuvable pour configurer les frais.");
+    if (!realStudentId) throw new NotFoundException("Élève introuvable.");
 
     let fee = await this.feesRepository.findOne({ where: { studentId: realStudentId } });
-    const safeAmount = isNaN(Number(totalAmount)) ? 0 : Number(totalAmount);
+    const safeAmount = Number(totalAmount) || 0;
 
     if (!fee) {
         fee = this.feesRepository.create({ 
@@ -140,6 +142,7 @@ export class PaymentsService {
     } else {
         fee.totalAmount = safeAmount;
         if (dateLimit) fee.dateLimit = dateLimit;
+        // On ne change pas l'école d'un fee existant sauf si elle est vide
         if (schoolId && !fee.schoolId) fee.school = { id: schoolId } as any; 
     }
     return this.feesRepository.save(fee);

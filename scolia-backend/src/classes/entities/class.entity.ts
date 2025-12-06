@@ -1,7 +1,8 @@
 import { Entity, Column, PrimaryGeneratedColumn, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
 import { Student } from '../../students/entities/student.entity';
+// 👇 AJOUT IMPORT
 import { Homework } from '../../homeworks/entities/homework.entity';
-import { School } from '../../schools/entities/school.entity'; // 👈 Import School
+import { School } from '../../schools/entities/school.entity';
 
 @Entity()
 export class Class {
@@ -9,24 +10,22 @@ export class Class {
   id: number;
 
   @Column()
-  name: string; // ex: "6ème A"
+  name: string;
 
   @Column({ nullable: true })
-  level: string; // ex: "6ème"
+  level: string;
 
-  // Une classe a plusieurs élèves
   @OneToMany(() => Student, (student) => student.class)
   students: Student[];
 
-  // Une classe a plusieurs devoirs
+  // 👇 AJOUT RELATION MANQUANTE
   @OneToMany(() => Homework, (homework) => homework.class)
   homeworks: Homework[];
 
-  // ✅ AJOUT MULTI-TENANT (Lier la classe à une école)
-  @ManyToOne(() => School, (school) => school.classes, { nullable: true })
+  @ManyToOne(() => School, (school) => school.classes, { nullable: false })
   @JoinColumn({ name: 'schoolId' })
   school: School;
 
-  @Column({ nullable: true })
+  @Column()
   schoolId: number;
 }

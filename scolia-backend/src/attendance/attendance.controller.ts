@@ -1,10 +1,8 @@
 import { Controller, Post, Body, UseGuards, Request, BadRequestException, Get, Param, ForbiddenException } from '@nestjs/common';
 import { AttendanceService } from './attendance.service';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-// ✅ CORRECTION CHEMIN
-import { RolesGuard } from '../auth/guard/roles.guard';
-// ✅ CORRECTION ENUM
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'; // ✅ Standardisé
+import { RolesGuard } from '../auth/guards/roles.guard';      // ✅ Standardisé
 import { Roles, UserRole } from '../auth/roles.decorator';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -15,7 +13,7 @@ export class AttendanceController {
   @Roles(UserRole.TEACHER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @Post('bulk')
   async saveBulk(@Request() req, @Body() dto: CreateAttendanceDto) {
-    const teacherId = req.user.sub;
+    const teacherId = req.user.sub || req.user.id;
     const schoolId = req.user.schoolId;
 
     if (!schoolId && req.user.role !== UserRole.SUPER_ADMIN) {

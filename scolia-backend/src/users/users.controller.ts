@@ -1,8 +1,8 @@
-import { Controller, Get, Patch, Body, Post, Request, UseGuards, ForbiddenException, Param } from '@nestjs/common';
+import { Controller, Get, Patch, Body, Post, Request, UseGuards, ForbiddenException, Param, ParseIntPipe } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../auth/guard/roles.guard'; // Vérifiez que le dossier est bien 'guards'
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'; // ✅ Standardisé
+import { RolesGuard } from '../auth/guards/roles.guard';      // ✅ Standardisé
 import { Roles, UserRole } from '../auth/roles.decorator';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -15,7 +15,6 @@ export class UsersController {
   findAll(@Request() req) {
     const mySchoolId = req.user.schoolId;
     
-    // Si pas d'école, seul le SuperAdmin passe.
     if (!mySchoolId) {
         if (req.user.role !== UserRole.SUPER_ADMIN) {
             throw new ForbiddenException("Accès refusé : Contexte école manquant.");
@@ -38,14 +37,13 @@ export class UsersController {
     const creatorSchoolId = req.user.schoolId;
     const creatorRole = req.user.role;
 
-    // Admin d'école
     if (creatorRole === UserRole.ADMIN) {
         if (!creatorSchoolId) throw new ForbiddenException("Erreur critique: Admin sans école.");
         if (createUserDto.role === UserRole.SUPER_ADMIN) throw new ForbiddenException("Action non autorisée.");
+        // On force l'école de l'admin créateur
         return this.usersService.create({ ...createUserDto, schoolId: creatorSchoolId });
     }
 
-    // SuperAdmin
     if (creatorRole === UserRole.SUPER_ADMIN) {
         return this.usersService.create(createUserDto);
     }
@@ -53,15 +51,24 @@ export class UsersController {
 
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @Patch(':id')
-  async update(@Request() req, @Param('id') id: string, @Body() body: any) {
+  async update(@Request() req, @Param('id', ParseIntPipe) id: number, @Body() body: any) {
     const adminSchoolId = req.user.schoolId;
-    return this.usersService.updateUser(Number(id), body, adminSchoolId);
+    return this.usersService.updateUser(id, body, adminSchoolId);
+  }
+
+  // ✅ Route manquante ajoutée pour AdminDashboard
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Patch(':id/reset-password')
+  async resetUserPassword(@Request() req, @Param('id', ParseIntPipe) id: number) {
+      const adminSchoolId = req.user.schoolId;
+      const plainPassword = await this.usersService.adminResetPassword(adminSchoolId, id);
+      return { plainPassword };
   }
 
   @Roles(UserRole.PARENT, UserRole.STUDENT, UserRole.TEACHER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @Patch('preferences')
   async updatePreferences(@Request() req, @Body() body: any) {
-    const userId = req.user.sub;
+    const userId = req.user.sub || req.user.id;
     return this.usersService.updateNotificationPreferences(userId, body);
   }
 }

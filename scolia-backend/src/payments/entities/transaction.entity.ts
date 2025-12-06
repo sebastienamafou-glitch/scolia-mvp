@@ -1,5 +1,5 @@
 import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
-import { User } from '../../users/entities/user.entity';
+import { Student } from '../../students/entities/student.entity'; // ✅ CHANGEMENT: User -> Student
 import { School } from '../../schools/entities/school.entity';
 
 @Entity()
@@ -11,7 +11,7 @@ export class Transaction {
   amount: number;
 
   @Column()
-  mobileMoneyReference: string; // Le code SMS (ex: CI2301...)
+  mobileMoneyReference: string; 
 
   @Column({ 
       type: 'enum', 
@@ -23,10 +23,10 @@ export class Transaction {
   @CreateDateColumn()
   transactionDate: Date;
   
-  // Le payeur est techniquement un User (Parent ou Élève)
-  @ManyToOne(() => User)
-  @JoinColumn({ name: 'studentId' }) // On garde le nom de colonne 'studentId' pour compatibilité existante
-  student: User;
+  // ✅ CORRECTION : On lie au dossier Student, pas au compte User générique
+  @ManyToOne(() => Student)
+  @JoinColumn({ name: 'studentId' }) 
+  student: Student;
 
   @Column()
   studentId: number;

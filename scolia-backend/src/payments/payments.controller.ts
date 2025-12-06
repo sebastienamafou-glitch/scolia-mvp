@@ -5,10 +5,8 @@ import {
 } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-// ✅ CORRECTION CHEMIN : guards (pluriel)
-import { RolesGuard } from '../auth/guard/roles.guard';
-// ✅ CORRECTION : Import Enum
 import { Roles, UserRole } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('payments')

@@ -1,31 +1,45 @@
 // scolia-backend/src/grades/bulletins.controller.ts
 
-import { Controller, Get, Param, UseGuards, Request, ForbiddenException, Body, Post } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard'; 
-// ✅ CORRECTION : guards (pluriel)
-import { RolesGuard } from '../auth/guard/roles.guard';
+import { Controller, Get, Post, Body, Query, BadRequestException, UseGuards, Logger, Request, ForbiddenException } from '@nestjs/common';
+import { BulletinsService } from './bulletins.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'; 
+import { RolesGuard } from '../auth/guards/roles.guard';      
 import { Roles, UserRole } from '../auth/roles.decorator';
-import { BulletinsService } from './bulletins.service'; // ✅ Utiliser le bon service
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('bulletins')
-export class BulletinsController {
+export class BulletinsController { // 👈 Vérifie bien que 'export' est là !
+  private readonly logger = new Logger(BulletinsController.name);
+
   constructor(private readonly bulletinsService: BulletinsService) {}
 
-  @Roles(UserRole.PARENT, UserRole.STUDENT, UserRole.ADMIN, UserRole.TEACHER, UserRole.SUPER_ADMIN)
-  @Get(':studentId')
-  async getBulletin(@Request() req, @Param('studentId') studentId: string) {
-    // Par défaut, on regarde le Trimestre 1. 
-    // Idéalement, passer la période en query param ?period=T2
-    const period = (req.query?.period as string) || 'T1';
+  @Roles(UserRole.ADMIN, UserRole.TEACHER, UserRole.PARENT, UserRole.STUDENT, UserRole.SUPER_ADMIN)
+  @Get()
+  async getBulletin(
+    @Request() req,
+    @Query('studentId') studentId: string,
+    @Query('period') period: string
+  ) {
+    if (!studentId) throw new BadRequestException("Student ID manquant");
     
-    return this.bulletinsService.getStudentBulletin(Number(studentId), period);
+    const schoolId = req.user.schoolId;
+    if (!schoolId && req.user.role !== UserRole.SUPER_ADMIN) {
+        throw new ForbiddenException("Accès refusé.");
+    }
+
+    return this.bulletinsService.generateBulletin(+studentId, period || 'T1', schoolId || 0);
   }
 
-  // Route pour sauvegarder l'appréciation (Admin/Prof principal)
-  @Roles(UserRole.ADMIN, UserRole.TEACHER)
-  @Post('appreciation')
-  async saveAppreciation(@Body() body: { studentId: number, period: string, text: string }) {
-      return this.bulletinsService.saveAppreciation(body.studentId, body.period, body.text);
+  @Roles(UserRole.TEACHER, UserRole.ADMIN)
+  @Post('save')
+  async saveBulletin(@Request() req, @Body() data: { studentId: number, period: string, appreciation: string }) {
+    const schoolId = req.user.schoolId;
+    
+    return this.bulletinsService.saveAppreciation(
+        data.studentId, 
+        data.period, 
+        data.appreciation, 
+        schoolId || 0
+    );
   }
 }

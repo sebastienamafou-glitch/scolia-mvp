@@ -1,7 +1,7 @@
 import { Controller, Post, Body, UseGuards, Request, Get, Param, Patch, ForbiddenException } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../auth/guard/roles.guard';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'; // ✅ Standardisé
+import { RolesGuard } from '../auth/guards/roles.guard';      // ✅ Standardisé
 import { Roles, UserRole } from '../auth/roles.decorator';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -9,7 +9,6 @@ import { Roles, UserRole } from '../auth/roles.decorator';
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
-  // 1. Envoyer une notif à toute une classe (Prof/Admin)
   @Roles(UserRole.TEACHER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @Post('class')
   async notifyClass(@Request() req, @Body() body: { classId: number, message: string }) {
@@ -18,9 +17,6 @@ export class NotificationsController {
         throw new ForbiddenException("École manquante.");
     }
 
-    // ✅ CORRECTION CRITIQUE (Ligne qui faisait planter le build avec "Expected 2 args but got 5")
-    // On ne passe QUE les 3 arguments acceptés par le service.
-    // On ignore body.type, body.details, etc. pour l'instant.
     return this.notificationsService.notifyClass(
         body.classId, 
         body.message, 
@@ -28,26 +24,22 @@ export class NotificationsController {
     );
   }
 
-  // 2. S'abonner aux notifs Push (Sauvegarde du token FCM)
   @Post('subscribe')
   async subscribe(@Request() req, @Body() body: { token: string }) {
     return this.notificationsService.subscribe(req.user.sub, body.token);
   }
 
-  // 3. Envoyer une alerte spécifique (Admin -> Prof)
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @Post('alert-teacher')
   async sendTeacherAlert(@Body() body: { teacherId: number, message: string }) {
       return this.notificationsService.sendTeacherAlert(body.teacherId, body.message);
   }
 
-  // 4. Lire mes notifications
   @Get()
   async getMyNotifications(@Request() req) {
       return this.notificationsService.findAllUnread(req.user.sub);
   }
 
-  // 5. Marquer comme lu
   @Patch(':id/read')
   async markAsRead(@Param('id') id: string) {
       return this.notificationsService.markAsRead(+id);

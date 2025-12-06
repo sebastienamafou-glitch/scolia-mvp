@@ -18,7 +18,6 @@ export class GradesService {
     private notifService: NotificationsService,
   ) {}
 
-  // Recherche par ID Student (Méthode principale)
   async findByStudent(id: number): Promise<Grade[]> {
     return this.gradesRepository.find({
       where: { student: { id } },
@@ -26,19 +25,16 @@ export class GradesService {
     });
   }
 
-  // Recherche par ID User (Pour la route 'my-grades')
   async findByStudentUserId(userId: number): Promise<Grade[]> {
       const student = await this.studentRepo.findOne({ where: { userId } });
       if (!student) return [];
       return this.findByStudent(student.id);
   }
   
-  // ✅ CORRECTION : Ajout du paramètre schoolId
   async saveBulk(dto: BulkGradeDto, schoolId: number): Promise<Grade[]> {
       const gradesToInsert: Grade[] = [];
 
       for (const item of dto.notes) {
-          // On cherche l'élève
           const student = await this.studentRepo.findOne({ where: { id: item.studentId } });
           
           if (!student) {
@@ -49,19 +45,20 @@ export class GradesService {
           const grade = this.gradesRepository.create({
               value: item.noteValue,
               student: { id: student.id },
+              studentId: student.id, // Explicit
               matiere: dto.matiere,
               sur: dto.noteSur,
               type: dto.titreEvaluation,
               date: new Date(),
-              // ✅ AJOUT : Sécurisation Multi-Tenant
-              school: { id: schoolId }
+              school: { id: schoolId },
+              schoolId: schoolId // Explicit
           });
           gradesToInsert.push(grade);
       }
       
       const savedGrades = await this.gradesRepository.save(gradesToInsert);
       
-      // Notification asynchrone (ne bloque pas la réponse)
+      // Notification (décommenter quand le service sera prêt)
       // this.notifService.notifyNewGrades(savedGrades); 
 
       return savedGrades;

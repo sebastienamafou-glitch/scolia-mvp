@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, RelationId } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 
 @Entity()
@@ -18,16 +18,17 @@ export class Notification {
   @CreateDateColumn()
   createdAt: Date;
 
-  // --- AJOUTS NÉCESSAIRES ---
+  // --- RELATIONS ---
   
-  @Column()
-  userId: number; // Cette ligne va corriger l'erreur "userId does not exist"
-
-  @Column({ nullable: true })
-  schoolId: number; // Cette ligne va corriger l'erreur "schoolId does not exist"
-
-  // Relation optionnelle (utile pour les jointures plus tard)
   @ManyToOne(() => User, (user) => user.notifications, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'userId' }) 
   user: User;
+
+  // Cette colonne sera automatiquement remplie par TypeORM grâce à la relation ci-dessus
+  @Column()
+  userId: number;
+
+  // L'école est stockée directement pour simplifier le filtrage multi-tenant
+  @Column({ nullable: true })
+  schoolId: number; 
 }

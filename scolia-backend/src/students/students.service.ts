@@ -3,15 +3,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Student } from './entities/student.entity';
 import { User } from '../users/entities/user.entity';
-// L'import UserRole n'est plus nécessaire ici si on utilise des strings pour les relations
 
 @Injectable()
 export class StudentsService {
   constructor(
     @InjectRepository(Student)
     private studentsRepository: Repository<Student>,
-    @InjectRepository(User)
-    private usersRepository: Repository<User>,
+    // @InjectRepository(User) private usersRepository: Repository<User>, // Pas utilisé ici pour l'instant
   ) {}
 
   async findByClass(classId: number, schoolId: number): Promise<Student[]> {
@@ -23,7 +21,6 @@ export class StudentsService {
     return this.studentsRepository.find({
       where: whereCondition,
       order: { nom: 'ASC' },
-      // ✅ CORRIGÉ : Tout en minuscules et strings
       relations: ['class', 'parent', 'user'] 
     });
   }
@@ -36,6 +33,7 @@ export class StudentsService {
   }
 
   async findByParent(parentId: number): Promise<Student[]> {
+    // parentId est ici l'ID User du parent
     return this.studentsRepository.find({
       where: { 
         parent: { id: parentId } 

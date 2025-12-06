@@ -5,6 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Competence } from './entities/competence.entity';
 import { SkillEvaluation } from './entities/skill-evaluation.entity';
+import { CreateSkillDto } from './dto/create-skill.dto'; // ✅ Import DTO
 
 @Injectable()
 export class SkillsService {
@@ -15,16 +16,15 @@ export class SkillsService {
     private evaluationRepo: Repository<SkillEvaluation>,
   ) {}
 
-  // Création d'une compétence (Matière/Skill)
-  async create(data: any, schoolId: number) {
+  // ✅ Typage strict
+  async create(dto: CreateSkillDto, schoolId: number) {
     const newSkill = this.competenceRepo.create({
-      ...data,
+      ...dto,
       school: { id: schoolId }
     });
     return this.competenceRepo.save(newSkill);
   }
 
-  // Récupérer toutes les compétences d'une école
   async findAllBySchool(schoolId: number) {
     return this.competenceRepo.find({
       where: { school: { id: schoolId } },
@@ -32,16 +32,11 @@ export class SkillsService {
     });
   }
 
-  // ✅ MÉTHODE BULK OPTIMISÉE ET CORRIGÉE
-  // Cette méthode gère l'ajout ou la mise à jour (Upsert) des notes
   async evaluateBulk(studentId: number, evaluations: { competenceId: number, level: number }[], teacherId: number) {
-    
-    // 💡 CORRECTION IMPORTANTE : 
-    // On spécifie explicitement le type ": SkillEvaluation[]" pour éviter l'erreur "never" de TypeScript.
     const savedEvaluations: SkillEvaluation[] = [];
 
     for (const ev of evaluations) {
-        // 1. On vérifie si une note existe déjà pour cet élève dans cette compétence
+        // 1. Vérif existant (relation student: { id: studentId })
         const existing = await this.evaluationRepo.findOne({
             where: {
                 student: { id: studentId },
@@ -50,17 +45,15 @@ export class SkillsService {
         });
 
         if (existing) {
-            // 2. Si elle existe, on met à jour le niveau et l'enseignant
             existing.level = ev.level;
             existing.teacherId = teacherId;
-            // .save() retourne l'entité mise à jour, on peut donc l'ajouter au tableau
             savedEvaluations.push(await this.evaluationRepo.save(existing));
         } else {
-            // 3. Sinon, on crée une nouvelle évaluation
+            // 2. Création (relation student: { id: studentId })
             const newEval = this.evaluationRepo.create({
-                student: { id: studentId },
+                student: { id: studentId } as any, // Cast pour éviter erreur type stricte si pas importé
                 competence: { id: ev.competenceId },
-                teacher: { id: teacherId },
+                teacher: { id: teacherId } as any,
                 level: ev.level
             });
             savedEvaluations.push(await this.evaluationRepo.save(newEval));
@@ -68,16 +61,5 @@ export class SkillsService {
     }
 
     return savedEvaluations;
-  }
-
-  // Méthode unitaire (Legacy)
-  // Elle réutilise désormais la logique bulk pour éviter la duplication de code
-  async evaluate(data: any) {
-    const results = await this.evaluateBulk(
-        data.studentId, 
-        [{ competenceId: data.competenceId, level: data.level }], 
-        data.teacherId
-    );
-    return results[0];
   }
 }

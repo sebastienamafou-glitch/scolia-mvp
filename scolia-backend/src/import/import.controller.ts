@@ -1,20 +1,20 @@
 import { Controller, Post, UseInterceptors, UploadedFile, Request, ForbiddenException, BadRequestException, UseGuards } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ImportService } from './import.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../auth/guard/roles.guard';
-import { Roles, UserRole } from '../auth/roles.decorator'; // ✅ Enum
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'; // ✅ CORRIGÉ (guards)
+import { RolesGuard } from '../auth/guards/roles.guard';      // ✅ CORRIGÉ (guards)
+import { Roles, UserRole } from '../auth/roles.decorator';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('import')
 export class ImportController {
   constructor(private readonly importService: ImportService) {}
 
-  @Roles(UserRole.ADMIN) // ✅ Correction
+  @Roles(UserRole.ADMIN)
   @Post('users')
   @UseInterceptors(FileInterceptor('file')) 
-  async uploadUsers(@UploadedFile() file: Express.Multer.File, @Request() req) {
-    if (!file || !file.mimetype.includes('csv')) {
+  async uploadUsers(@UploadedFile() file: any, @Request() req) { // 'any' pour éviter erreur si @types/multer manquant
+    if (!file || (file.mimetype && !file.mimetype.includes('csv') && !file.originalname.endsWith('.csv'))) {
       throw new BadRequestException("Veuillez fournir un fichier CSV valide.");
     }
 

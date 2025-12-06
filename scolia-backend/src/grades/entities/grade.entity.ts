@@ -1,6 +1,6 @@
 import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Student } from '../../students/entities/student.entity';
-import { School } from '../../schools/entities/school.entity'; // ✅ Import Ajouté
+import { School } from '../../schools/entities/school.entity';
 
 @Entity()
 export class Grade {
@@ -8,13 +8,16 @@ export class Grade {
   id: number;
 
   @Column()
-  matiere: string; 
+  matiere: string; // 👈 Indispensable
 
   @Column('float')
   value: number; 
 
-  @Column()
-  sur: number; 
+  @Column({ default: 20 })
+  sur: number; // 👈 Indispensable
+
+  @Column({ default: 1 })
+  coef: number; // 👈 Indispensable
 
   @Column()
   type: string; 
@@ -22,20 +25,16 @@ export class Grade {
   @Column({ default: 'T1' }) 
   period: string; 
 
-  @Column({ type: 'float', nullable: true, default: 1 })
-  coef: number; 
-
   @Column()
   date: Date;
 
-  @ManyToOne(() => Student, (student) => student.grades)
+  @ManyToOne(() => Student)
   @JoinColumn({ name: 'studentId' })
   student: Student;
 
   @Column()
   studentId: number;
 
-  // ✅ CORRECTION : Relation School indispensable pour filtrer les notes par école
   @ManyToOne(() => School)
   @JoinColumn({ name: 'schoolId' })
   school: School;

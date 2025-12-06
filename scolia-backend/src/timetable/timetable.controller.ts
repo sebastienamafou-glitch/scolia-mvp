@@ -1,8 +1,8 @@
 import { Controller, Get, Post, Body, Param, UseGuards, Request, ForbiddenException } from '@nestjs/common';
 import { TimetableService } from './timetable.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../auth/guard/roles.guard'; // ✅ Chemin corrigé
-import { Roles, UserRole } from '../auth/roles.decorator'; // ✅ Enum
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard'; // ✅ Standardisé
+import { Roles, UserRole } from '../auth/roles.decorator';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('timetable')
@@ -16,7 +16,6 @@ export class TimetableController {
         throw new ForbiddenException("Accès refusé.");
     }
     
-    // On passe le schoolId pour s'assurer que l'emploi du temps appartient à la bonne école
     return this.timetableService.generateWithAI(
         Number(classId), 
         constraints, 
@@ -24,13 +23,10 @@ export class TimetableController {
     );
   }
 
-  // Tout le monde peut voir l'emploi du temps (Profs, Parents, Élèves)
   @Roles(UserRole.ADMIN, UserRole.TEACHER, UserRole.PARENT, UserRole.STUDENT, UserRole.SUPER_ADMIN)
   @Get('class/:classId')
   async getByClass(@Request() req, @Param('classId') classId: string) {
     const schoolId = req.user.schoolId;
-    // Note : Un SuperAdmin (schoolId=null) peut vouloir voir l'emploi du temps d'une classe spécifique
-    // Donc on ne bloque que si ce n'est pas un SuperAdmin ET qu'il n'a pas d'école.
     if (!schoolId && req.user.role !== UserRole.SUPER_ADMIN) {
         throw new ForbiddenException("Accès refusé.");
     }
