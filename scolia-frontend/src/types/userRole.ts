@@ -1,7 +1,6 @@
 // scolia-frontend/src/types/userRole.ts
 
-// Utilisation de 'as const' pour la compatibilité moderne (Vite, esbuild)
-// Cela crée un objet JavaScript standard en lecture seule.
+// On utilise 'as const' pour figer les valeurs (lecture seule)
 export const UserRole = {
   SUPER_ADMIN: 'SuperAdmin',
   ADMIN: 'Admin',
@@ -10,6 +9,6 @@ export const UserRole = {
   STUDENT: 'Élève',
 } as const;
 
-// Création automatique du Type TypeScript basé sur les valeurs de l'objet ci-dessus
-// Équivalent à : type UserRole = 'SuperAdmin' | 'Admin' | 'Enseignant' | 'Parent' | 'Élève';
+// On crée un Type à partir des valeurs de l'objet
+// Cela équivaut à : type UserRole = 'SuperAdmin' | 'Admin' | 'Enseignant' ...
 export type UserRole = (typeof UserRole)[keyof typeof UserRole];

@@ -5,6 +5,7 @@ import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Logo } from '../components/Logo';
 import { Link } from 'react-router-dom';
+import { UserRole } from '../types/userRole'; // Import corrigé
 
 // Imports des modules fonctionnels
 import { ClassManager } from '../components/ClassManager';
@@ -16,16 +17,14 @@ import { RiskRadarWidget } from '../components/RiskRadarWidget';
 import { SkillsManager } from '../components/SkillsManager';
 import { TimetableManager } from '../components/TimetableManager';
 import { Footer } from '../components/Footer';
-import { UserRole } from '../types/userRole';
 
-// Icônes
 import { 
     FaUserGraduate, FaChalkboardTeacher, FaUserTie, FaUserShield, 
     FaSearch, FaPlus, FaTimes, FaChevronLeft, FaChevronRight, 
     FaCog, FaUnlockAlt, FaLock 
 } from 'react-icons/fa';
 
-// CORRECTION ICI : role est typé UserRole au lieu de string
+// Typage strict
 interface User {
   id: number;
   nom: string;
@@ -71,7 +70,7 @@ const AdminDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [schoolLoading, setSchoolLoading] = useState(true);
 
-  // activeTab peut être 'Tous' ou une des valeurs de UserRole
+  // Type string générique pour activeTab car il peut valoir 'Tous' ou un UserRole
   const [activeTab, setActiveTab] = useState<string>('Tous');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -80,10 +79,9 @@ const AdminDashboard: React.FC = () => {
   
   const [schoolForm, setSchoolForm] = useState({ name: '', address: '', logo: '', description: '' });
   
-  // CORRECTION : new user state typé implicitement correctement grâce à UserRole.TEACHER
   const [newUser, setNewUser] = useState({
     password: '', 
-    role: UserRole.TEACHER as UserRole, // Force le type initial
+    role: UserRole.TEACHER as UserRole, // Type forcé initialement
     nom: '', prenom: '', 
     classId: '', 
     parentId: '', photo: '',
@@ -102,7 +100,7 @@ const AdminDashboard: React.FC = () => {
   const fetchUsers = async () => {
     try {
       const response = await api.get('/users');
-      // On cast la réponse pour correspondre à notre interface stricte
+      // On force le typage ici pour que TypeScript accepte les strings venant de l'API comme étant des UserRole
       setAllUsers(response.data as User[]);
     } catch (error) {
       console.error("Erreur chargement utilisateurs", error);
@@ -309,6 +307,7 @@ const AdminDashboard: React.FC = () => {
             
             <div style={{ padding: '20px', borderBottom: '1px solid #eee', display: 'flex', flexWrap: 'wrap', gap: '20px', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '5px' }}>
+                    {/* On utilise Object.values ou un tableau explicite pour les boutons de filtre */}
                     {['Tous', UserRole.STUDENT, UserRole.TEACHER, UserRole.PARENT, UserRole.ADMIN].map(role => (
                         <button 
                             key={role}
@@ -373,7 +372,6 @@ const AdminDashboard: React.FC = () => {
                     {showCreateForm && (
                         <div style={{ padding: '20px', backgroundColor: '#fafafa', borderBottom: '1px solid #eee' }}>
                             <form onSubmit={handleCreate} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
-                                {/* CORRECTION : Valeurs du select alignées sur l'objet UserRole */}
                                 <select value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value as UserRole})} style={inputStyle}>
                                     <option value={UserRole.TEACHER}>{UserRole.TEACHER}</option>
                                     <option value={UserRole.STUDENT}>{UserRole.STUDENT}</option>
@@ -512,8 +510,6 @@ const UpsellBannerSmall = ({ title }: any) => (
     </div>
 );
 
-// getRoleColor attend une string, mais nos valeurs sont des chaînes, donc ça fonctionne.
-// On peut typer l'argument 'role' en UserRole pour plus de sécurité si souhaité.
 const getRoleColor = (role: string) => {
     switch(role) {
         case UserRole.STUDENT: return { bg: '#E3F2FD', text: '#1565C0' };
