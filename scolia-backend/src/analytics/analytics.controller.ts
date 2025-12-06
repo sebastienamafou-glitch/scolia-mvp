@@ -1,7 +1,7 @@
 import { Controller, Get, UseGuards, Request, ForbiddenException } from '@nestjs/common';
 import { AnalyticsService } from './analytics.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../auth/guard/roles.guard'; // ✅ Chemin corrigé
+import { RolesGuard } from '../auth/guard/roles.guard';
 import { Roles, UserRole } from '../auth/roles.decorator'; // ✅ Enum
 
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -9,8 +9,7 @@ import { Roles, UserRole } from '../auth/roles.decorator'; // ✅ Enum
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
 
-  // Seul le directeur ou le SuperAdmin voit le radar
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN) 
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN) // ✅ Correction
   @Get('risk-radar')
   async getRiskRadar(@Request() req) {
     const schoolId = req.user.schoolId;

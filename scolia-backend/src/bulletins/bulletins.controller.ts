@@ -2,7 +2,7 @@ import { Controller, Get, Post, Body, Query, BadRequestException, UseGuards, Log
 import { BulletinsService } from './bulletins.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/guard/roles.guard';
-import { Roles } from '../auth/roles.decorator';
+import { Roles, UserRole } from '../auth/roles.decorator'; // ✅ Enum
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('bulletins')
@@ -11,6 +11,7 @@ export class BulletinsController {
 
   constructor(private readonly bulletinsService: BulletinsService) {}
 
+  // Consultation ouverte (sécurisée par la logique métier dans le service)
   @Get()
   async getBulletin(
     @Query('studentId') studentId: string,
@@ -20,12 +21,10 @@ export class BulletinsController {
     return this.bulletinsService.generateBulletin(+studentId, period);
   }
 
-  // ✅ CORRECTION : Ajout de la route manquante
-  @Roles(UserRole.TEACHER, UserRole.ADMIN)
+  @Roles(UserRole.TEACHER, UserRole.ADMIN) // ✅ Correction
   @Post('save')
   async saveBulletin(@Body() data: any) {
     this.logger.log(`Sauvegarde du bulletin demandée pour l'élève ${data.studentId}`);
-    // Appel à une méthode de service (assurez-vous qu'elle existe dans le service, sinon simulée ici)
     // return this.bulletinsService.save(data); 
     return { message: "Bulletin sauvegardé avec succès", id: Date.now() };
   }

@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Body, Param, UseGuards, Request, ForbiddenException } from '@nestjs/common';
 import { HomeworksService } from './homeworks.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../auth/guard/roles.guard'; // ✅ Chemin corrigé (pluriel)
+import { RolesGuard } from '../auth/guard/roles.guard';
 import { Roles, UserRole } from '../auth/roles.decorator'; // ✅ Enum
 
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -9,7 +9,7 @@ import { Roles, UserRole } from '../auth/roles.decorator'; // ✅ Enum
 export class HomeworksController {
   constructor(private readonly homeworksService: HomeworksService) {}
 
-  @Roles(UserRole.TEACHER, UserRole.ADMIN)
+  @Roles(UserRole.TEACHER, UserRole.ADMIN) // ✅ Correction
   @Post()
   async create(@Request() req, @Body() body: any) {
     const schoolId = req.user.schoolId;
@@ -18,7 +18,7 @@ export class HomeworksController {
     return this.homeworksService.create(body, schoolId);
   }
 
-  @Roles(UserRole.PARENT, UserRole.STUDENT, UserRole.TEACHER, UserRole.ADMIN)
+  @Roles(UserRole.PARENT, UserRole.STUDENT, UserRole.TEACHER, UserRole.ADMIN) // ✅ Correction
   @Get('class/:classId')
   async findByClass(@Request() req, @Param('classId') classId: string) {
     const schoolId = req.user.schoolId;
