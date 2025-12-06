@@ -6,34 +6,40 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { School, SchoolModules } from './entities/school.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+// ✅ CORRECTION CHEMIN : guards (pluriel)
 import { RolesGuard } from '../auth/guard/roles.guard';
-import { Roles } from '../auth/roles.decorator';
 import { UsersService } from '../users/users.service';
-import { SchoolsService } from './schools.service'; // ✅ IMPORT DU SERVICE
+import { SchoolsService } from './schools.service'; 
+// ✅ CORRECTION : Import Enum
+import { Roles, UserRole } from '../auth/roles.decorator';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('schools')
 export class SchoolsController {
   constructor(
-    @InjectRepository(School) private schoolRepo: Repository<School>,
-    // ❌ Plus besoin de userRepo ici, c'est le service qui gère la création de l'admin
-    private usersService: UsersService,
-    private schoolsService: SchoolsService, // ✅ INJECTION DU SERVICE
+    private readonly schoolsService: SchoolsService,
+    // 👇 AJOUT : Nécessaire car utilisé dans onboardNewSchool
+    private readonly usersService: UsersService,
+    // 👇 AJOUT : Nécessaire car utilisé pour findAll, findOne, etc.
+    @InjectRepository(School) 
+    private schoolRepo: Repository<School>
   ) {}
 
-  // --- SUPER ADMIN : CRÉATION (CORRIGÉ) ---
+  // --- SUPER ADMIN : CRÉATION ---
   @Roles(UserRole.SUPER_ADMIN)
   @Post('onboard')
   async onboardNewSchool(@Request() req, @Body() body: any) {
-    if (req.user.schoolId !== null) throw new ForbiddenException("Seul le Super Admin peut créer une nouvelle école.");
+    // Vérification de sécurité (même si le Guard le fait déjà)
+    if (req.user.role !== UserRole.SUPER_ADMIN) {
+        throw new ForbiddenException("Seul le Super Admin peut créer une nouvelle école.");
+    }
 
     const { adminNom, adminPrenom } = body;
 
-    // 1. On génère l'email unique (via UsersService)
+    // 1. On génère l'email unique (via UsersService injecté)
     const uniqueEmail = await this.usersService.generateUniqueEmail(adminPrenom, adminNom);
 
-    // 2. ✅ ON DÉLÈGUE LA CRÉATION COMPLEXE AU SERVICE
-    // Cela inclut la création de l'école, le hachage du mot de passe et la création de l'admin
+    // 2. On délègue la création complexe au service
     const result = await this.schoolsService.createSchoolWithAdmin(body, uniqueEmail);
 
     return {
@@ -105,7 +111,7 @@ export class SchoolsController {
   }
 }
 
-// Petit helper pour nettoyer les objets
+// Petit helper pour nettoyer les objets (gardé à la fin du fichier)
 function safeUpdateData(body: any) {
     const allowed = ['name', 'address', 'logo', 'description'];
     const clean: any = {};

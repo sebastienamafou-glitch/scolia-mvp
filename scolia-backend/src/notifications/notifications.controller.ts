@@ -12,7 +12,7 @@ import {
 import { NotificationsService } from './notifications.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/guard/roles.guard'; 
-import { Roles } from '../auth/roles.decorator';
+import { Roles, UserRole } from '../auth/roles.decorator';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('notifications')

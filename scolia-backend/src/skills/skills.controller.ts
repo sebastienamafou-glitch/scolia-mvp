@@ -3,7 +3,7 @@ import { SkillsService } from './skills.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/guard/roles.guard';
 import { Roles, UserRole } from '../auth/roles.decorator';
-// 👇 IMPORTS DTO
+
 import { CreateSkillDto } from './dto/create-skill.dto';
 import { BulkEvaluateDto } from './dto/bulk-evaluate.dto';
 

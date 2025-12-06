@@ -6,6 +6,7 @@ import { School, SchoolModules } from './entities/school.entity';
 import { User } from '../users/entities/user.entity';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
+import { UserRole } from '../auth/roles.decorator';
 
 @Injectable()
 export class SchoolsService {
