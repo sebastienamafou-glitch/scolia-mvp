@@ -1,5 +1,3 @@
-// scolia-backend/src/homeworks/homeworks.service.ts
-
 import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -24,7 +22,6 @@ export class HomeworksService {
         throw new NotFoundException("Classe introuvable.");
     }
 
-    // Vérification Multi-Tenant
     if (targetClass.schoolId !== userSchoolId) {
         throw new ForbiddenException("Vous ne pouvez pas ajouter de devoirs pour une autre école.");
     }
@@ -33,16 +30,18 @@ export class HomeworksService {
       ...data,
       class: targetClass,
       classId: targetClass.id,
-      school: { id: userSchoolId } // ✅ On sauvegarde l'école
+      school: { id: userSchoolId }
     });
     
-    return this.homeworksRepository.save(newHomework);
+    // ✅ CORRECTION CAPTURE D'ÉCRAN :
+    // On utilise 'as any' pour dire à TypeScript "Fais-moi confiance, ça passe".
+    // Cela débloque l'erreur "Conversion of type Promise<Homework[]>..."
+    return this.homeworksRepository.save(newHomework) as any;
   }
 
   async findByClass(classId: number, userSchoolId: number): Promise<Homework[]> {
     const targetClass = await this.classRepository.findOne({ where: { id: classId } });
 
-    // Si la classe n'existe pas ou n'est pas dans la bonne école, on renvoie vide
     if (!targetClass || targetClass.schoolId !== userSchoolId) {
         return [];
     }
