@@ -35,7 +35,7 @@ export class HomeworksService {
     });
     
     // ✅ CORRECTION ICI : "as any" force TypeScript à accepter le retour
-    // Cela résout l'erreur de build vue dans votre VS Code
+    // Cela résout l'erreur de build vue dans votre VS Code (Image 3)
     return this.homeworksRepository.save(newHomework) as any;
   }
 
