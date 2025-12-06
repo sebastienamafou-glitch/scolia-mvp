@@ -1,17 +1,7 @@
-import { 
-  Controller, 
-  Post, 
-  Body, 
-  UseGuards, 
-  Request, 
-  ForbiddenException, 
-  Get, 
-  Patch, 
-  Param 
-} from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request, Get, Param, Patch, ForbiddenException } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../auth/guard/roles.guard'; 
+import { RolesGuard } from '../auth/guard/roles.guard';
 import { Roles, UserRole } from '../auth/roles.decorator';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -19,43 +9,47 @@ import { Roles, UserRole } from '../auth/roles.decorator';
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
-  @Roles(UserRole.PARENT, UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.TEACHER)
+  // 1. Envoyer une notif à toute une classe (Prof/Admin)
+  @Roles(UserRole.TEACHER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Post('class')
+  async notifyClass(@Request() req, @Body() body: { classId: number, message: string }) {
+    const schoolId = req.user.schoolId;
+    if (!schoolId && req.user.role !== UserRole.SUPER_ADMIN) {
+        throw new ForbiddenException("École manquante.");
+    }
+
+    // ✅ CORRECTION CRITIQUE (Ligne qui faisait planter le build avec "Expected 2 args but got 5")
+    // On ne passe QUE les 3 arguments acceptés par le service.
+    // On ignore body.type, body.details, etc. pour l'instant.
+    return this.notificationsService.notifyClass(
+        body.classId, 
+        body.message, 
+        schoolId || 0
+    );
+  }
+
+  // 2. S'abonner aux notifs Push (Sauvegarde du token FCM)
   @Post('subscribe')
-  async subscribe(@Request() req, @Body('token') token: string) {
-    if (!req.user.sub) return;
-    return this.notificationsService.subscribe(req.user.sub, token); 
+  async subscribe(@Request() req, @Body() body: { token: string }) {
+    return this.notificationsService.subscribe(req.user.sub, body.token);
   }
 
-  // ✅ Route critique corrigée (était 404 dans les logs)
-  @Roles(UserRole.TEACHER, UserRole.ADMIN)
+  // 3. Envoyer une alerte spécifique (Admin -> Prof)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @Post('alert-teacher')
-  async alertTeacher(@Request() req, @Body() body: { type: string; details: string; duration?: number }) {
-      const teacherId = req.user.sub;
-      const schoolId = req.user.schoolId; // Assurez-vous que schoolId est dans le JWT
-      
-      // Fallback si schoolId n'est pas dans le token (optionnel)
-      if (!schoolId) {
-         // throw new ForbiddenException("Erreur de contexte d'école.");
-         // Pour le debug, on laisse passer ou on log
-         console.warn("SchoolId manquant dans le token");
-      }
-      
-      return this.notificationsService.sendTeacherAlert(
-          teacherId, 
-          schoolId || 1, // Valeur par défaut temporaire si nécessaire
-          body.type, 
-          body.details, 
-          body.duration
-      );
+  async sendTeacherAlert(@Body() body: { teacherId: number, message: string }) {
+      return this.notificationsService.sendTeacherAlert(body.teacherId, body.message);
   }
 
-  @Get('my-notifications')
+  // 4. Lire mes notifications
+  @Get()
   async getMyNotifications(@Request() req) {
       return this.notificationsService.findAllUnread(req.user.sub);
   }
 
+  // 5. Marquer comme lu
   @Patch(':id/read')
   async markAsRead(@Param('id') id: string) {
-      return this.notificationsService.markAsRead(Number(id));
+      return this.notificationsService.markAsRead(+id);
   }
 }

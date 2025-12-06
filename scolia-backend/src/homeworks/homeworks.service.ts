@@ -14,7 +14,6 @@ export class HomeworksService {
   ) {}
 
   async create(data: any, userSchoolId: number): Promise<Homework> {
-    
     const targetClass = await this.classRepository.findOne({ 
         where: { id: data.classId } 
     });
@@ -34,8 +33,7 @@ export class HomeworksService {
       school: { id: userSchoolId }
     });
     
-    // ✅ CORRECTION ICI : "as any" force TypeScript à accepter le retour
-    // Cela résout l'erreur de build vue dans votre VS Code (Image 3)
+    // ✅ CORRECTION: 'as any' pour résoudre l'erreur Promise<Homework[]> vs Promise<Homework>
     return this.homeworksRepository.save(newHomework) as any;
   }
 

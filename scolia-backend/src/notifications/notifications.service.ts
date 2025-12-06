@@ -3,7 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Notification } from './entities/notification.entity';
 import { User } from '../users/entities/user.entity';
-import { MailService } from '../mail/mail.service';
 import { UserRole } from '../auth/roles.decorator';
 
 @Injectable()
@@ -15,69 +14,22 @@ export class NotificationsService {
     private notifRepo: Repository<Notification>,
     @InjectRepository(User)
     private userRepo: Repository<User>,
-    private mailService: MailService,
   ) {}
 
-  // --- MÉTHODES MANQUANTES AJOUTÉES (Pour résoudre les erreurs du contrôleur) ---
-
-  // 1. Enregistrer le token FCM (Pour les push notifs)
-  async subscribe(userId: number, token: string) {
-      // On met à jour le token FCM de l'utilisateur
-      await this.userRepo.update(userId, { fcmToken: token });
-      return { success: true, message: "Token FCM mis à jour." };
-  }
-
-  // 2. Marquer une notification comme lue
-  async markAsRead(id: number) {
-      await this.notifRepo.update(id, { isRead: true });
-      return { success: true };
-  }
-
-  // 3. Récupérer les non-lues
-  async findAllUnread(userId: number) {
-      return this.notifRepo.find({
-          // Utilisation de la relation 'user' si 'userId' n'est pas une colonne
-          where: { user: { id: userId }, isRead: false },
-          order: { createdAt: 'DESC' }
-      });
-  }
-
-  // 4. Envoyer une alerte spécifique à un prof (ex: Retard)
-  async sendTeacherAlert(teacherId: number, message: string) {
-      const teacher = await this.userRepo.findOne({ where: { id: teacherId } });
-      if (!teacher) throw new NotFoundException("Enseignant introuvable");
-
-      // Création en base
-      const notif = this.notifRepo.create({
-          // ✅ CORRECTION TYPEORM : On passe l'objet relation
-          user: { id: teacherId } as User, 
-          title: "Alerte Vie Scolaire",
-          message: message,
-          // type: "ALERT", // ⚠️ J'ai commenté cette ligne car l'erreur dit que 'type' n'existe pas dans l'Entité
-          isRead: false,
-          schoolId: teacher.schoolId || 0
-      });
-      await this.notifRepo.save(notif);
-
-      this.logger.log(`🔔 Alerte envoyée au prof ${teacherId}: ${message}`);
-      return notif;
-  }
-
-  // --- MÉTHODES EXISTANTES ---
-
+  // --- MÉTHODE 1 : Notifier une classe ---
   async notifyClass(classId: number, message: string, schoolId: number) {
-      // 1. Trouver les parents liés à la classe via les élèves
+      // On cherche les parents liés à l'école (Simplification MVP)
       const parents = await this.userRepo.find({ 
           where: { role: UserRole.PARENT, schoolId } 
       });
       
       const notifications = parents.map(parent => {
           return this.notifRepo.create({
-              // ✅ CORRECTION TYPEORM
+              // ✅ CORRECTION: Utiliser la relation 'user' au lieu de 'userId' ou 'userID'
               user: { id: parent.id } as User,
               title: "Message de la classe",
               message: message,
-              // type: "INFO", // ⚠️ Commenté pour éviter l'erreur de build
+              isRead: false,
               schoolId
           });
       });
@@ -89,7 +41,38 @@ export class NotificationsService {
       return { sent: true, count: notifications.length };
   }
 
-  async create(payload: any) {
-      return this.notifRepo.save(payload);
+  // --- MÉTHODES MANQUANTES AJOUTÉES (Pour satisfaire le Contrôleur) ---
+
+  async subscribe(userId: number, token: string) {
+      await this.userRepo.update(userId, { fcmToken: token });
+      return { success: true };
+  }
+
+  async findAllUnread(userId: number) {
+      return this.notifRepo.find({
+          // ✅ CORRECTION: Utilisation relation 'user'
+          where: { user: { id: userId }, isRead: false },
+          order: { createdAt: 'DESC' }
+      });
+  }
+
+  async markAsRead(id: number) {
+      await this.notifRepo.update(id, { isRead: true });
+      return { success: true };
+  }
+
+  async sendTeacherAlert(teacherId: number, message: string) {
+      const teacher = await this.userRepo.findOne({ where: { id: teacherId } });
+      if (!teacher) throw new NotFoundException("Enseignant introuvable");
+
+      const notif = this.notifRepo.create({
+          user: { id: teacherId } as User, // ✅ Relation
+          title: "Alerte Vie Scolaire",
+          message: message,
+          isRead: false,
+          schoolId: teacher.schoolId || 0
+      });
+      
+      return this.notifRepo.save(notif);
   }
 }
