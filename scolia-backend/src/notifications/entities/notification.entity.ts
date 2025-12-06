@@ -1,6 +1,4 @@
-// scolia-backend/src/notifications/entities/notification.entity.ts
-
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, CreateDateColumn, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 
 @Entity()
@@ -11,19 +9,25 @@ export class Notification {
   @Column()
   title: string;
 
-  @Column('text')
+  @Column("text")
   message: string;
 
   @Column({ default: false })
-  isRead: boolean; // ✅ C'est ça qui gère l'état "Lu/Non lu"
+  isRead: boolean;
 
   @CreateDateColumn()
   createdAt: Date;
 
-  @ManyToOne(() => User)
-  @JoinColumn({ name: 'userId' })
-  user: User;
-
+  // --- AJOUTS NÉCESSAIRES ---
+  
   @Column()
-  userId: number;
+  userId: number; // Cette ligne va corriger l'erreur "userId does not exist"
+
+  @Column({ nullable: true })
+  schoolId: number; // Cette ligne va corriger l'erreur "schoolId does not exist"
+
+  // Relation optionnelle (utile pour les jointures plus tard)
+  @ManyToOne(() => User, (user) => user.notifications, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'userId' }) 
+  user: User;
 }

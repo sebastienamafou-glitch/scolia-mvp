@@ -97,4 +97,5 @@ export class User {
 
   @RelationId((user: User) => user.parent)
   parentId: number;
+  notifications: any;
 }

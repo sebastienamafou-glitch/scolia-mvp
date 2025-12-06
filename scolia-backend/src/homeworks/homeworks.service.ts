@@ -14,6 +14,7 @@ export class HomeworksService {
   ) {}
 
   async create(data: any, userSchoolId: number): Promise<Homework> {
+    
     const targetClass = await this.classRepository.findOne({ 
         where: { id: data.classId } 
     });
@@ -33,9 +34,8 @@ export class HomeworksService {
       school: { id: userSchoolId }
     });
     
-    // ✅ CORRECTION CAPTURE D'ÉCRAN :
-    // On utilise 'as any' pour dire à TypeScript "Fais-moi confiance, ça passe".
-    // Cela débloque l'erreur "Conversion of type Promise<Homework[]>..."
+    // ✅ CORRECTION ICI : "as any" force TypeScript à accepter le retour
+    // Cela résout l'erreur de build vue dans votre VS Code
     return this.homeworksRepository.save(newHomework) as any;
   }
 
