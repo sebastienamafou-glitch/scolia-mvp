@@ -1,6 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import toast from 'react-hot-toast'; // ✅ CORRECTION : Import ajouté
+
+// ✅ CORRECTION : Définition locale pour éviter les erreurs d'import
+const UserRole = {
+  SUPER_ADMIN: 'SuperAdmin',
+  ADMIN: 'Admin',
+  TEACHER: 'Enseignant',
+  PARENT: 'Parent',
+  STUDENT: 'Student',
+} as const;
 
 interface NewsItem {
   id: number;
@@ -10,6 +20,13 @@ interface NewsItem {
   createdAt: string;
   targetRole: string;
 }
+
+// ✅ CORRECTION : Fonction utilitaire manquante
+const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('fr-FR', {
+        day: 'numeric', month: 'long', year: 'numeric'
+    });
+};
 
 export const SchoolNews: React.FC = () => {
   const { userRole } = useAuth();
@@ -40,8 +57,8 @@ export const SchoolNews: React.FC = () => {
         fetchNews();
         setNewPost({ title: '', content: '', isUrgent: false, targetRole: 'All' });
         setShowForm(false);
-        alert("Annonce publiée !");
-    } catch (e) { alert("Erreur publication"); }
+        toast.success("Annonce publiée !");
+    } catch (e) { toast.error("Erreur publication"); }
   };
 
   return (

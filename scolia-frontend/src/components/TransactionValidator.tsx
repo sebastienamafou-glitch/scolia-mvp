@@ -19,6 +19,8 @@ interface Transaction {
 export const TransactionValidator: React.FC = () => {
     const [pendingTransactions, setPendingTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
+    // ✅ CORRECTION : Déclaration de l'état manquant
+    const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
     useEffect(() => {
         fetchTransactions();
@@ -51,10 +53,12 @@ export const TransactionValidator: React.FC = () => {
             
             // ✅ AMÉLIORATION OPTIMISTIC UI : Suppression locale immédiate
             setPendingTransactions(prev => prev.filter(t => t.id !== id));
+            setStatusMessage(null); // Reset message
             
         } catch (e) {
             // En cas d'échec de l'API, on doit recharger pour remettre l'élément dans la liste
             setStatusMessage("Opération échouée. Vérifiez le solde de l'élève ou le serveur.");
+            toast.error("Erreur lors du traitement.", { id: toastId });
             fetchTransactions(); 
         }
     };
@@ -67,7 +71,7 @@ export const TransactionValidator: React.FC = () => {
                 💰 Validation des Paiements ({pendingTransactions.length})
             </h2>
             
-            {statusMessage && <div style={{ color: '#D32F2F', marginBottom: '15px' }}>{statusMessage}</div>}
+            {statusMessage && <div style={{ color: '#D32F2F', marginBottom: '15px', fontWeight: 'bold' }}>{statusMessage}</div>}
 
             {pendingTransactions.length === 0 ? (
                 <p style={{ color: '#555', fontStyle: 'italic', padding: '10px 0' }}>Aucune transaction en attente de validation.</p>

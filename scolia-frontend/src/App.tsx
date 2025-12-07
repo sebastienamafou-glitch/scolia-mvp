@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Navigate, Link } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom'; // ✅ CORRECTION : Link retiré
 import { useAuth } from './contexts/AuthContext';
 import { Toaster } from 'react-hot-toast';
 
@@ -11,7 +11,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import PlatformDashboard from './pages/PlatformDashboard';
 import NotesPage from './pages/NotesPage';
 import HelpPage from './pages/HelpPage';
-import { LandingPage } from './pages/LandingPage'; // 👈 Import de la nouvelle page
+import { LandingPage } from './pages/LandingPage'; 
 
 import PrivateRoute from './components/PrivateRoute';
 
@@ -36,7 +36,6 @@ const App: React.FC = () => {
     <div>
       <Toaster position="top-right" />
 
-      {/* Header de secours (rarement utilisé maintenant car tous les dashboards ont le leur) */}
       {showGlobalHeader && (
         <header style={{ padding: '10px 20px', backgroundColor: '#0A2240', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontWeight: 'bold' }}>Scolia</span>
@@ -49,13 +48,11 @@ const App: React.FC = () => {
       <main style={{ maxWidth: '100vw', margin: '0 auto', padding: '0' }}>
         <Routes>
           
-          {/* ROUTE RACINE (/) : Landing Page ou Dashboard selon état */}
+          {/* ROUTE RACINE (/) */}
           <Route path="/" element={
             !isAuthenticated ? (
-                // Si pas connecté -> Landing Page (Vitrine)
                 <LandingPage />
             ) : (
-                // Si connecté -> Redirection intelligente vers le bon Dashboard
                 userRole === 'SuperAdmin' ? <Navigate to="/platform" replace /> :
                 userRole === 'Admin' ? <Navigate to="/admin-dashboard" replace /> :
                 userRole === 'Enseignant' ? <Navigate to="/teacher-dashboard" replace /> :

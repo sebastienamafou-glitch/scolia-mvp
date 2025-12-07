@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import api from '../services/api';
-import toast from 'react-hot-toast'; // Import Toast
+import toast from 'react-hot-toast'; // Utilisation corrigée plus bas
 import { FaPaperPlane } from 'react-icons/fa';
 
 export const TeacherAlertForm: React.FC = () => {
@@ -8,29 +8,31 @@ export const TeacherAlertForm: React.FC = () => {
     const [details, setDetails] = useState('');
     const [duration, setDuration] = useState('');
     const [loading, setLoading] = useState(false);
+    // ✅ CORRECTION : Ajout de l'état success
+    const [success, setSuccess] = useState('');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
 
         try {
-            // Conversion sécurisée : si vide ou <= 0, on envoie undefined (ou null selon votre backend)
             const durationNum = duration ? Number(duration) : 0;
 
             const body = {
                 type: alertType,
                 details: details || `Déclaration de ${alertType.toLowerCase()}.`,
-                // Si c'est un retard, on s'assure d'envoyer un chiffre, sinon undefined
                 duration: alertType === 'Retard' && durationNum > 0 ? durationNum : undefined,
             };
 
             const res = await api.post('/notifications/alert-teacher', body);
             
             setSuccess(res.data.message);
+            toast.success("Alerte envoyée à l'administration !"); // ✅ Utilisation de toast
             setDetails('');
             setDuration('');
         } catch (error) {
-            alert("Erreur lors de l'envoi de l'alerte. Vérifiez la console serveur.");
+            // ✅ Utilisation de toast au lieu de alert
+            toast.error("Erreur lors de l'envoi de l'alerte.");
         } finally {
             setLoading(false);
         }
@@ -40,6 +42,8 @@ export const TeacherAlertForm: React.FC = () => {
         <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
             <h2 style={{ marginTop: 0, color: '#dc3545' }}>⚠️ Déclaration d'Indisponibilité</h2>
             
+            {success && <div style={{ color: 'green', marginBottom: '15px' }}>✅ {success}</div>}
+
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 
                 {/* Type d'Alerte */}

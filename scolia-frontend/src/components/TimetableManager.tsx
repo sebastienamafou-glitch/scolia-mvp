@@ -17,7 +17,6 @@ interface TimetableSlot {
   room?: string;
 }
 
-// Helper pour nettoyer les strings (avec check d'existence)
 const normalize = (str: string) => str ? str.toLowerCase().trim() : '';
 
 const dayMapping: Record<string, string> = {
@@ -65,14 +64,12 @@ export const TimetableManager: React.FC = () => {
   const handleGenerateAI = async () => {
     if (!selectedClassId) return;
     
-    // Le confirm natif est acceptable ici pour une action destructrice
     if (!window.confirm("Attention : Cela va effacer et régénérer l'emploi du temps actuel. Continuer ?")) return;
 
     setGenerating(true);
     const toastId = toast.loading("L'IA génère le planning...");
 
     try {
-      // Contraintes par défaut (on pourrait faire un formulaire pour ça plus tard)
       const constraints = {
         "Mathématiques": 4,
         "Français": 4,
@@ -84,10 +81,13 @@ export const TimetableManager: React.FC = () => {
       };
 
       await api.post(`/timetable/generate/${selectedClassId}`, constraints);
-      alert("✨ Emploi du temps généré avec succès !");
-      loadSchedule(); // Rafraîchir l'affichage
+      
+      // ✅ CORRECTION : Utilisation de toastId pour mettre à jour
+      toast.success("✨ Emploi du temps généré avec succès !", { id: toastId });
+      loadSchedule(); 
     } catch (error) {
-      alert("Erreur lors de la génération IA.");
+      // ✅ CORRECTION : Utilisation de toastId pour afficher l'erreur
+      toast.error("Erreur lors de la génération IA.", { id: toastId });
     } finally {
       setGenerating(false);
     }
