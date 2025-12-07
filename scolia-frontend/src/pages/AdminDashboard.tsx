@@ -5,7 +5,7 @@ import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Logo } from '../components/Logo';
 import { Link } from 'react-router-dom';
-import toast, { type Toast } from 'react-hot-toast'; // ✅ CORRECTION 1 : Import de type explicite
+import toast from 'react-hot-toast'; // ✅ CORRECTION : Import simplifié (retrait de type Toast inutilisé)
 
 // Imports des modules fonctionnels
 import { ClassManager } from '../components/ClassManager';
@@ -24,7 +24,6 @@ import {
     FaCog, FaUnlockAlt, FaLock 
 } from 'react-icons/fa';
 
-// ✅ CORRECTION 2 : Remplacement de l'enum par un objet constant (compatible "erasableSyntaxOnly")
 export const UserRole = {
   SUPER_ADMIN: 'SuperAdmin',
   ADMIN: 'Admin',
@@ -33,7 +32,6 @@ export const UserRole = {
   STUDENT: 'Student',
 } as const;
 
-// Création du type à partir de l'objet constant pour garder le typage fort
 export type UserRole = typeof UserRole[keyof typeof UserRole];
 
 // --- TYPES ---
@@ -81,7 +79,7 @@ const AdminDashboard: React.FC = () => {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [mySchool, setMySchool] = useState<SchoolInfo | null>(null);
   const [availableClasses, setAvailableClasses] = useState<ClassOption[]>([]);
-  const [selectedStudent, setSelectedStudent] = useState<User | null>(null); // ✅ Typage corrigé
+  const [selectedStudent, setSelectedStudent] = useState<User | null>(null);
   
   const [loading, setLoading] = useState(true);
   const [schoolLoading, setSchoolLoading] = useState(true);
@@ -204,7 +202,6 @@ const AdminDashboard: React.FC = () => {
       const createdUser = response.data;
       const passwordDisplay = createdUser.plainPassword || 'Envoyé par email';
 
-      // ✅ CORRECTION 3 : Suppression de l'argument 't' inutilisé
       toast(() => (
         <div>
             <b>✅ Utilisateur créé !</b><br/>

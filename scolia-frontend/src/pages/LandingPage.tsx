@@ -1,7 +1,7 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Logo } from '../components/Logo';
-import { FaUserGraduate, FaMoneyBillWave, FaRobot, FaChartLine, FaCheck, FaArrowRight } from 'react-icons/fa';
+import { FaUserGraduate, FaMoneyBillWave, FaRobot, FaChartLine, FaArrowRight } from 'react-icons/fa';
 import { Footer } from '../components/Footer';
 
 export const LandingPage: React.FC = () => {
@@ -21,7 +21,6 @@ export const LandingPage: React.FC = () => {
         </div>
         
         <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-            {/* Liens de navigation (cachés sur mobile pour simplifier) */}
             <div style={{ display: window.innerWidth > 768 ? 'flex' : 'none', gap: '25px', marginRight: '20px', fontSize: '0.95rem', fontWeight: '500', color: '#475569' }}>
                 <a href="#features" style={{ textDecoration: 'none', color: 'inherit' }}>Fonctionnalités</a>
                 <a href="#about" style={{ textDecoration: 'none', color: 'inherit' }}>À propos</a>
@@ -83,7 +82,6 @@ export const LandingPage: React.FC = () => {
             </div>
         </div>
 
-        {/* Image d'illustration (Placeholder) */}
         <div style={{ flex: 1, minWidth: '300px', display: 'flex', justifyContent: 'center' }}>
             <img 
                 src="https://images.unsplash.com/photo-1531545514256-b1400bc00f31?q=80&w=1974&auto=format&fit=crop" 
