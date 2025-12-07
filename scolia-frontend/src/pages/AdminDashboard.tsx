@@ -5,6 +5,8 @@ import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Logo } from '../components/Logo';
 import { Link } from 'react-router-dom';
+import toast, { type Toast } from 'react-hot-toast'; // ✅ CORRECTION 1 : Import de type explicite
+
 // Imports des modules fonctionnels
 import { ClassManager } from '../components/ClassManager';
 import { BulletinEditor } from '../components/BulletinEditor';
@@ -22,7 +24,19 @@ import {
     FaCog, FaUnlockAlt, FaLock 
 } from 'react-icons/fa';
 
-// --- TYPES MIS À JOUR (COMPATIBILITÉ V2) ---
+// ✅ CORRECTION 2 : Remplacement de l'enum par un objet constant (compatible "erasableSyntaxOnly")
+export const UserRole = {
+  SUPER_ADMIN: 'SuperAdmin',
+  ADMIN: 'Admin',
+  TEACHER: 'Enseignant',
+  PARENT: 'Parent',
+  STUDENT: 'Student',
+} as const;
+
+// Création du type à partir de l'objet constant pour garder le typage fort
+export type UserRole = typeof UserRole[keyof typeof UserRole];
+
+// --- TYPES ---
 
 interface User {
   id: number;
@@ -30,7 +44,6 @@ interface User {
   prenom: string;
   email: string;
   role: string;
-  // ✅ CORRECTION : Adaptation à la relation TypeORM V2, on utilise 'class'
   class?: {
       id: number;
       name: string;
@@ -68,12 +81,12 @@ const AdminDashboard: React.FC = () => {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [mySchool, setMySchool] = useState<SchoolInfo | null>(null);
   const [availableClasses, setAvailableClasses] = useState<ClassOption[]>([]);
-  const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<User | null>(null); // ✅ Typage corrigé
   
   const [loading, setLoading] = useState(true);
   const [schoolLoading, setSchoolLoading] = useState(true);
 
-  // États UI (Tableau Utilisateurs)
+  // États UI
   const [activeTab, setActiveTab] = useState<string>('Tous');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -82,12 +95,11 @@ const AdminDashboard: React.FC = () => {
   
   const [schoolForm, setSchoolForm] = useState({ name: '', address: '', logo: '', description: '' });
   
-  // Formulaire Création Utilisateur (Utilise classId)
   const [newUser, setNewUser] = useState({
     password: '', 
-    role: UserRole.TEACHER as UserRole, // Type forcé initialement
+    role: UserRole.TEACHER as UserRole,
     nom: '', prenom: '', 
-    classId: '', // 👈 Utilise classId pour l'ID de la classe
+    classId: '',
     parentId: '', photo: '',
     dateNaissance: '', adresse: '',
     contactUrgenceNom: '', contactUrgenceTel: '', infosMedicales: ''
@@ -104,7 +116,6 @@ const AdminDashboard: React.FC = () => {
   const fetchUsers = async () => {
     try {
       const response = await api.get('/users');
-      // On force le typage ici pour que TypeScript accepte les strings venant de l'API comme étant des UserRole
       setAllUsers(response.data as User[]);
     } catch (error) {
       console.error("Erreur chargement utilisateurs", error);
@@ -127,7 +138,7 @@ const AdminDashboard: React.FC = () => {
         if (typeof mod === 'string') {
              mod = JSON.parse(mod);
         }
-        res.data.modules = mod; // Injecte les valeurs parsées
+        res.data.modules = mod;
         setMySchool(res.data);
         setSchoolForm({
             name: res.data.name || '',
@@ -179,8 +190,7 @@ const AdminDashboard: React.FC = () => {
     try {
       const payload: any = { ...newUser };
       
-      // Nettoyage des champs selon le rôle
-      if (payload.role !== 'Élève') {
+      if (payload.role !== UserRole.STUDENT) {
           delete payload.classId;
           delete payload.parentId; delete payload.dateNaissance;
           delete payload.adresse; delete payload.contactUrgenceNom;
@@ -194,8 +204,8 @@ const AdminDashboard: React.FC = () => {
       const createdUser = response.data;
       const passwordDisplay = createdUser.plainPassword || 'Envoyé par email';
 
-      // Affichage propre des identifiants avec un Toast longue durée
-      toast((t) => (
+      // ✅ CORRECTION 3 : Suppression de l'argument 't' inutilisé
+      toast(() => (
         <div>
             <b>✅ Utilisateur créé !</b><br/>
             Email: {createdUser.email}<br/>
@@ -215,12 +225,10 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  // Reset Password (Mise à jour V2 : Génération et affichage du nouveau mot de passe par PATCH)
   const handleResetPassword = async (user: User) => {
     if (!window.confirm(`Générer un nouveau mot de passe pour ${user.prenom} ${user.nom} ?`)) return;
     try {
         const res = await api.patch(`/users/${user.id}/reset-password`);
-        // On affiche le mot de passe reçu du backend
         prompt(`✅ Nouveau mot de passe pour ${user.nom} :`, res.data.plainPassword);
     } catch (error) {
         toast.error("Erreur lors de la réinitialisation.");
@@ -243,13 +251,12 @@ const AdminDashboard: React.FC = () => {
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
 
   // --- KPI ---
-  const countStudents = allUsers.filter(u => u.role === 'Élève').length;
-  const countTeachers = allUsers.filter(u => u.role === 'Enseignant').length;
-  const countParents = allUsers.filter(u => u.role === 'Parent').length;
-  const countAdmins = allUsers.filter(u => u.role === 'Admin').length;
-  const availableParents = allUsers.filter(user => user.role === 'Parent');
+  const countStudents = allUsers.filter(u => u.role === UserRole.STUDENT).length;
+  const countTeachers = allUsers.filter(u => u.role === UserRole.TEACHER).length;
+  const countParents = allUsers.filter(u => u.role === UserRole.PARENT).length;
+  const countAdmins = allUsers.filter(u => u.role === UserRole.ADMIN).length;
+  const availableParents = allUsers.filter(user => user.role === UserRole.PARENT);
   
-  // Raccourci Modules (Utilise l'objet déjà parsé dans fetchMySchool)
   const defaultModules: SchoolInfo['modules'] = { risk_radar: false, ai_planning: false, sms: false, cards: false };
   const safeModules = mySchool?.modules ? { ...defaultModules, ...mySchool.modules } : defaultModules;
   
@@ -299,7 +306,7 @@ const AdminDashboard: React.FC = () => {
             </div>
         )}
 
-        {/* SECTION KPI (Toujours visible) */}
+        {/* SECTION KPI */}
         {activeTab !== 'Paramètres' && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '30px' }}>
                 <KpiCard title="Élèves Inscrits" count={countStudents} icon={<FaUserGraduate />} color="#3498db" />
@@ -326,8 +333,7 @@ const AdminDashboard: React.FC = () => {
             
             <div style={{ padding: '20px', borderBottom: '1px solid #eee', display: 'flex', flexWrap: 'wrap', gap: '20px', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '5px' }}>
-                    {/* On utilise Object.values ou un tableau explicite pour les boutons de filtre */}
-                    {['Tous', UserRole.STUDENT, UserRole.TEACHER, UserRole.PARENT, UserRole.ADMIN].map(role => (
+                    {[ 'Tous', UserRole.STUDENT, UserRole.TEACHER, UserRole.PARENT, UserRole.ADMIN ].map(role => (
                         <button 
                             key={role}
                             onClick={() => { setActiveTab(role); setCurrentPage(1); }}
@@ -403,7 +409,6 @@ const AdminDashboard: React.FC = () => {
                                 {newUser.role === UserRole.STUDENT && (
                                     <div style={{ gridColumn: '1 / -1', backgroundColor: '#E3F2FD', padding: '15px', borderRadius: '8px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
                                         
-                                        {/* ✅ SÉLECTEUR DE CLASSE MISE À JOUR (Utilise classId et availableClasses) */}
                                         <select 
                                             value={newUser.classId} 
                                             onChange={e => setNewUser({...newUser, classId: e.target.value})} 

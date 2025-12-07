@@ -1,3 +1,5 @@
+// scolia-frontend/src/pages/ParentDashboard.tsx
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
@@ -9,7 +11,7 @@ import { requestForToken } from '../firebase-config';
 import { FaLock } from 'react-icons/fa'; 
 import { Footer } from '../components/Footer';
 import { DigitalIdCard } from '../components/DigitalIdCard';
-import toast from 'react-hot-toast'; // Import UX
+import toast from 'react-hot-toast'; 
 
 // --- Types ---
 interface Student {
@@ -18,7 +20,7 @@ interface Student {
   nom: string;
   class?: { name: string };
   photo?: string;
-  dateNaissance?: string; // 👈 AJOUTÉ POUR LA CARTE
+  dateNaissance?: string;
 }
 
 interface BulletinData {
@@ -56,20 +58,21 @@ const ParentDashboard: React.FC = () => {
   // 1. Initialisation
   useEffect(() => {
     const initNotif = async () => {
+        // ✅ CORRECTION : Ajout du bloc try manquant qui causait l'erreur de build
         try {
             const token = await requestForToken();
             if (token) {
                 await api.post('/notifications/subscribe', { token });
                 console.log("✅ Notifications Push activées !");
-            } catch (e) {
-                console.error("Erreur abonnement notif", e);
             }
         } catch (e) {
             console.error("Erreur abonnement notif (non bloquant)", e);
         }
     };
+    
     initNotif();
     fetchChildren();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshKey]);
 
   // 2. Charger le bulletin
@@ -77,6 +80,7 @@ const ParentDashboard: React.FC = () => {
     if (selectedChildId) {
       fetchBulletin(selectedChildId);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChildId]);
 
   const fetchChildren = async () => {
@@ -101,7 +105,6 @@ const ParentDashboard: React.FC = () => {
       setBulletin(res.data);
     } catch (error) {
       console.error("Erreur chargement bulletin", error);
-      // On ne spamme pas d'erreur si le bulletin n'existe juste pas encore
     }
   };
   
@@ -156,8 +159,8 @@ const ParentDashboard: React.FC = () => {
                                 boxShadow: selectedChildId === child.id ? '0 4px 10px rgba(0,0,0,0.1)' : 'none',
                             }}
                         >
-                            <div style={{ width: '30px', height: '30px', borderRadius: '50%', backgroundColor: '#ddd', overflow:'hidden' }}>
-                                {child.photo ? <img src={child.photo} alt="" style={{width:'100%'}}/> : null}
+                            <div style={{ width: '30px', height: '30px', borderRadius: '50%', backgroundColor: '#ddd', overflow:'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                                {child.photo ? <img src={child.photo} alt="" style={{width:'100%', height: '100%', objectFit: 'cover'}}/> : <span style={{fontSize: '12px'}}>👤</span>}
                             </div>
                             <span style={{ fontWeight: 'bold', color: selectedChildId === child.id ? '#0A2240' : '#666' }}>
                                 {child.prenom}
@@ -223,7 +226,6 @@ const ParentDashboard: React.FC = () => {
                                     <div style={{ flex: '0 0 auto' }}>
                                         <h3 style={{ marginTop: 0, color: '#0A2240', marginBottom: '15px' }}>🆔 Carte Scolaire</h3>
                                         
-                                        {/* 👇 SÉCURITÉ : Protection contre date undefined */}
                                         <DigitalIdCard 
                                             student={{
                                                 id: currentChild.id,
@@ -231,7 +233,6 @@ const ParentDashboard: React.FC = () => {
                                                 prenom: currentChild.prenom,
                                                 photo: currentChild.photo,
                                                 classe: currentChild.class?.name,
-                                                // Utilisation d'une chaîne vide si la date est manquante
                                                 dateNaissance: currentChild.dateNaissance || '', 
                                                 schoolName: "Scolia Academy"
                                             }}

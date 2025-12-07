@@ -91,7 +91,7 @@ const PlatformDashboard: React.FC = () => {
       const { admin } = response.data;
 
       // UX : Affichage propre des identifiants (plus d'alert moche)
-      toast((t) => (
+      toast((_t) => (
         <div style={{minWidth: '300px'}}>
             <h4 style={{marginTop:0, color: '#38a169'}}>✅ École créée avec succès !</h4>
             <div style={{backgroundColor: '#EDF2F7', padding: '10px', borderRadius: '5px', fontFamily: 'monospace'}}>
