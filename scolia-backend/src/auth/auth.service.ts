@@ -27,17 +27,19 @@ export class AuthService {
         return null;
     }
 
-    if (!user.passwordHash) {
+    // CORRECTION : Le champ s'appelle 'password' dans l'entité User
+    if (!user.password) {
         this.logger.error(`Utilisateur ${cleanEmail} corrompu (pas de hash).`);
         return null;
     }
 
-    const isMatch = await bcrypt.compare(pass, user.passwordHash);
+    const isMatch = await bcrypt.compare(pass, user.password);
     
     if (isMatch) {
       // ✅ Sécurité : On s'assure de ne jamais renvoyer le hash, même par erreur
       // On convertit en objet JS simple pour casser la liaison TypeORM
-      const { passwordHash, ...result } = JSON.parse(JSON.stringify(user)); 
+      // CORRECTION : On destructure 'password' au lieu de 'passwordHash'
+      const { password, ...result } = JSON.parse(JSON.stringify(user)); 
       return result;
     } else {
       this.logger.warn(`Login échoué : Mauvais mot de passe pour ${cleanEmail}`);
@@ -49,7 +51,6 @@ export class AuthService {
     if (!user) throw new UnauthorizedException("Identifiants incorrects");
 
     // Gestion robuste du schoolId
-    // Si 'school' est chargé (objet), on prend son ID. Sinon on regarde si une prop 'schoolId' existe.
     const finalSchoolId = user.school?.id || user.schoolId || null;
 
     if (!Object.values(UserRole).includes(user.role as UserRole)) {
@@ -66,9 +67,9 @@ export class AuthService {
     return {
       access_token: this.jwtService.sign(payload),
       user: {
-        id: user.id, // Utile pour le front
-        firstName: user.firstName,
-        lastName: user.lastName,
+        id: user.id,
+        // Note: firstName/lastName n'existent pas dans User, attention si le front les attend
+        // Pour l'instant on renvoie ce qu'on a
         role: user.role,
         schoolId: finalSchoolId
       }

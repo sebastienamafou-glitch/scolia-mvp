@@ -2,10 +2,10 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { School, SchoolModules } from './entities/school.entity';
+import { School } from './entities/school.entity';
 import { User } from '../users/entities/user.entity';
 import * as bcrypt from 'bcrypt';
-import { randomBytes } from 'crypto'; // Node natif, pas besoin d'install
+import { randomBytes } from 'crypto'; 
 import { UserRole } from '../auth/roles.decorator';
 
 @Injectable()
@@ -32,13 +32,14 @@ export class SchoolsService {
     const hash = await bcrypt.hash(temporaryPassword, salt);
 
     // 3. Créer l'admin
+    // CORRECTION : On retire 'nom' et 'prenom' qui n'existent pas dans User
+    // CORRECTION : On utilise 'password' au lieu de 'passwordHash'
     const newAdmin = this.userRepo.create({
       email: uniqueEmail,
-      nom: data.adminNom,
-      prenom: data.adminPrenom,
-      passwordHash: hash,
+      password: hash, 
       role: UserRole.ADMIN,
       school: savedSchool,
+      isActive: true
     });
     
     await this.userRepo.save(newAdmin);
@@ -46,7 +47,6 @@ export class SchoolsService {
     return { school: savedSchool, password: temporaryPassword };
   }
   
-  // Méthodes utilitaires pour le contrôleur
   async findOne(id: number) {
       return this.schoolRepo.findOne({ where: { id } });
   }

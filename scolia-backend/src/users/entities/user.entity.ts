@@ -11,8 +11,8 @@ import {
     UpdateDateColumn 
 } from 'typeorm';
 import { School } from '../../schools/entities/school.entity';
-import { UserRole } from '../../auth/roles.decorator'; // Assurez-vous que le chemin est bon
-import { Notification } from '../../notifications/entities/notification.entity'; // 👈 Import ajouté
+import { UserRole } from '../../auth/roles.decorator';
+import { Notification } from '../../notifications/entities/notification.entity';
 
 @Entity()
 export class User {
@@ -23,7 +23,7 @@ export class User {
   email: string;
 
   @Column()
-  password: string; // Sera haché via BCrypt [cite: 33]
+  password: string; // Le champ s'appelle bien 'password'
 
   @Column({ 
       type: 'enum', 
@@ -33,23 +33,24 @@ export class User {
   role: UserRole;
 
   @Column({ default: true })
-  isActive: boolean; // Pour la suspension d'accès [cite: 47]
+  isActive: boolean;
+
+  // 👇 AJOUT POUR CORRIGER L'ERREUR NOTIFICATION
+  @Column({ nullable: true })
+  fcmToken: string; 
 
   // --- RELATIONS ---
 
-  // Relation Multi-Tenant vers l'École [cite: 29, 100]
   @ManyToOne(() => School, (school) => school.users, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'schoolId' })
   school: School;
 
-  @Column({ nullable: true }) // Nullable car le SuperAdmin n'a pas forcément d'école
+  @Column({ nullable: true })
   schoolId: number;
 
-  // 👇 Relation Notifications (Celle que vous vouliez ajouter)
   @OneToMany(() => Notification, (notification) => notification.user)
   notifications: Notification[];
 
-  // Timestamps automatiques
   @CreateDateColumn()
   createdAt: Date;
 
