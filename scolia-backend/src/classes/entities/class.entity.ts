@@ -1,7 +1,8 @@
+// scolia-backend/src/classes/entities/class.entity.ts
+
 import { Entity, Column, PrimaryGeneratedColumn, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
 import { Student } from '../../students/entities/student.entity';
-// 👇 AJOUT IMPORT
-import { Homework } from '../../homeworks/entities/homework.entity';
+import { Homework } from '../../homeworks/entities/homework.entity'; // 👈 Import ajouté
 import { School } from '../../schools/entities/school.entity';
 
 @Entity()
@@ -18,7 +19,7 @@ export class Class {
   @OneToMany(() => Student, (student) => student.class)
   students: Student[];
 
-  // 👇 AJOUT RELATION MANQUANTE
+  // 👇 Relation ajoutée
   @OneToMany(() => Homework, (homework) => homework.class)
   homeworks: Homework[];
 

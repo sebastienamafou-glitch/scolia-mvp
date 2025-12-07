@@ -39,4 +39,20 @@ export class ClassesService {
       }
       return classe;
   }
+
+  // 👇 NOUVELLE MÉTHODE AJOUTÉE 👇
+  async remove(id: number, schoolId: number): Promise<void> {
+    // On utilise delete avec le filtre schoolId pour la sécurité Multi-Tenant
+    const result = await this.classesRepository.delete({ 
+        id, 
+        school: { id: schoolId } 
+    });
+
+    // Si aucune ligne n'est affectée, c'est que la classe n'existe pas ou n'est pas dans cette école
+    if (result.affected === 0) {
+        throw new NotFoundException(`Classe #${id} introuvable ou accès refusé.`);
+    }
+    // Si la suppression échoue à cause des élèves (FK Constraint), 
+    // TypeORM lèvera une erreur que le Controller renverra au Frontend.
+  }
 }

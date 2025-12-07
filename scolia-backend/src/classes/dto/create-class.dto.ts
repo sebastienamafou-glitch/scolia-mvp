@@ -1,6 +1,6 @@
 // scolia-backend/src/classes/dto/create-class.dto.ts
 
-import { IsNotEmpty, IsString, IsOptional } from 'class-validator';
+import { IsNotEmpty, IsString } from 'class-validator';
 
 export class CreateClassDto {
   @IsString()
@@ -8,6 +8,6 @@ export class CreateClassDto {
   name: string; // ex: "6ème A"
 
   @IsString()
-  @IsOptional()
-  level?: string; // ex: "6ème"
+  @IsNotEmpty({ message: 'Le niveau est obligatoire' }) // 👈 Changé de IsOptional à IsNotEmpty
+  level: string; // ex: "6ème"
 }
